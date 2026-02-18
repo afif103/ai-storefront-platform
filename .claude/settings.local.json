@@ -5,7 +5,11 @@
       "Bash(docker compose:*)",
       "Bash(python -m ruff check:*)",
       "Bash(python -c:*)",
-      "Bash(python -m black:*)"
+      "Bash(python -m black:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)"
     ]
   }
 }
