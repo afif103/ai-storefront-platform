@@ -21,6 +21,7 @@ class Tenant(Base):
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), onupdate=func.now()
     )
+    default_currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="KWD")
 
     members: Mapped[list["TenantMember"]] = relationship(back_populates="tenant")  # noqa: F821
     plan: Mapped["Plan | None"] = relationship()  # noqa: F821
