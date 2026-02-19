@@ -48,7 +48,7 @@ async def create_tenant(
 
     # Set tenant context for the tenant_members INSERT (RLS requires it)
     await db.execute(
-        text("SET LOCAL app.current_tenant = :tid"),
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
         {"tid": str(tenant.id)},
     )
 

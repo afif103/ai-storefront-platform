@@ -127,7 +127,7 @@ async def seed_tenant_with_owner(
 
     # Set tenant context for RLS
     await db.execute(
-        text("SET LOCAL app.current_tenant = :tid"),
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
         {"tid": str(tenant.id)},
     )
 

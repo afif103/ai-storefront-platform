@@ -90,8 +90,11 @@ async def get_db_with_tenant(
     4. Return (session, tenant_id)
     """
     # Step 1: set user context so RLS allows membership lookup by user_id
+    # Note: SET LOCAL does not support parameterised placeholders in asyncpg.
+    # We use set_config(name, value, is_local) which is a regular function
+    # call and supports $1 bind params. The third arg `true` = transaction-local.
     await db.execute(
-        text("SET LOCAL app.current_user_id = :uid"),
+        text("SELECT set_config('app.current_user_id', :uid, true)"),
         {"uid": str(user.id)},
     )
 
@@ -130,7 +133,7 @@ async def get_db_with_tenant(
 
     # Step 3: set tenant context for all subsequent queries in this transaction
     await db.execute(
-        text("SET LOCAL app.current_tenant = :tid"),
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
         {"tid": str(tenant_id)},
     )
 
@@ -154,7 +157,7 @@ async def get_db_with_slug(
         raise HTTPException(status_code=404, detail="Storefront not found")
 
     await db.execute(
-        text("SET LOCAL app.current_tenant = :tid"),
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
         {"tid": str(tenant.id)},
     )
     return db, tenant

@@ -86,7 +86,7 @@ async def accept_invite(
     """
     # Set user context so RLS allows the membership lookup by user_id
     await db.execute(
-        text("SET LOCAL app.current_user_id = :uid"),
+        text("SELECT set_config('app.current_user_id', :uid, true)"),
         {"uid": str(user.id)},
     )
 
@@ -106,7 +106,7 @@ async def accept_invite(
     for invitation in invitations:
         # Set tenant context for the UPDATE
         await db.execute(
-            text("SET LOCAL app.current_tenant = :tid"),
+            text("SELECT set_config('app.current_tenant', :tid, true)"),
             {"tid": str(invitation.tenant_id)},
         )
         invitation.user_id = user.id

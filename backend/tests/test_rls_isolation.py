@@ -47,7 +47,9 @@ async def test_tenant_a_cannot_see_tenant_b_members(rls_db: AsyncSession):
     tenant_a, tenant_b, user_a, user_b = await _setup_two_tenants(db)
 
     # Insert member A under tenant A context
-    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant_a.id)})
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"), {"tid": str(tenant_a.id)}
+    )
     member_a = TenantMember(
         tenant_id=tenant_a.id, user_id=user_a.id, role="owner", status="active"
     )
@@ -55,7 +57,9 @@ async def test_tenant_a_cannot_see_tenant_b_members(rls_db: AsyncSession):
     await db.flush()
 
     # Insert member B under tenant B context
-    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant_b.id)})
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"), {"tid": str(tenant_b.id)}
+    )
     member_b = TenantMember(
         tenant_id=tenant_b.id, user_id=user_b.id, role="owner", status="active"
     )
@@ -63,7 +67,9 @@ async def test_tenant_a_cannot_see_tenant_b_members(rls_db: AsyncSession):
     await db.flush()
 
     # Switch to Tenant A context — only member A should be visible
-    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant_a.id)})
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"), {"tid": str(tenant_a.id)}
+    )
     # Clear the user_id setting to test pure tenant isolation
     await db.execute(text("RESET app.current_user_id"))
 
@@ -75,7 +81,9 @@ async def test_tenant_a_cannot_see_tenant_b_members(rls_db: AsyncSession):
     assert visible[0].tenant_id == tenant_a.id
 
     # Switch to Tenant B context — only member B should be visible
-    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant_b.id)})
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"), {"tid": str(tenant_b.id)}
+    )
     result = await db.execute(select(TenantMember))
     visible = result.scalars().all()
 
@@ -91,7 +99,9 @@ async def test_tenant_a_cannot_insert_into_tenant_b(rls_db: AsyncSession):
     tenant_a, tenant_b, user_a, user_b = await _setup_two_tenants(db)
 
     # Set context to Tenant A
-    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant_a.id)})
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"), {"tid": str(tenant_a.id)}
+    )
 
     # Try to insert a member with Tenant B's tenant_id — RLS should reject
     from sqlalchemy.exc import DBAPIError
@@ -114,7 +124,9 @@ async def test_user_id_policy_allows_membership_lookup(rls_db: AsyncSession):
     tenant_a, tenant_b, user_a, user_b = await _setup_two_tenants(db)
 
     # Insert member A
-    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant_a.id)})
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"), {"tid": str(tenant_a.id)}
+    )
     member_a = TenantMember(
         tenant_id=tenant_a.id, user_id=user_a.id, role="owner", status="active"
     )
@@ -123,7 +135,9 @@ async def test_user_id_policy_allows_membership_lookup(rls_db: AsyncSession):
 
     # Now simulate middleware: no tenant set, only user_id set
     await db.execute(text("RESET app.current_tenant"))
-    await db.execute(text("SET LOCAL app.current_user_id = :uid"), {"uid": str(user_a.id)})
+    await db.execute(
+        text("SELECT set_config('app.current_user_id', :uid, true)"), {"uid": str(user_a.id)}
+    )
 
     # Should be able to find membership by user_id
     result = await db.execute(select(TenantMember).where(TenantMember.user_id == user_a.id))
@@ -140,7 +154,9 @@ async def test_set_local_is_transaction_scoped(rls_db: AsyncSession):
     tenant_a, _, user_a, _ = await _setup_two_tenants(db)
 
     # Set tenant context
-    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant_a.id)})
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"), {"tid": str(tenant_a.id)}
+    )
 
     # Within the same transaction, the setting should be visible
     result = await db.execute(text("SELECT current_setting('app.current_tenant', true)"))
