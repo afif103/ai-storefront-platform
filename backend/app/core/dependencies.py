@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_access_token
 from app.db.session import async_session_factory
+from app.models.tenant import Tenant
 from app.models.tenant_member import TenantMember
 from app.models.user import User
 
@@ -134,6 +135,29 @@ async def get_db_with_tenant(
     )
 
     return db, tenant_id
+
+
+async def get_db_with_slug(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> tuple[AsyncSession, Tenant]:
+    """Resolve tenant slug → SET LOCAL app.current_tenant, return (db, tenant).
+
+    Used by public /storefront/{slug} endpoints (no auth required).
+    Slug lookup + SET LOCAL happen in the same DB session/transaction.
+    """
+    result = await db.execute(
+        select(Tenant).where(Tenant.slug == slug, Tenant.is_active.is_(True))
+    )
+    tenant = result.scalar_one_or_none()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Storefront not found")
+
+    await db.execute(
+        text("SET LOCAL app.current_tenant = :tid"),
+        {"tid": str(tenant.id)},
+    )
+    return db, tenant
 
 
 async def require_role(
