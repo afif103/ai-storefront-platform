@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
@@ -115,13 +116,23 @@ function DashboardContent() {
         </div>
 
         <div className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Next Steps
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Catalog
           </h2>
-          <p className="text-sm text-gray-600">
-            This is a placeholder dashboard. Tenant management, catalog, and
-            analytics will be added in milestones M2-M6.
-          </p>
+          <div className="flex gap-4">
+            <Link
+              href="/dashboard/categories"
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Categories
+            </Link>
+            <Link
+              href="/dashboard/products"
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Products
+            </Link>
+          </div>
         </div>
       </main>
     </div>
