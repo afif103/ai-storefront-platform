@@ -3,9 +3,8 @@
 import {
   createContext,
   useCallback,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import type { AuthState, AuthUser } from "@/types/auth";
@@ -37,46 +36,45 @@ function decodeJwtPayload(token: string): AuthUser | null {
   }
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [accessToken, setTokenState] = useState<string | null>(
-    () => getAccessToken()
-  );
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    const token = getAccessToken();
-    return token ? decodeJwtPayload(token) : null;
-  });
-  const [isLoading] = useState(false);
+/** Subscribe adapter for useSyncExternalStore. */
+function subscribe(cb: () => void): () => void {
+  return subscribeTokenChange(() => cb());
+}
 
-  // Sync with the module-level store (e.g. after refresh)
-  useEffect(() => {
-    const unsub = subscribeTokenChange((newToken) => {
-      setTokenState(newToken);
-      setUser(newToken ? decodeJwtPayload(newToken) : null);
-    });
-    return unsub;
-  }, []);
+/** Server snapshot: always null (no token on server). */
+function getServerSnapshot(): string | null {
+  return null;
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const accessToken = useSyncExternalStore(
+    subscribe,
+    getAccessToken,
+    getServerSnapshot
+  );
+
+  const user = useMemo(
+    () => (accessToken ? decodeJwtPayload(accessToken) : null),
+    [accessToken]
+  );
 
   const login = useCallback((token: string) => {
     setAccessToken(token);
-    setTokenState(token);
-    setUser(decodeJwtPayload(token));
   }, []);
 
   const logout = useCallback(() => {
     setAccessToken(null);
-    setTokenState(null);
-    setUser(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       accessToken,
       user,
-      isLoading,
+      isLoading: false,
       login,
       logout,
     }),
-    [accessToken, user, isLoading, login, logout]
+    [accessToken, user, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -13,9 +13,20 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
-// ---- In-memory token store (module-level singleton) ----
+// ---- Token store (in-memory + sessionStorage for tab persistence) ----
 
-let _accessToken: string | null = null;
+const TOKEN_KEY = "__sat";
+
+function readPersistedToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+let _accessToken: string | null = readPersistedToken();
 let _onTokenChange: ((token: string | null) => void) | null = null;
 
 export function getAccessToken(): string | null {
@@ -24,6 +35,17 @@ export function getAccessToken(): string | null {
 
 export function setAccessToken(token: string | null): void {
   _accessToken = token;
+  if (typeof window !== "undefined") {
+    try {
+      if (token) {
+        sessionStorage.setItem(TOKEN_KEY, token);
+      } else {
+        sessionStorage.removeItem(TOKEN_KEY);
+      }
+    } catch {
+      // sessionStorage unavailable (e.g. SSR, private browsing quota)
+    }
+  }
   _onTokenChange?.(token);
 }
 
