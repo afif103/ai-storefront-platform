@@ -131,6 +131,22 @@ rm -rf backend/.venv frontend/node_modules
 
 ---
 
+## Dev Login (Mock JWT)
+
+When running with `COGNITO_MOCK=true`, use the dev-login flow instead of real Cognito:
+
+1. Set `NEXT_PUBLIC_DEV_AUTH=true` in `frontend/.env.local`.
+2. Generate a mock token:
+   ```bash
+   cd backend
+   python -c "from app.core.security import create_mock_access_token; print(create_mock_access_token(sub='test-user', email='dev@example.com'))"
+   ```
+3. Open `http://localhost:3000/login` → "Show Dev Login" → paste the token.
+
+**Important**: Dev-login sets the access token only. The `/auth/refresh` endpoint requires an httpOnly `refresh_token` cookie (set during real Cognito login), which dev-login does not provide. This means token refresh is not available in dev-login mode — when the mock token expires (15 min), you need to generate and paste a new one.
+
+---
+
 ## Post-Setup Notes
 - Run `pytest` before pushing any code.
 - Run `ruff check .` and `black --check .` for lint/format.

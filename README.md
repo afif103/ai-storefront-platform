@@ -79,12 +79,24 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 └── CLAUDE.md         # AI agent rules
 ```
 
+## Milestone Status
+
+| Milestone | Status |
+|-----------|--------|
+| M1 Auth & Tenancy | Complete (Cognito mock mode for local dev) |
+| M2 Storefront & Catalog | Complete (categories, products, public storefront) |
+| M3–M9 | Not started |
+
+**M2 scope delivered**: `categories` and `products` tables with RLS, authenticated dashboard CRUD (`/tenants/me/categories`, `/tenants/me/products`), public read-only storefront endpoints (`/storefront/{slug}/categories`, `/storefront/{slug}/products`), and frontend pages for both dashboard management and anonymous storefront browsing.
+
+**Deferred from M2**: `catalog_items` (unified single-table), `media_assets`, `storefront_config`, presigned S3 URLs, UTM visit capture.
+
 ## Key Decisions
 
 - **Multi-tenancy**: Row-Level Security on PostgreSQL. Every request executes `SET LOCAL app.current_tenant` on the DB session.
-- **Auth**: JWT tokens with tenant context. Refresh token rotation.
+- **Auth**: JWT tokens with tenant context. Refresh token rotation. Dev-login (mock JWT) uses access token only — no refresh cookie.
 - **AI**: Metered usage with per-tenant quotas in Redis. All calls through AI gateway service.
-- **Monetary**: KWD amounts stored as `NUMERIC(12,3)`.
+- **Monetary**: `NUMERIC(12,3)` for KWD (3 decimal places). Products store an optional `currency` (ISO 4217); when null, `effective_currency` falls back to `tenant.default_currency`.
 - **Deployment**: AWS ECS Fargate, RDS, ElastiCache, S3, CloudFront + WAF.
 
 See `docs/` for full architecture documentation.

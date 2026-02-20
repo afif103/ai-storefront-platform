@@ -170,61 +170,126 @@ Removes member from tenant. Cannot remove the last owner.
 
 ---
 
-## Catalog
+## Categories
 
-### `GET /tenants/me/catalog`
+### `GET /tenants/me/categories`
 **Auth**: member
 
-List catalog items with filters.
-
-```
-GET /tenants/me/catalog?type=product&is_active=true&cursor=abc
-```
+List categories. Optional query params: `is_active`, `cursor`, `limit`.
 
 **200 Response**:
 ```json
 {
   "items": [
     {
-      "id": "item-uuid",
-      "type": "product",
-      "name": "Widget",
-      "description": "A great widget",
-      "price_amount": "5.250",
-      "currency": "KWD",
+      "id": "cat-uuid",
+      "name": "Electronics",
+      "description": "Electronic products",
+      "sort_order": 0,
       "is_active": true,
-      "sort_order": 1,
-      "media": [
-        {"id": "media-uuid", "url": "https://s3.presigned.url...", "sort_order": 0}
-      ],
-      "metadata": {},
       "created_at": "2026-02-17T10:00:00Z"
     }
   ],
-  "next_cursor": "eyJpZCI6...",
-  "has_more": true
+  "next_cursor": null,
+  "has_more": false
 }
 ```
 
-### `POST /tenants/me/catalog`
+### `POST /tenants/me/categories`
 **Auth**: admin
 
 ```json
 {
-  "type": "product",
+  "name": "Electronics",
+  "description": "Electronic products",
+  "sort_order": 0,
+  "is_active": true
+}
+```
+
+### `GET /tenants/me/categories/{category_id}`
+**Auth**: member
+
+### `PATCH /tenants/me/categories/{category_id}`
+**Auth**: admin
+
+### `DELETE /tenants/me/categories/{category_id}`
+**Auth**: admin
+
+Hard delete. Products with this `category_id` get `SET NULL` via FK.
+
+---
+
+## Products
+
+### `GET /tenants/me/products`
+**Auth**: member
+
+List products. Optional query params: `category_id`, `is_active`, `cursor`, `limit`.
+
+**200 Response**:
+```json
+{
+  "items": [
+    {
+      "id": "prod-uuid",
+      "category_id": "cat-uuid",
+      "name": "Widget",
+      "description": "A great widget",
+      "price_amount": "5.250",
+      "currency": null,
+      "effective_currency": "KWD",
+      "is_active": true,
+      "sort_order": 1,
+      "metadata": {},
+      "created_at": "2026-02-17T10:00:00Z"
+    }
+  ],
+  "next_cursor": null,
+  "has_more": false
+}
+```
+
+**Currency fallback**: `effective_currency = product.currency ?? tenant.default_currency`. Computed in the API layer, not stored.
+
+### `POST /tenants/me/products`
+**Auth**: admin
+
+```json
+{
   "name": "Widget",
   "description": "A great widget",
   "price_amount": "5.250",
-  "currency": "KWD",
+  "currency": null,
+  "category_id": "cat-uuid",
   "metadata": {}
 }
 ```
 
-### `PATCH /tenants/me/catalog/{item_id}`
+When `currency` is null, the product inherits the tenant's `default_currency`.
+
+### `GET /tenants/me/products/{product_id}`
+**Auth**: member
+
+### `PATCH /tenants/me/products/{product_id}`
 **Auth**: admin
 
-### `DELETE /tenants/me/catalog/{item_id}`
+### `DELETE /tenants/me/products/{product_id}`
 **Auth**: admin
+
+---
+
+## Public Storefront (Catalog)
+
+### `GET /storefront/{slug}/categories`
+**Auth**: public
+
+List active categories for a storefront (sorted by `sort_order`). Slug is resolved to `tenant_id` + `SET LOCAL` before querying.
+
+### `GET /storefront/{slug}/products`
+**Auth**: public
+
+List active products. Optional query param: `category_id`. Includes `effective_currency`. Cursor pagination.
 
 ---
 
