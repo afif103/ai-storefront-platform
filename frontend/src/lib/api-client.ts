@@ -4,7 +4,7 @@
  * - Attaches Bearer token from in-memory store on every request.
  * - On 401: calls POST /api/v1/auth/refresh (with credentials: "include"
  *   so the httpOnly cookie is sent), then retries the original request once.
- * - If refresh fails: clears token and redirects to /login.
+ * - If refresh fails: returns 401 error (RequireAuth handles redirect).
  *
  * credentials: "include" is ONLY used for the refresh call (cookie transport).
  * Normal API calls do NOT send cookies — auth is via the Authorization header.
@@ -26,15 +26,24 @@ function readPersistedToken(): string | null {
   }
 }
 
-let _accessToken: string | null = readPersistedToken();
-let _onTokenChange: ((token: string | null) => void) | null = null;
+// Lazy-initialized: null until first client-side read.
+// This avoids the SSR module-eval problem where window is undefined.
+let _accessToken: string | null = null;
+let _initialized = false;
+
+const _listeners = new Set<(token: string | null) => void>();
 
 export function getAccessToken(): string | null {
+  if (!_initialized && typeof window !== "undefined") {
+    _accessToken = readPersistedToken();
+    _initialized = true;
+  }
   return _accessToken;
 }
 
 export function setAccessToken(token: string | null): void {
   _accessToken = token;
+  _initialized = true;
   if (typeof window !== "undefined") {
     try {
       if (token) {
@@ -42,19 +51,20 @@ export function setAccessToken(token: string | null): void {
       } else {
         sessionStorage.removeItem(TOKEN_KEY);
       }
-    } catch {
+    } catch (e) {
       // sessionStorage unavailable (e.g. SSR, private browsing quota)
+      console.error("sessionStorage write failed:", e);
     }
   }
-  _onTokenChange?.(token);
+  _listeners.forEach((cb) => cb(token));
 }
 
 export function subscribeTokenChange(
   cb: (token: string | null) => void
 ): () => void {
-  _onTokenChange = cb;
+  _listeners.add(cb);
   return () => {
-    if (_onTokenChange === cb) _onTokenChange = null;
+    _listeners.delete(cb);
   };
 }
 
@@ -107,20 +117,29 @@ export async function apiFetch<T = unknown>(
       },
     });
 
-  let res = await doFetch(_accessToken);
+  const currentToken = getAccessToken();
+
+  let res: Response;
+  try {
+    res = await doFetch(currentToken);
+  } catch {
+    return { ok: false, status: 0, detail: "Network error — is the backend running?" };
+  }
 
   // On 401, attempt refresh then retry once
-  if (res.status === 401 && _accessToken) {
+  if (res.status === 401 && currentToken) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       setAccessToken(newToken);
-      res = await doFetch(newToken);
-    } else {
-      // Refresh failed — clear and redirect
-      setAccessToken(null);
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
+      try {
+        res = await doFetch(newToken);
+      } catch {
+        return { ok: false, status: 0, detail: "Network error — is the backend running?" };
       }
+    } else {
+      // Refresh failed — don't clear token here.
+      // Let RequireAuth handle the redirect naturally.
+      // Dev-login has no refresh cookie so refresh always fails.
       return { ok: false, status: 401, detail: "Session expired" };
     }
   }
