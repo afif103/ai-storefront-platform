@@ -37,6 +37,7 @@ async def create_tenant(
         name=body.name,
         slug=body.slug,
         plan_id=free_plan.id if free_plan else None,
+        default_currency=body.default_currency or "KWD",
     )
     db.add(tenant)
 
