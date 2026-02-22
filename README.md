@@ -87,9 +87,26 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 | M2 Storefront & Catalog | Complete (categories, products, public storefront) |
 | M3–M9 | Not started |
 
-**M2 scope delivered**: `categories` and `products` tables with RLS, authenticated dashboard CRUD (`/tenants/me/categories`, `/tenants/me/products`), public read-only storefront endpoints (`/storefront/{slug}/categories`, `/storefront/{slug}/products`), and frontend pages for both dashboard management and anonymous storefront browsing.
+**M2 scope delivered**: Categories, products, storefront config, media assets, presigned S3 uploads, UTM visit tracking, public storefront with branding. Full dashboard CRUD + anonymous storefront browsing. 27 integration tests (26 pass, 1 skip).
 
-**Deferred from M2**: `catalog_items` (unified single-table), `media_assets`, `storefront_config`, presigned S3 URLs, UTM visit capture.
+## Running Tests
+
+```bash
+# Start DB + Redis
+docker compose up -d postgres redis
+
+# Run migrations
+cd backend && alembic upgrade head
+
+# All backend tests
+cd backend && pytest -q
+
+# M2 tests only
+cd backend && pytest -q -m m2
+
+# Frontend build check
+cd frontend && npm run build
+```
 
 ## Key Decisions
 

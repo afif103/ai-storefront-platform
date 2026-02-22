@@ -1,5 +1,9 @@
 # Remaining M2 — Storefront & Catalog
 
+## Status: COMPLETE
+
+All M2 items implemented and tested. 26 tests pass, 1 skipped (RLS isolation requires `app_user` connection).
+
 ## Docs Sources
 
 - `docs/05-backlog/backlog-v1.md` (tasks 2.1–2.10)
@@ -16,72 +20,30 @@
 | 2.7 Public storefront page (basic) | `storefront/[slug]/page.tsx` + `public_storefront.py` | Anonymous category/product listing via slug-based tenant resolution. No branding yet. |
 | 2.9 Vercel wildcard subdomain | Kimi's task — not in scope for Claude. | |
 
-## Remaining M2 Items
+## Completed M2 Items
 
-- [ ] **2.1 — `storefront_config` table + RLS + migration**
-- [ ] **2.3 — `media_assets` table + RLS + migration**
-- [ ] **2.4 — Storefront config API (GET/PUT)**
-- [ ] **2.6 — Presigned URL upload/download endpoints**
-- [ ] **2.7 (gap) — Integrate branding into public storefront**
-- [ ] **2.8 — UTM visit capture endpoint + `visits` table**
-- [ ] **2.10 — M2 integration tests**
+- [x] **2.1 — `storefront_config` table + RLS + migration** (migration 003 + 15e696ca)
+- [x] **2.3 — `media_assets` table + RLS + migration** (migration 9513201a, `product_id` FK instead of `catalog_item_id`)
+- [x] **2.4 — Storefront config API (GET/PUT)** (commit 06b2226)
+- [x] **2.6 — Presigned URL upload/download endpoints** (commit 66d9fd0)
+- [x] **2.7 (gap) — Integrate branding into public storefront** (commits c6793b5, be332d4)
+- [x] **2.8 — UTM visit capture endpoint + `visits` table** (commits 5546394, 3e98daa)
+- [x] **2.10 — M2 integration tests** (commits c3de6cb, e17bf31, 4f3214b)
 
-## Acceptance Criteria
+## Test Summary
 
-### 2.1 — `storefront_config` table
+Run: `pytest -q -m m2`
 
-- Table columns per data-model.md: `id`, `tenant_id UNIQUE`, `logo_s3_key`, `primary_color`, `secondary_color`, `hero_text`, `custom_css JSONB`, timestamps.
-- RLS: ENABLE + FORCE, SELECT/INSERT/UPDATE policies using `current_setting('app.current_tenant')::uuid`.
-- Index on `tenant_id` (covered by UNIQUE constraint).
-- SQLAlchemy model inherits `TenantScopedBase`.
-- Alembic migration with reversible `downgrade()`.
+| File | Tests | Status |
+|------|-------|--------|
+| `test_m2_storefront_config.py` | 7 | Pass |
+| `test_m2_media_presign.py` | 6 | Pass |
+| `test_m2_public_slug_scoping.py` | 9 | 8 pass, 1 skip |
+| `test_m2_visits.py` | 5 | Pass |
 
-### 2.3 — `media_assets` table
+**Skipped**: `test_cross_tenant_isolation` — requires `app_user` DB connection for RLS enforcement. Superuser bypasses RLS. Covered by `tests/test_rls_isolation.py` with `rls_db` fixture.
 
-- Columns per data-model.md: `id`, `tenant_id`, `catalog_item_id FK nullable` (SET NULL on delete), `entity_type TEXT`, `entity_id UUID`, `s3_key`, `file_name`, `content_type`, `sort_order INT`, `created_at`.
-- Composite index on `(tenant_id, entity_type, entity_id)`.
-- Index on `catalog_item_id`.
-- RLS: same pattern as storefront_config.
-- SQLAlchemy model inherits `TenantScopedBase`.
+## Bugfixes Found During Testing
 
-### 2.4 — Storefront config API
-
-- `GET /api/v1/tenants/me/storefront` — returns config or empty defaults. Auth: member.
-- `PUT /api/v1/tenants/me/storefront` — upserts config (INSERT ON CONFLICT UPDATE). Auth: admin.
-- Logo stored at S3 key under `{tenant_id}/` prefix.
-- Pydantic request/response schemas.
-
-### 2.6 — Presigned URL endpoints
-
-- `POST /api/v1/tenants/me/media/upload-url` — generates a PUT presigned URL. Auth: admin.
-  - Validates `content_type` against allowlist (image/jpeg, image/png, image/webp, application/pdf).
-  - Max 10 MB via presigned URL condition.
-  - S3 key follows `{tenant_id}/media/{media_id}/{file_name}` pattern.
-  - Creates `media_assets` row, returns `{ upload_url, s3_key, media_id, expires_in }`.
-- `GET /api/v1/tenants/me/media/{media_id}/url` — generates a GET presigned URL (15-min expiry). Auth: member.
-  - Verifies tenant owns the media_asset via RLS before signing.
-- Requires S3 service layer (`app/services/s3_service.py`) with boto3 client.
-
-### 2.7 (gap) — Storefront branding
-
-- Public storefront page fetches `storefront_config` alongside categories/products.
-- Backend: add `GET /storefront/{slug}/config` public endpoint (returns branding only, no admin fields).
-- Frontend: apply `primary_color`, `hero_text`, logo URL to storefront layout.
-
-### 2.8 — UTM visit capture
-
-- `visits` table per data-model.md: `id`, `tenant_id`, `session_id`, `ip_hash TEXT`, `user_agent`, `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `landed_at`.
-- RLS enabled.
-- Index on `(tenant_id, landed_at)`.
-- `POST /storefront/{slug}/visit` — public, slug-based tenant resolution via `get_db_with_slug`.
-  - Accepts UTM params + session_id.
-  - Hashes IP with SHA-256 + salt (from env var `IP_HASH_SALT`).
-  - Returns `{ visit_id }`.
-
-### 2.10 — Integration tests
-
-- Catalog CRUD: create/read/update/delete categories and products, verify cursor pagination.
-- Storefront config: upsert, read defaults when empty.
-- Presigned URLs: upload URL generated with correct prefix, download URL requires tenant ownership.
-- Cross-tenant isolation: tenant A cannot read tenant B's config/media/visits.
-- Visit capture: UTM params stored, ip_hash is not raw IP.
+- `storefront_config` hex color validation used `field_validator` which caused 500 (ValueError not JSON-serializable). Fixed with `Field(pattern=)` for proper 422.
+- Public storefront config query used bare `select(StorefrontConfig)` without tenant_id filter. Added explicit `WHERE tenant_id = ...` as defense in depth alongside RLS.
