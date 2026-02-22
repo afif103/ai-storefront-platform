@@ -32,6 +32,22 @@ async def test_upload_url_success(client: AsyncClient):
     assert "/" in data["s3_key"]
 
 
+async def test_upload_url_no_entity(client: AsyncClient):
+    """POST /tenants/me/media/upload-url succeeds without entity fields (e.g. logo)."""
+    headers, _slug = await create_tenant_get_headers(client, slug_prefix="media-ne")
+
+    body = {
+        "file_name": "logo.png",
+        "content_type": "image/png",
+        "size_bytes": 2048,
+    }
+    resp = await client.post("/api/v1/tenants/me/media/upload-url", json=body, headers=headers)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert "media_id" in data
+    assert "upload_url" in data
+
+
 async def test_upload_url_rejects_bad_content_type(client: AsyncClient):
     """POST /tenants/me/media/upload-url rejects unsupported content types."""
     headers, _slug = await create_tenant_get_headers(client, slug_prefix="media-ct")

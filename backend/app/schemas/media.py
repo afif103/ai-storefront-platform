@@ -2,7 +2,7 @@
 
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.services.storage import ALLOWED_CONTENT_TYPES, MAX_UPLOAD_SIZE
 
@@ -11,9 +11,17 @@ class MediaUploadRequest(BaseModel):
     file_name: str = Field(..., min_length=1, max_length=255)
     content_type: str = Field(..., min_length=1)
     size_bytes: int = Field(..., gt=0, le=MAX_UPLOAD_SIZE)
-    entity_type: str = Field("product")
-    entity_id: uuid.UUID
+    entity_type: str | None = None
+    entity_id: uuid.UUID | None = None
     product_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _entity_fields_paired(self) -> "MediaUploadRequest":
+        has_type = self.entity_type is not None
+        has_id = self.entity_id is not None
+        if has_type != has_id:
+            raise ValueError("entity_type and entity_id must both be provided or both omitted")
+        return self
 
     def validate_content_type(self) -> None:
         if self.content_type not in ALLOWED_CONTENT_TYPES:

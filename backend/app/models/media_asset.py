@@ -18,8 +18,8 @@ class MediaAsset(TenantScopedBase):
         ForeignKey("products.id", ondelete="SET NULL"),
         nullable=True,
     )
-    entity_type: Mapped[str] = mapped_column(Text, nullable=False)
-    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    entity_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     s3_key: Mapped[str] = mapped_column(Text, nullable=False)
     file_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_type: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -54,13 +54,15 @@ async def create_upload_url(
     # Create media_assets row
     media = MediaAsset(
         tenant_id=tenant_id,
-        product_id=body.product_id,
-        entity_type=body.entity_type,
-        entity_id=body.entity_id,
         s3_key=s3_key,
         file_name=body.file_name,
         content_type=body.content_type,
     )
+    if body.product_id is not None:
+        media.product_id = body.product_id
+    if body.entity_type is not None:
+        media.entity_type = body.entity_type
+        media.entity_id = body.entity_id
     db.add(media)
     await db.flush()
 
