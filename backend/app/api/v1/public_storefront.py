@@ -139,9 +139,11 @@ async def get_public_storefront_config(
     logo_url is a presigned S3 GET URL (15-min expiry) when logo_s3_key exists.
     custom_css is intentionally omitted to prevent arbitrary CSS injection.
     """
-    db, _tenant = db_tenant
+    db, tenant = db_tenant
 
-    result = await db.execute(select(StorefrontConfig))
+    result = await db.execute(
+        select(StorefrontConfig).where(StorefrontConfig.tenant_id == tenant.id)
+    )
     config = result.scalar_one_or_none()
 
     if config is None:
