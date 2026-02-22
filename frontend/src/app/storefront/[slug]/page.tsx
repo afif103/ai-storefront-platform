@@ -21,6 +21,13 @@ interface PublicProduct {
   sort_order: number;
 }
 
+interface StorefrontConfig {
+  hero_text: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  logo_url: string | null;
+}
+
 interface PaginatedCategories {
   items: Category[];
   has_more: boolean;
@@ -37,28 +44,35 @@ export default function StorefrontPage() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<PublicProduct[]>([]);
+  const [config, setConfig] = useState<StorefrontConfig | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [filterLoading, setFilterLoading] = useState(false);
 
-  // Initial load: fetch categories and all products in parallel
+  // Initial load: fetch config, categories, and all products in parallel
   useEffect(() => {
     async function fetchData() {
-      const [catResult, prodResult] = await Promise.all([
+      const [configResult, catResult, prodResult] = await Promise.all([
+        apiFetch<StorefrontConfig>(
+          `/api/v1/storefront/${slug}/config`
+        ),
         apiFetch<PaginatedCategories>(
           `/api/v1/storefront/${slug}/categories?limit=100`
         ),
         apiFetch<PaginatedProducts>(`/api/v1/storefront/${slug}/products`),
       ]);
 
+      if (configResult.ok) setConfig(configResult.data);
+      if (catResult.ok) setCategories(catResult.data.items);
+      if (prodResult.ok) setProducts(prodResult.data.items);
+
       if (!catResult.ok && !prodResult.ok) {
         setError(catResult.detail || prodResult.detail);
-      } else {
-        if (catResult.ok) setCategories(catResult.data.items);
-        if (prodResult.ok) setProducts(prodResult.data.items);
-        if (!catResult.ok) setError(catResult.detail);
+      } else if (!catResult.ok) {
+        setError(catResult.detail);
       }
+
       setLoading(false);
     }
     fetchData();
@@ -81,6 +95,9 @@ export default function StorefrontPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory]);
 
+  const primaryColor = config?.primary_color ?? undefined;
+  const secondaryColor = config?.secondary_color ?? undefined;
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -100,11 +117,33 @@ export default function StorefrontPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white shadow-sm">
-        <div className="mx-auto max-w-5xl px-6 py-6">
-          <h1 className="text-2xl font-bold capitalize text-gray-900">
-            {slug}
+    <div
+      className="min-h-screen bg-gray-50"
+      style={
+        {
+          "--primary": primaryColor,
+          "--secondary": secondaryColor,
+        } as React.CSSProperties
+      }
+    >
+      <header
+        className="border-b shadow-sm"
+        style={{ backgroundColor: primaryColor ?? "#ffffff" }}
+      >
+        <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-6">
+          {config?.logo_url && (
+            /* eslint-disable-next-line @next/next/no-img-element -- presigned URL expires; next/image caching would break */
+            <img
+              src={config.logo_url}
+              alt={`${slug} logo`}
+              className="h-10 w-10 rounded object-contain"
+            />
+          )}
+          <h1
+            className="text-2xl font-bold capitalize"
+            style={{ color: primaryColor ? "#ffffff" : "#111827" }}
+          >
+            {config?.hero_text ?? slug}
           </h1>
         </div>
       </header>
@@ -117,9 +156,14 @@ export default function StorefrontPage() {
               onClick={() => setSelectedCategory(null)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 selectedCategory === null
-                  ? "bg-blue-600 text-white"
+                  ? "text-white"
                   : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
               }`}
+              style={
+                selectedCategory === null
+                  ? { backgroundColor: primaryColor ?? "#2563eb" }
+                  : undefined
+              }
             >
               All
             </button>
@@ -129,9 +173,14 @@ export default function StorefrontPage() {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                   selectedCategory === cat.id
-                    ? "bg-blue-600 text-white"
+                    ? "text-white"
                     : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
+                style={
+                  selectedCategory === cat.id
+                    ? { backgroundColor: primaryColor ?? "#2563eb" }
+                    : undefined
+                }
               >
                 {cat.name}
               </button>
@@ -161,7 +210,10 @@ export default function StorefrontPage() {
                     {product.description}
                   </p>
                 )}
-                <p className="mt-3 text-base font-bold text-gray-900">
+                <p
+                  className="mt-3 text-base font-bold"
+                  style={{ color: secondaryColor ?? "#111827" }}
+                >
                   {product.price_amount} {product.effective_currency}
                 </p>
               </div>
