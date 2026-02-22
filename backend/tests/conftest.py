@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import sys
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
@@ -10,6 +11,10 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+# Windows: use SelectorEventLoopPolicy to avoid asyncpg + ProactorEventLoop conflicts
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Ensure mock mode is on for tests
 os.environ.setdefault("COGNITO_MOCK", "true")
@@ -22,6 +27,7 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 from app.core.config import settings  # noqa: E402
 from app.core.security import create_mock_access_token  # noqa: E402
+from app.db.session import engine as app_engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.plan import Plan  # noqa: E402
 from app.models.tenant import Tenant  # noqa: E402
@@ -29,54 +35,42 @@ from app.models.tenant_member import TenantMember  # noqa: E402
 from app.models.user import User  # noqa: E402
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="session")
-async def test_engine():
-    """Create engine connecting as postgres (superuser) for test setup."""
+@pytest.fixture
+async def db() -> AsyncGenerator[AsyncSession, None]:
+    """Async DB session (superuser) with transaction rollback after each test."""
     engine = create_async_engine(settings.DATABASE_URL)
-    yield engine
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with factory() as session:
+        yield session
+        await session.rollback()
     await engine.dispose()
 
 
-@pytest.fixture(scope="session")
-async def rls_engine():
-    """Create engine connecting as app_user (RLS enforced) for isolation tests."""
+@pytest.fixture
+async def rls_db() -> AsyncGenerator[AsyncSession, None]:
+    """Async DB session as app_user (RLS enforced) for isolation tests."""
     rls_url = settings.DATABASE_URL.replace("postgres:postgres", "app_user:app_user")
     engine = create_async_engine(rls_url)
-    yield engine
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with factory() as session:
+        yield session
+        await session.rollback()
     await engine.dispose()
-
-
-@pytest.fixture
-async def db(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Async DB session (superuser) with transaction rollback after each test."""
-    factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-    async with factory() as session:
-        yield session
-        await session.rollback()
-
-
-@pytest.fixture
-async def rls_db(rls_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Async DB session as app_user (RLS enforced) for isolation tests."""
-    factory = async_sessionmaker(rls_engine, class_=AsyncSession, expire_on_commit=False)
-    async with factory() as session:
-        yield session
-        await session.rollback()
 
 
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
-    """HTTP test client for the FastAPI app."""
+    """HTTP test client for the FastAPI app.
+
+    Disposes the app's connection pool after each test to prevent leaked
+    connections/transactions from interfering with subsequent tests.
+    Note: data committed by the app persists across tests. Tests must use
+    unique slugs/names and avoid asserting global empty state.
+    """
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
+    await app_engine.dispose()
 
 
 def make_token(sub: str = "test-sub", email: str = "test@example.com") -> str:
