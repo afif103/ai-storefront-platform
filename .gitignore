@@ -56,3 +56,6 @@ pgdata/
 # node/next
 node_modules/
 .next/
+
+# Claude Code
+.claude/settings.local.json
