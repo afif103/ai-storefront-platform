@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
 
+    # Privacy
+    IP_HASH_SALT: str = "change-me-in-production"
+
     # App
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
