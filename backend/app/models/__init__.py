@@ -6,6 +6,7 @@ from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
 from app.models.tenant_member import TenantMember
 from app.models.user import User
+from app.models.visit import Visit
 
 __all__ = [
     "Category",
@@ -16,4 +17,5 @@ __all__ = [
     "Tenant",
     "TenantMember",
     "User",
+    "Visit",
 ]
