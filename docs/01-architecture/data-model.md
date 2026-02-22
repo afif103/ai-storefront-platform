@@ -41,25 +41,38 @@ Shared database, shared schema. All tenant-scoped tables carry `tenant_id UUID N
        │ tenant_id present on all below (RLS enforced)
        ▼
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│ storefront_config   │     │  catalog_items       │     │   media_assets      │
+│ storefront_config   │     │    categories       │     │   media_assets      │
 │─────────────────────│     │─────────────────────│     │─────────────────────│
 │ id PK               │     │ id PK               │     │ id PK               │
 │ tenant_id FK UNIQUE │     │ tenant_id FK        │     │ tenant_id FK        │
-│ logo_s3_key         │     │ type TEXT+CHECK      │     │ catalog_item_id FK  │ nullable
-│ primary_color       │     │  (product/service/   │     │ entity_type TEXT    │ (catalog_item/
-│ secondary_color     │     │   project)           │     │                     │  order/donation/
-│ hero_text           │     │ name                │     │                     │  proof)
-│ custom_css JSONB    │     │ description         │     │ entity_id UUID      │ polymorphic FK
-│ created_at          │     │ price_amount NUM    │     │ s3_key              │
-│ updated_at          │     │ currency TEXT       │     │ file_name           │
-└─────────────────────┘     │  default 'KWD'      │     │ content_type        │
-                            │ is_active           │     │ sort_order INT      │
-                            │ sort_order          │     │ created_at          │
-                            │ metadata JSONB      │     │ INDEX(tenant_id,    │
-                            │ created_at          │     │   entity_type,      │
-                            │ updated_at          │     │   entity_id)        │
-                            │ INDEX(tenant_id,    │     └─────────────────────┘
-                            │       type,         │
+│ logo_s3_key         │     │ name                │     │ product_id FK       │ nullable
+│ primary_color       │     │ description         │     │ entity_type TEXT    │ (product/
+│ secondary_color     │     │ sort_order          │     │                     │  order/donation/
+│ hero_text           │     │ is_active           │     │                     │  proof)
+│ custom_css JSONB    │     │ created_at          │     │ entity_id UUID      │ polymorphic FK
+│ created_at          │     │ updated_at          │     │ s3_key              │
+│ updated_at          │     │ UNIQUE(tenant_id,   │     │ file_name           │
+└─────────────────────┘     │        name)        │     │ content_type        │
+                            └──────────┬──────────┘     │ sort_order INT      │
+                                       │                │ created_at          │
+                            ┌──────────┴──────────┐     │ INDEX(tenant_id,    │
+                            │     products        │     │   entity_type,      │
+                            │─────────────────────│     │   entity_id)        │
+                            │ id PK               │     │ INDEX(product_id)   │
+                            │ tenant_id FK        │     └─────────────────────┘
+                            │ category_id FK      │
+                            │ name                │
+                            │ description         │
+                            │ price_amount NUM    │
+                            │ currency TEXT       │ nullable; fallback → tenant.default_currency
+                            │ is_active           │
+                            │ sort_order          │
+                            │ metadata JSONB      │
+                            │ created_at          │
+                            │ updated_at          │
+                            │ UNIQUE(tenant_id,   │
+                            │        name)        │
+                            │ INDEX(tenant_id,    │
                             │       is_active)    │
                             └──────────┬──────────┘
                                        │
@@ -71,7 +84,7 @@ Shared database, shared schema. All tenant-scoped tables carry `tenant_id UUID N
 │ id PK               │  │ id PK               │  │ id PK               │
 │ tenant_id FK        │  │ tenant_id FK        │  │ tenant_id FK        │
 │ order_number        │  │ donation_number     │  │ pledge_number       │
-│ catalog_item_id FK  │  │ catalog_item_id FK  │  │ catalog_item_id FK  │
+│ product_id FK       │  │ product_id FK       │  │ product_id FK       │
 │ customer_name       │  │ donor_name          │  │ pledgor_name        │
 │ customer_phone      │  │ donor_phone         │  │ pledgor_phone       │
 │ customer_email      │  │ donor_email         │  │ pledgor_email       │
@@ -179,15 +192,17 @@ A single polymorphic table would require many nullable columns and conditional v
 
 **Future normalisation path**: when we need per-item status tracking, inventory deduction, or item-level analytics, introduce an `order_items` table and backfill from JSONB. The JSONB column remains as a snapshot (append-only, never updated).
 
-### Single `catalog_items` Table with Type Discriminator
+### Separate `categories` + `products` Tables (not single `catalog_items`)
 
-Products, services, and charity projects share enough structure (name, description, price, image, sort order) that a single table with `type TEXT CHECK (type IN ('product','service','project'))` is cleaner than three tables. Type-specific attributes go in `metadata JSONB`.
+The original design called for a single `catalog_items` table with a type discriminator. During M2 implementation, this was split into `categories` (grouping) and `products` (items with price/currency). This avoids the need for a type discriminator and keeps each table focused. Products have an optional `category_id FK` for grouping.
+
+Products store an optional `currency` (ISO 4217 code). When null, the API computes `effective_currency = product.currency ?? tenant.default_currency`.
 
 ### `media_assets` — Polymorphic Media Table
 
-Rather than `image_s3_key` on `catalog_items` (single image only), a dedicated `media_assets` table supports multiple images/files per entity:
+Rather than `image_s3_key` on `products` (single image only), a dedicated `media_assets` table supports multiple images/files per entity:
 
-- `catalog_item_id FK` for direct catalog lookups (nullable — media can attach to other entities).
+- `product_id FK` for direct product media lookups (nullable — media can attach to other entities).
 - `entity_type` + `entity_id` for polymorphic attachment to orders, donations, proofs, etc.
 - `sort_order` controls display sequence.
 - All S3 keys follow `{tenant_id}/` prefix rule. Presigned URLs generated only after tenant ownership check.
@@ -255,9 +270,10 @@ Additional indexes per access pattern:
 | `donations` | `(tenant_id, created_at DESC)` | List by recency |
 | `donations` | `(tenant_id, campaign)` | Filter by campaign |
 | `pledges` | `(tenant_id, status, target_date)` | Due-soon pledges query |
-| `catalog_items` | `(tenant_id, type, is_active)` | Storefront listing |
+| `categories` | `(tenant_id, is_active)` | Storefront listing |
+| `products` | `(tenant_id, is_active)` | Storefront listing |
 | `media_assets` | `(tenant_id, entity_type, entity_id)` | Lookup media for an entity |
-| `media_assets` | `(catalog_item_id)` | Direct catalog media lookup |
+| `media_assets` | `(product_id)` | Direct product media lookup |
 | `visits` | `(tenant_id, landed_at DESC)` | Analytics time range |
 | `ai_usage_log` | `(tenant_id, created_at DESC)` | Usage dashboard |
 | `users` | `(cognito_sub)` UNIQUE | JWT sub → user lookup |
