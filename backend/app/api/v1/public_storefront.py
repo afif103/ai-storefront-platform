@@ -13,13 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db_with_slug
 from app.models.category import Category
 from app.models.product import Product
+from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
 from app.models.visit import Visit
 from app.schemas.category import CategoryResponse
 from app.schemas.common import PaginatedResponse
 from app.schemas.product import PublicProductResponse
+from app.schemas.public_storefront_config import PublicStorefrontConfigResponse
 from app.schemas.visit import VisitCreateRequest, VisitCreateResponse
 from app.services.ip_hash import hash_ip
+from app.services.storage import presign_get
 
 router = APIRouter()
 
@@ -122,6 +125,35 @@ async def list_public_products(
             _encode_cursor(items[-1].sort_order, items[-1].id) if has_more and items else None
         ),
         has_more=has_more,
+    )
+
+
+@router.get("/{slug}/config", response_model=PublicStorefrontConfigResponse)
+async def get_public_storefront_config(
+    slug: str,
+    db_tenant: tuple[AsyncSession, Tenant] = Depends(get_db_with_slug),
+) -> PublicStorefrontConfigResponse:
+    """Return public branding config for the storefront.
+
+    No auth required. Returns defaults (all nulls) if tenant has no config.
+    logo_url is a presigned S3 GET URL (15-min expiry) when logo_s3_key exists.
+    custom_css is intentionally omitted to prevent arbitrary CSS injection.
+    """
+    db, _tenant = db_tenant
+
+    result = await db.execute(select(StorefrontConfig))
+    config = result.scalar_one_or_none()
+
+    if config is None:
+        return PublicStorefrontConfigResponse()
+
+    logo_url = presign_get(config.logo_s3_key) if config.logo_s3_key else None
+
+    return PublicStorefrontConfigResponse(
+        hero_text=config.hero_text,
+        primary_color=config.primary_color,
+        secondary_color=config.secondary_color,
+        logo_url=logo_url,
     )
 
 
