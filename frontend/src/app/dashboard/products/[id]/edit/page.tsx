@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
+import { uploadFile } from "@/lib/upload";
+import type { UploadProgress } from "@/lib/upload";
 
 interface Category {
   id: string;
@@ -26,6 +28,19 @@ interface Product {
   sort_order: number;
 }
 
+/** Tracks a single image upload (in-progress or completed). */
+interface ImageEntry {
+  id: string; // media_id from backend (or temp UUID while uploading)
+  previewUrl: string; // object URL for thumbnail
+  fileName: string;
+  uploading: boolean;
+  progress: UploadProgress | null;
+  error: string | null;
+}
+
+const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 function EditProductContent() {
   const router = useRouter();
   const params = useParams();
@@ -42,6 +57,11 @@ function EditProductContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Image uploads
+  const [images, setImages] = useState<ImageEntry[]>([]);
+  const [imageError, setImageError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -73,6 +93,101 @@ function EditProductContent() {
     }
     fetchData();
   }, [productId]);
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setImageError("");
+
+    // Validate all files first
+    const validFiles: File[] = [];
+    for (const file of Array.from(files)) {
+      if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+        setImageError(
+          `"${file.name}" skipped — only JPEG, PNG, and WebP are allowed.`
+        );
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setImageError(`"${file.name}" skipped — file size must be under 10 MB.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) return;
+
+    // Create placeholder entries for each file
+    const newEntries: ImageEntry[] = validFiles.map((file) => ({
+      id: `temp-${crypto.randomUUID()}`,
+      previewUrl: URL.createObjectURL(file),
+      fileName: file.name,
+      uploading: true,
+      progress: null,
+      error: null,
+    }));
+
+    setImages((prev) => [...prev, ...newEntries]);
+
+    // Upload each file in parallel
+    await Promise.all(
+      validFiles.map(async (file, idx) => {
+        const tempId = newEntries[idx].id;
+
+        const result = await uploadFile(file, {
+          entity_type: "product",
+          entity_id: productId,
+          product_id: productId,
+          onProgress: (progress) => {
+            setImages((prev) =>
+              prev.map((img) =>
+                img.id === tempId ? { ...img, progress } : img
+              )
+            );
+          },
+        });
+
+        if (result.ok) {
+          setImages((prev) =>
+            prev.map((img) =>
+              img.id === tempId
+                ? {
+                    ...img,
+                    id: result.result.media_id,
+                    uploading: false,
+                    progress: null,
+                  }
+                : img
+            )
+          );
+        } else {
+          setImages((prev) =>
+            prev.map((img) =>
+              img.id === tempId
+                ? { ...img, uploading: false, error: result.detail }
+                : img
+            )
+          );
+        }
+      })
+    );
+
+    // Reset file input so same files can be re-selected
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function handleRemoveImage(id: string) {
+    setImages((prev) => {
+      const entry = prev.find((img) => img.id === id);
+      if (entry) {
+        URL.revokeObjectURL(entry.previewUrl);
+      }
+      return prev.filter((img) => img.id !== id);
+    });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -107,6 +222,8 @@ function EditProductContent() {
       </div>
     );
   }
+
+  const anyUploading = images.some((img) => img.uploading);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -196,7 +313,8 @@ function EditProductContent() {
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Currency <span className="text-gray-400">(optional, e.g. KWD)</span>
+                Currency{" "}
+                <span className="text-gray-400">(optional, e.g. KWD)</span>
               </label>
               <input
                 type="text"
@@ -244,13 +362,101 @@ function EditProductContent() {
             </Link>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || anyUploading}
               className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {submitting ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
+
+        {/* Product Images Section */}
+        <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Images
+          </h2>
+
+          {/* Thumbnail Grid */}
+          {images.length > 0 && (
+            <div className="mb-4 grid grid-cols-4 gap-3">
+              {images.map((img) => (
+                <div key={img.id} className="group relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- object URL thumbnail */}
+                  <img
+                    src={img.previewUrl}
+                    alt={img.fileName}
+                    className={`h-24 w-full rounded border object-cover ${
+                      img.error
+                        ? "border-red-300 opacity-50"
+                        : "border-gray-200"
+                    }`}
+                  />
+
+                  {/* Upload progress overlay */}
+                  {img.uploading && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded bg-black/30">
+                      <span className="text-xs font-medium text-white">
+                        {img.progress
+                          ? `${img.progress.percent}%`
+                          : "Preparing..."}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Error indicator */}
+                  {img.error && (
+                    <div className="absolute inset-x-0 bottom-0 rounded-b bg-red-600/80 px-1 py-0.5">
+                      <p className="truncate text-xs text-white">{img.error}</p>
+                    </div>
+                  )}
+
+                  {/* Remove button */}
+                  {!img.uploading && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(img.id)}
+                      className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow group-hover:flex"
+                      title="Remove"
+                    >
+                      x
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload Control */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Add images
+              <span className="ml-1 text-gray-400">
+                (JPEG, PNG, WebP, max 10 MB each)
+              </span>
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_IMAGE_TYPES}
+              multiple
+              onChange={handleImageUpload}
+              disabled={anyUploading}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:rounded file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+            />
+          </div>
+
+          {imageError && (
+            <div className="mt-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">
+              {imageError}
+            </div>
+          )}
+
+          <p className="mt-3 text-xs text-gray-400">
+            Images are saved immediately when uploaded. Remove only hides from
+            this view — a backend media list endpoint is needed to display
+            previously uploaded images on page reload.
+          </p>
+        </div>
       </main>
     </div>
   );

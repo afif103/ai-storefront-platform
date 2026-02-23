@@ -6,17 +6,23 @@ All in the same DB session. No tenant_id exposed in responses.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db_with_slug
 from app.models.category import Category
 from app.models.product import Product
+from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
+from app.models.visit import Visit
 from app.schemas.category import CategoryResponse
 from app.schemas.common import PaginatedResponse
 from app.schemas.product import PublicProductResponse
+from app.schemas.public_storefront_config import PublicStorefrontConfigResponse
+from app.schemas.visit import VisitCreateRequest, VisitCreateResponse
+from app.services.ip_hash import hash_ip
+from app.services.storage import presign_get
 
 router = APIRouter()
 
@@ -120,3 +126,75 @@ async def list_public_products(
         ),
         has_more=has_more,
     )
+
+
+@router.get("/{slug}/config", response_model=PublicStorefrontConfigResponse)
+async def get_public_storefront_config(
+    slug: str,
+    db_tenant: tuple[AsyncSession, Tenant] = Depends(get_db_with_slug),
+) -> PublicStorefrontConfigResponse:
+    """Return public branding config for the storefront.
+
+    No auth required. Returns defaults (all nulls) if tenant has no config.
+    logo_url is a presigned S3 GET URL (15-min expiry) when logo_s3_key exists.
+    custom_css is intentionally omitted to prevent arbitrary CSS injection.
+    """
+    db, tenant = db_tenant
+
+    result = await db.execute(
+        select(StorefrontConfig).where(StorefrontConfig.tenant_id == tenant.id)
+    )
+    config = result.scalar_one_or_none()
+
+    if config is None:
+        return PublicStorefrontConfigResponse()
+
+    logo_url = presign_get(config.logo_s3_key) if config.logo_s3_key else None
+
+    return PublicStorefrontConfigResponse(
+        hero_text=config.hero_text,
+        primary_color=config.primary_color,
+        secondary_color=config.secondary_color,
+        logo_url=logo_url,
+    )
+
+
+@router.post("/{slug}/visit", response_model=VisitCreateResponse, status_code=201)
+async def capture_visit(
+    slug: str,
+    body: VisitCreateRequest,
+    request: Request,
+    db_tenant: tuple[AsyncSession, Tenant] = Depends(get_db_with_slug),
+) -> VisitCreateResponse:
+    """Record an anonymous storefront visit (UTM + session tracking).
+
+    Client IP is salted-hashed (SHA-256) for privacy — no raw IP stored.
+    Prefers X-Forwarded-For (first value) when behind a proxy, falls back
+    to request.client.host.
+    """
+    db, tenant = db_tenant
+
+    # Resolve client IP: prefer X-Forwarded-For first value, then direct
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        raw_ip = forwarded.split(",")[0].strip()
+    elif request.client:
+        raw_ip = request.client.host
+    else:
+        raw_ip = None
+
+    visit = Visit(
+        tenant_id=tenant.id,
+        session_id=body.session_id,
+        ip_hash=hash_ip(raw_ip),
+        user_agent=request.headers.get("user-agent"),
+        utm_source=body.utm_source,
+        utm_medium=body.utm_medium,
+        utm_campaign=body.utm_campaign,
+        utm_content=body.utm_content,
+        utm_term=body.utm_term,
+    )
+    db.add(visit)
+    await db.flush()
+
+    return VisitCreateResponse(visit_id=visit.id)

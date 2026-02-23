@@ -23,12 +23,16 @@ class Settings(BaseSettings):
     COGNITO_CLIENT_ID: str = ""
     COGNITO_REGION: str = "me-south-1"
 
-    # S3
+    # S3 / MinIO
     S3_BUCKET: str = ""
+    S3_ENDPOINT_URL: str | None = None  # e.g. http://localhost:9000 for MinIO
     AWS_REGION: str = "me-south-1"
 
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
+
+    # Privacy
+    IP_HASH_SALT: str = "change-me-in-production"
 
     # App
     ENVIRONMENT: str = "development"
