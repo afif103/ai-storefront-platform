@@ -87,7 +87,7 @@ async def test_public_products_with_currency_fallback(client: AsyncClient):
     assert prod_resp.status_code == 201
     prod_id = prod_resp.json()["id"]
 
-    resp = await client.get(f"/api/v1/storefront/{slug}/products")
+    resp = await client.get(f"/api/v1/storefront/{slug}/products?limit=100")
     assert resp.status_code == 200
     items = resp.json()["items"]
     product = next((p for p in items if p["id"] == prod_id), None)
