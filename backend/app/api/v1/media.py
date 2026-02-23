@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from app.core.dependencies import get_current_user, get_db_with_tenant, require_
 from app.models.media_asset import MediaAsset
 from app.models.user import User
 from app.schemas.media import (
+    MediaAssetResponse,
     MediaDownloadResponse,
     MediaUploadRequest,
     MediaUploadResponse,
@@ -24,6 +25,39 @@ from app.services.storage import (
 )
 
 router = APIRouter()
+
+
+@router.get("", response_model=list[MediaAssetResponse])
+async def list_media(
+    product_id: uuid.UUID | None = None,
+    entity_type: str | None = None,
+    entity_id: uuid.UUID | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+):
+    """List media assets for the current tenant.
+
+    Tenant scoping is enforced by transaction-local SET LOCAL
+    applied in get_db_with_tenant (RLS).
+    """
+    db, tenant_id = db_tenant
+    await require_role("member", db, tenant_id, user)
+
+    q = select(MediaAsset)
+    if product_id is not None:
+        q = q.where(MediaAsset.product_id == product_id)
+    if entity_type is not None:
+        q = q.where(MediaAsset.entity_type == entity_type)
+    if entity_id is not None:
+        q = q.where(MediaAsset.entity_id == entity_id)
+
+    q = q.order_by(MediaAsset.created_at.desc(), MediaAsset.id.desc())
+    q = q.limit(limit).offset(offset)
+
+    result = await db.execute(q)
+    return result.scalars().all()
 
 
 @router.post("/upload-url", response_model=MediaUploadResponse, status_code=201)

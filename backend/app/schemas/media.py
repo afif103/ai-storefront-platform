@@ -1,6 +1,7 @@
 """Media upload/download request/response schemas."""
 
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -34,6 +35,20 @@ class MediaUploadResponse(BaseModel):
     upload_url: str
     s3_key: str
     expires_in: int
+
+
+class MediaAssetResponse(BaseModel):
+    id: uuid.UUID
+    product_id: uuid.UUID | None = None
+    entity_type: str | None = None
+    entity_id: uuid.UUID | None = None
+    s3_key: str
+    file_name: str | None = None
+    content_type: str | None = None
+    sort_order: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class MediaDownloadResponse(BaseModel):
