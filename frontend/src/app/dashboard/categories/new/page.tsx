@@ -31,7 +31,7 @@ function CreateCategoryContent() {
     });
 
     if (result.ok) {
-      router.push("/dashboard/categories");
+      router.push(`/dashboard/categories?t=${Date.now()}`);
     } else {
       setError(result.detail);
     }

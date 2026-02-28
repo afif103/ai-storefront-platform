@@ -43,7 +43,7 @@ function CreateProductContent() {
     setError("");
     setSubmitting(true);
 
-    const result = await apiFetch("/api/v1/tenants/me/products", {
+    const result = await apiFetch<{ id: string }>("/api/v1/tenants/me/products", {
       method: "POST",
       body: JSON.stringify({
         name,
@@ -57,7 +57,7 @@ function CreateProductContent() {
     });
 
     if (result.ok) {
-      router.push(`/dashboard/products?t=${Date.now()}`);
+      router.push(`/dashboard/products/${result.data.id}/edit?t=${Date.now()}`);
     } else {
       setError(result.detail);
     }
@@ -203,6 +203,10 @@ function CreateProductContent() {
               {submitting ? "Creating..." : "Create Product"}
             </button>
           </div>
+
+          <p className="text-xs text-gray-400">
+            Upload images on the edit page.
+          </p>
         </form>
       </main>
     </div>
