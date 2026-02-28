@@ -1,6 +1,7 @@
 """Authenticated CRUD endpoints for categories."""
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, tuple_
@@ -18,13 +19,13 @@ DEFAULT_PAGE_SIZE = 20
 
 
 def _encode_cursor(category: Category) -> str:
-    return f"{category.sort_order}:{category.id}"
+    return f"{category.created_at.isoformat()}|{category.id}"
 
 
-def _decode_cursor(cursor: str) -> tuple[int, uuid.UUID]:
+def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
     try:
-        sort_str, id_str = cursor.split(":", 1)
-        return int(sort_str), uuid.UUID(id_str)
+        dt_str, id_str = cursor.split("|", 1)
+        return datetime.fromisoformat(dt_str), uuid.UUID(id_str)
     except (ValueError, AttributeError) as exc:
         raise HTTPException(status_code=400, detail="Invalid cursor") from exc
 
@@ -40,15 +41,13 @@ async def list_categories(
     db, tenant_id = db_tenant
     await require_role("member", db, tenant_id, user)
 
-    stmt = select(Category).order_by(Category.sort_order, Category.id)
+    stmt = select(Category).order_by(Category.created_at.desc(), Category.id.desc())
 
     if is_active is not None:
         stmt = stmt.where(Category.is_active == is_active)
     if cursor is not None:
-        cursor_sort, cursor_id = _decode_cursor(cursor)
-        stmt = stmt.where(
-            tuple_(Category.sort_order, Category.id) > tuple_(cursor_sort, cursor_id)
-        )
+        cursor_dt, cursor_id = _decode_cursor(cursor)
+        stmt = stmt.where(tuple_(Category.created_at, Category.id) < tuple_(cursor_dt, cursor_id))
 
     stmt = stmt.limit(limit + 1)
     result = await db.execute(stmt)

@@ -109,6 +109,7 @@ function CategoriesContent() {
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Sort Order</th>
                   <th className="px-4 py-3">Active</th>
+                  <th className="px-4 py-3">Created</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -131,6 +132,9 @@ function CategoriesContent() {
                       >
                         {cat.is_active ? "Active" : "Inactive"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {new Date(cat.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
