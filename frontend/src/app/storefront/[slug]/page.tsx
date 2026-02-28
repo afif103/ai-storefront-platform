@@ -19,6 +19,7 @@ interface PublicProduct {
   price_amount: string;
   effective_currency: string;
   sort_order: number;
+  image_url: string | null;
 }
 
 interface StorefrontConfig {
@@ -200,8 +201,17 @@ export default function StorefrontPage() {
             {products.map((product) => (
               <div
                 key={product.id}
-                className="rounded-lg border bg-white p-5 shadow-sm"
+                className="overflow-hidden rounded-lg border bg-white shadow-sm"
               >
+                {product.image_url && (
+                  /* eslint-disable-next-line @next/next/no-img-element -- presigned URL expires; next/image caching would break */
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="h-40 w-full object-cover"
+                  />
+                )}
+                <div className="p-5">
                 <h3 className="text-sm font-semibold text-gray-900">
                   {product.name}
                 </h3>
@@ -216,6 +226,7 @@ export default function StorefrontPage() {
                 >
                   {product.price_amount} {product.effective_currency}
                 </p>
+                </div>
               </div>
             ))}
           </div>

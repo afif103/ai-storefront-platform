@@ -57,7 +57,7 @@ function CreateProductContent() {
     });
 
     if (result.ok) {
-      router.push("/dashboard/products");
+      router.push(`/dashboard/products?t=${Date.now()}`);
     } else {
       setError(result.detail);
     }

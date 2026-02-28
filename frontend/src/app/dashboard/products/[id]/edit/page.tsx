@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
-import { uploadFile } from "@/lib/upload";
+import { uploadFile, getMediaDownloadUrl } from "@/lib/upload";
 import type { UploadProgress } from "@/lib/upload";
 
 interface Category {
@@ -36,6 +36,13 @@ interface ImageEntry {
   uploading: boolean;
   progress: UploadProgress | null;
   error: string | null;
+}
+
+interface MediaAsset {
+  id: string;
+  file_name: string | null;
+  content_type: string | null;
+  s3_key: string;
 }
 
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
@@ -87,6 +94,27 @@ function EditProductContent() {
 
       if (categoriesResult.ok) {
         setCategories(categoriesResult.data.items);
+      }
+
+      // Load existing images for this product
+      const mediaResult = await apiFetch<MediaAsset[]>(
+        `/api/v1/tenants/me/media?product_id=${productId}&limit=100`,
+        { cache: "no-store" },
+      );
+      if (mediaResult.ok && mediaResult.data.length > 0) {
+        const entries: ImageEntry[] = [];
+        for (const asset of mediaResult.data) {
+          const dlResult = await getMediaDownloadUrl(asset.id);
+          entries.push({
+            id: asset.id,
+            previewUrl: dlResult.ok ? dlResult.url : "",
+            fileName: asset.file_name ?? "image",
+            uploading: false,
+            progress: null,
+            error: dlResult.ok ? null : "Failed to load",
+          });
+        }
+        setImages(entries);
       }
 
       setLoading(false);
@@ -179,7 +207,17 @@ function EditProductContent() {
     }
   }
 
-  function handleRemoveImage(id: string) {
+  async function handleRemoveImage(id: string) {
+    // Skip API call for temp entries (still uploading / failed before save)
+    if (!id.startsWith("temp-")) {
+      const result = await apiFetch(`/api/v1/tenants/me/media/${id}`, {
+        method: "DELETE",
+      });
+      if (!result.ok) {
+        setImageError(result.detail);
+        return;
+      }
+    }
     setImages((prev) => {
       const entry = prev.find((img) => img.id === id);
       if (entry) {
@@ -208,7 +246,7 @@ function EditProductContent() {
     });
 
     if (result.ok) {
-      router.push("/dashboard/products");
+      router.push(`/dashboard/products?t=${Date.now()}`);
     } else {
       setError(result.detail);
     }
@@ -453,8 +491,7 @@ function EditProductContent() {
 
           <p className="mt-3 text-xs text-gray-400">
             Images are saved immediately when uploaded. Remove only hides from
-            this view — a backend media list endpoint is needed to display
-            previously uploaded images on page reload.
+            this view.
           </p>
         </div>
       </main>
