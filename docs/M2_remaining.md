@@ -2,7 +2,7 @@
 
 ## Status: COMPLETE
 
-All M2 items implemented and tested. 26 tests pass, 1 skipped (RLS isolation requires `app_user` connection).
+All M2 items implemented and tested. 33 tests pass, 1 skipped (RLS isolation requires `app_user` connection).
 
 ## Docs Sources
 
@@ -38,12 +38,27 @@ Run: `pytest -q -m m2`
 |------|-------|--------|
 | `test_m2_storefront_config.py` | 7 | Pass |
 | `test_m2_media_presign.py` | 6 | Pass |
-| `test_m2_public_slug_scoping.py` | 9 | 8 pass, 1 skip |
+| `test_m2_public_slug_scoping.py` | 10 | 9 pass, 1 skip |
 | `test_m2_visits.py` | 5 | Pass |
+| `test_rls_isolation.py` | 6 | Pass |
 
 **Skipped**: `test_cross_tenant_isolation` — requires `app_user` DB connection for RLS enforcement. Superuser bypasses RLS. Covered by `tests/test_rls_isolation.py` with `rls_db` fixture.
+
+## M2 Finalization Commits (m2-finish branch)
+
+| Commit | Description |
+|--------|-------------|
+| `5e84468` | MinIO local dev: docker-compose, dual endpoints, path-style, URL rewrite |
+| `45d4194` | Products newest-first sort, DELETE media endpoint, public product images |
+| `a673760` | Frontend: products list refresh, image delete wire-up, storefront images |
+| `3bd446c` | Fix apiFetch 204 handling + CORS credentials for auth refresh |
+| `c9cc764` | Categories list refresh + product create redirects to edit page |
+| `aea56c4` | Categories newest-first sort + Created column in dashboard |
 
 ## Bugfixes Found During Testing
 
 - `storefront_config` hex color validation used `field_validator` which caused 500 (ValueError not JSON-serializable). Fixed with `Field(pattern=)` for proper 422.
 - Public storefront config query used bare `select(StorefrontConfig)` without tenant_id filter. Added explicit `WHERE tenant_id = ...` as defense in depth alongside RLS.
+- Dashboard lists (products, categories) sorted by `sort_order ASC, id ASC` — new items could fall past page 1. Fixed to `created_at DESC, id DESC`.
+- `apiFetch` crashed on 204 No Content (DELETE endpoints). Fixed to return `{ ok: true, data: null }` for empty responses.
+- CORS `allow_credentials: false` blocked auth refresh with `credentials: "include"`. Fixed to `true` with explicit origin allowlist.

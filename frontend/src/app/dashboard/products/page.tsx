@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
 
@@ -27,13 +28,18 @@ function ProductsContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
 
+  // Re-fetch when searchParams change (create/edit append ?t=<timestamp>)
   useEffect(() => {
-    async function fetchProducts() {
+    let cancelled = false;
+    async function load() {
       setLoading(true);
       const result = await apiFetch<PaginatedProducts>(
-        "/api/v1/tenants/me/products"
+        "/api/v1/tenants/me/products",
+        { cache: "no-store" },
       );
+      if (cancelled) return;
       if (result.ok) {
         setProducts(result.data.items);
       } else {
@@ -41,8 +47,9 @@ function ProductsContent() {
       }
       setLoading(false);
     }
-    fetchProducts();
-  }, []);
+    load();
+    return () => { cancelled = true; };
+  }, [searchParams]);
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this product?")) return;

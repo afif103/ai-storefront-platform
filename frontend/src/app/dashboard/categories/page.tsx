@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
 
@@ -24,13 +25,17 @@ function CategoriesContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    let cancelled = false;
     async function fetchCategories() {
       setLoading(true);
       const result = await apiFetch<PaginatedCategories>(
-        "/api/v1/tenants/me/categories"
+        "/api/v1/tenants/me/categories",
+        { cache: "no-store" },
       );
+      if (cancelled) return;
       if (result.ok) {
         setCategories(result.data.items);
       } else {
@@ -39,7 +44,8 @@ function CategoriesContent() {
       setLoading(false);
     }
     fetchCategories();
-  }, []);
+    return () => { cancelled = true; };
+  }, [searchParams]);
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this category?")) return;
@@ -103,6 +109,7 @@ function CategoriesContent() {
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Sort Order</th>
                   <th className="px-4 py-3">Active</th>
+                  <th className="px-4 py-3">Created</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -125,6 +132,9 @@ function CategoriesContent() {
                       >
                         {cat.is_active ? "Active" : "Inactive"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {new Date(cat.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">

@@ -155,6 +155,16 @@ export async function apiFetch<T = unknown>(
     return { ok: false, status: res.status, detail };
   }
 
+  // Handle empty responses (204 No Content, missing body, non-JSON)
+  const contentType = res.headers.get("content-type") ?? "";
+  if (
+    res.status === 204 ||
+    res.headers.get("content-length") === "0" ||
+    !contentType.includes("application/json")
+  ) {
+    return { ok: true, data: null as T };
+  }
+
   const data = (await res.json()) as T;
   return { ok: true, data };
 }
