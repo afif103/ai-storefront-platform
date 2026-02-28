@@ -12,14 +12,9 @@ def get_cors_config() -> dict:
     """Return CORS middleware kwargs for FastAPI."""
     return {
         "allow_origins": settings.allowed_origins_list,
-        "allow_credentials": False,
-        "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        "allow_headers": [
-            "Authorization",
-            "Content-Type",
-            "X-Request-Id",
-            "X-Tenant-Id",
-        ],
+        "allow_credentials": True,
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
     }
 
 
