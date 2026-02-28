@@ -37,13 +37,16 @@ AWS_REGION=me-south-1
 ### 2. Start Infrastructure (Docker Compose)
 
 ```bash
-docker compose up -d postgres redis
+docker compose up -d postgres redis minio minio-init
 ```
 
 Wait for healthy:
 ```bash
-docker compose ps  # Both should show "healthy"
+docker compose ps  # postgres, redis, minio should show "healthy"
 ```
+
+MinIO console: `http://localhost:9001` (login: `minioadmin` / `minioadmin`).
+Bucket `saas-media-dev` is created automatically by `minio-init`.
 
 ### 3. Backend Setup
 
@@ -75,6 +78,16 @@ python -m app.scripts.seed_dev_data
 Creates: 2 test tenants, 3 users, sample catalog items, orders, donations.
 
 ### 6. Start Backend
+
+> **Important (local uploads):** If you have real AWS credentials set in your shell/OS (e.g. `AWS_ACCESS_KEY_ID=AKIA...`),
+> boto3 may sign presigned URLs with those creds and MinIO will return 403.
+>
+> PowerShell (before starting uvicorn):
+> ```powershell
+> Remove-Item Env:AWS_ACCESS_KEY_ID -ErrorAction SilentlyContinue
+> Remove-Item Env:AWS_SECRET_ACCESS_KEY -ErrorAction SilentlyContinue
+> Remove-Item Env:AWS_SESSION_TOKEN -ErrorAction SilentlyContinue
+> ```
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -118,6 +131,7 @@ curl http://localhost:8000/api/v1/health
 | Cognito JWT verification fails locally | Use `COGNITO_MOCK=true` in `.env` to skip JWT verification in dev |
 | Port 8000 already in use | `lsof -i :8000` to find the process, kill it, or use `--port 8001` |
 | Frontend can't reach backend | Check `NEXT_PUBLIC_API_URL=http://localhost:8000` in frontend `.env.local` |
+| MinIO upload 403 / signature mismatch | Clear real AWS creds from env — see "Start Backend" note above |
 
 ---
 
