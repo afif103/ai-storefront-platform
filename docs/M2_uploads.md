@@ -47,11 +47,22 @@ preview thumbnail and progress indicator.
 ```
 
 Frontend: `dashboard/products/[id]/edit/page.tsx` supports multi-file
-selection, parallel uploads, per-file progress. (Removal depends on
-backend delete/unlink support.)
+selection, parallel uploads, per-file progress, and per-image delete
+via `DELETE /api/v1/tenants/me/media/{media_id}`.
+
+Product create page (`products/new/page.tsx`) redirects to the edit page
+after creation so images can be uploaded immediately.
 
 Shared upload helper: `frontend/src/lib/upload.ts` (`uploadFile()` with
 `onProgress` callback and XHR-based S3 PUT for progress tracking).
+
+### Public Storefront Product Images
+
+The public storefront endpoint (`GET /api/v1/storefront/{slug}/products`)
+includes `image_url` (presigned GET, 15-min expiry) for each product's
+primary image. Primary is chosen deterministically: `sort_order ASC,
+created_at ASC, id ASC` — first media_asset per product wins. Images
+are batch-queried in a single DB call to avoid N+1.
 
 ---
 
@@ -73,6 +84,36 @@ Query parameters:
 Response: `MediaAssetResponse[]` ordered by `created_at DESC, id DESC`.
 
 Role requirement: `member` or higher.
+
+### Delete Media
+
+```
+DELETE /api/v1/tenants/me/media/{media_id}
+```
+
+Returns 204. Deletes the DB row and performs best-effort S3 object
+deletion (logs warning on failure, does not fail the request).
+Role requirement: `member` or higher. RLS scopes to current tenant.
+
+---
+
+## MinIO Local Dev Setup
+
+Docker Compose includes `minio` (S3-compatible, ports 9000/9001) and
+`minio-init` (creates `saas-media-dev` bucket). CORS is configured
+via `MINIO_API_CORS_ALLOW_ORIGIN` env var.
+
+Backend uses dual endpoints:
+- `S3_ENDPOINT_URL` — backend→MinIO (`http://localhost:9000`)
+- `S3_PUBLIC_ENDPOINT` — presigned URLs for browser (`http://localhost:9000`)
+
+**Important**: Clear real AWS credentials before starting uvicorn, or
+MinIO will reject presigned URLs signed with AKIA keys:
+```powershell
+Remove-Item Env:AWS_ACCESS_KEY_ID -ErrorAction SilentlyContinue
+Remove-Item Env:AWS_SECRET_ACCESS_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:AWS_SESSION_TOKEN -ErrorAction SilentlyContinue
+```
 
 ---
 
