@@ -1,6 +1,7 @@
 """Authenticated CRUD endpoints for products."""
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, tuple_
@@ -45,13 +46,13 @@ def _product_response(product: Product, tenant: Tenant) -> ProductResponse:
 
 
 def _encode_cursor(product: Product) -> str:
-    return f"{product.sort_order}:{product.id}"
+    return f"{product.created_at.isoformat()}|{product.id}"
 
 
-def _decode_cursor(cursor: str) -> tuple[int, uuid.UUID]:
+def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
     try:
-        sort_str, id_str = cursor.split(":", 1)
-        return int(sort_str), uuid.UUID(id_str)
+        dt_str, id_str = cursor.split("|", 1)
+        return datetime.fromisoformat(dt_str), uuid.UUID(id_str)
     except (ValueError, AttributeError) as exc:
         raise HTTPException(status_code=400, detail="Invalid cursor") from exc
 
@@ -70,15 +71,15 @@ async def list_products(
 
     tenant = await _get_tenant(db, tenant_id)
 
-    stmt = select(Product).order_by(Product.sort_order, Product.id)
+    stmt = select(Product).order_by(Product.created_at.desc(), Product.id.desc())
 
     if category_id is not None:
         stmt = stmt.where(Product.category_id == category_id)
     if is_active is not None:
         stmt = stmt.where(Product.is_active == is_active)
     if cursor is not None:
-        cursor_sort, cursor_id = _decode_cursor(cursor)
-        stmt = stmt.where(tuple_(Product.sort_order, Product.id) > tuple_(cursor_sort, cursor_id))
+        cursor_dt, cursor_id = _decode_cursor(cursor)
+        stmt = stmt.where(tuple_(Product.created_at, Product.id) < tuple_(cursor_dt, cursor_id))
 
     stmt = stmt.limit(limit + 1)
     result = await db.execute(stmt)

@@ -72,5 +72,6 @@ class PublicProductResponse(BaseModel):
     effective_currency: str
     sort_order: int
     metadata: dict | None = None
+    image_url: str | None = None
 
     model_config = {"from_attributes": True}

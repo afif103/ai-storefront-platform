@@ -40,7 +40,7 @@ async def test_public_categories_includes_created(client: AsyncClient):
     assert cat_resp.status_code == 201
     cat_id = cat_resp.json()["id"]
 
-    resp = await client.get(f"/api/v1/storefront/{slug}/categories")
+    resp = await client.get(f"/api/v1/storefront/{slug}/categories?limit=100")
     assert resp.status_code == 200
     ids = [item["id"] for item in resp.json()["items"]]
     assert cat_id in ids

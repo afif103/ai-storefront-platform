@@ -1,5 +1,6 @@
 """Presigned media upload/download endpoints."""
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,9 +21,12 @@ from app.services.storage import (
     PRESIGN_DOWNLOAD_EXPIRES,
     PRESIGN_UPLOAD_EXPIRES,
     build_tenant_key,
+    delete_object,
     presign_get,
     presign_put,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -135,3 +139,31 @@ async def get_download_url(
         download_url=download_url,
         expires_in=PRESIGN_DOWNLOAD_EXPIRES,
     )
+
+
+@router.delete("/{media_id}", status_code=204)
+async def delete_media(
+    media_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> None:
+    """Delete a media asset (DB row + best-effort S3 object removal).
+
+    RLS ensures only the current tenant's assets are visible.
+    """
+    db, tenant_id = db_tenant
+    await require_role("member", db, tenant_id, user)
+
+    result = await db.execute(select(MediaAsset).where(MediaAsset.id == media_id))
+    media = result.scalar_one_or_none()
+    if media is None:
+        raise HTTPException(status_code=404, detail="Media asset not found")
+
+    # Best-effort S3 delete — log but don't fail if object missing or S3 errors
+    try:
+        delete_object(media.s3_key)
+    except Exception:
+        logger.warning("Failed to delete S3 object %s", media.s3_key, exc_info=True)
+
+    await db.delete(media)
+    await db.flush()

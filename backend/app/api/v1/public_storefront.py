@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db_with_slug
 from app.models.category import Category
+from app.models.media_asset import MediaAsset
 from app.models.product import Product
 from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
@@ -29,7 +30,11 @@ router = APIRouter()
 DEFAULT_PAGE_SIZE = 20
 
 
-def _public_product(product: Product, tenant: Tenant) -> PublicProductResponse:
+def _public_product(
+    product: Product,
+    tenant: Tenant,
+    image_url: str | None = None,
+) -> PublicProductResponse:
     """Build public product response with effective_currency fallback."""
     return PublicProductResponse(
         id=product.id,
@@ -40,6 +45,7 @@ def _public_product(product: Product, tenant: Tenant) -> PublicProductResponse:
         effective_currency=product.currency or tenant.default_currency,
         sort_order=product.sort_order,
         metadata=product.metadata_,
+        image_url=image_url,
     )
 
 
@@ -119,8 +125,27 @@ async def list_public_products(
     has_more = len(rows) > limit
     items = rows[:limit]
 
+    # Batch-query primary image for each product (avoids N+1 DB queries)
+    image_urls: dict[uuid.UUID, str] = {}
+    if items:
+        product_ids = [p.id for p in items]
+        media_stmt = (
+            select(MediaAsset)
+            .where(MediaAsset.product_id.in_(product_ids))
+            .order_by(
+                MediaAsset.sort_order,
+                MediaAsset.created_at,
+                MediaAsset.id,
+            )
+        )
+        media_result = await db.execute(media_stmt)
+        # Keep only the first media asset per product (deterministic primary)
+        for asset in media_result.scalars().all():
+            if asset.product_id not in image_urls:
+                image_urls[asset.product_id] = presign_get(asset.s3_key)
+
     return PaginatedResponse(
-        items=[_public_product(p, tenant) for p in items],
+        items=[_public_product(p, tenant, image_url=image_urls.get(p.id)) for p in items],
         next_cursor=(
             _encode_cursor(items[-1].sort_order, items[-1].id) if has_more and items else None
         ),
