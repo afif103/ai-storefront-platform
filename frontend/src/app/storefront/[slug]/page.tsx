@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
+import { useVisit } from "@/hooks/use-visit";
 
 interface Category {
   id: string;
@@ -42,6 +43,10 @@ interface PaginatedProducts {
 export default function StorefrontPage() {
   const params = useParams();
   const slug = params.slug as string;
+
+  // visitId is used by checkout/donate/pledge forms (Packet #2)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { visitId } = useVisit(slug);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<PublicProduct[]>([]);
