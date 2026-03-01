@@ -20,6 +20,21 @@ class PledgeCreateRequest(BaseModel):
     visit_id: uuid.UUID | None = None
 
 
+class PledgeListItem(BaseModel):
+    id: uuid.UUID
+    pledge_number: str
+    pledgor_name: str
+    pledgor_phone: str | None
+    amount: Decimal
+    currency: str
+    target_date: date
+    status: str
+    created_at: datetime
+    updated_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
 class PledgeCreateResponse(BaseModel):
     id: uuid.UUID
     pledge_number: str

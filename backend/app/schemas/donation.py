@@ -21,6 +21,21 @@ class DonationCreateRequest(BaseModel):
     visit_id: uuid.UUID | None = None
 
 
+class DonationListItem(BaseModel):
+    id: uuid.UUID
+    donation_number: str
+    donor_name: str
+    donor_phone: str | None
+    amount: Decimal
+    currency: str
+    campaign: str | None
+    status: str
+    created_at: datetime
+    updated_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
 class DonationCreateResponse(BaseModel):
     id: uuid.UUID
     donation_number: str

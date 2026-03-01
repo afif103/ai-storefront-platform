@@ -22,6 +22,20 @@ class OrderCreateRequest(BaseModel):
     visit_id: uuid.UUID | None = None
 
 
+class OrderListItem(BaseModel):
+    id: uuid.UUID
+    order_number: str
+    customer_name: str
+    customer_phone: str | None
+    total_amount: Decimal
+    currency: str
+    status: str
+    created_at: datetime
+    updated_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
 class OrderCreateResponse(BaseModel):
     id: uuid.UUID
     order_number: str

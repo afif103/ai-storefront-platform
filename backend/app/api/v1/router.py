@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.api.v1.admin_lists import router as admin_lists_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.categories import router as categories_router
 from app.api.v1.health import router as health_router
@@ -29,5 +30,8 @@ api_v1_router.include_router(
 )
 api_v1_router.include_router(
     status_transitions_router, prefix="/tenants/me", tags=["status-transitions"]
+)
+api_v1_router.include_router(
+    admin_lists_router, prefix="/tenants/me", tags=["admin-lists"]
 )
 api_v1_router.include_router(public_storefront_router, prefix="/storefront", tags=["storefront"])
