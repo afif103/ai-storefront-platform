@@ -1,35 +1,42 @@
 """Team member management tests."""
 
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
 from tests.conftest import auth_headers
 
 
+def _uid() -> str:
+    return uuid.uuid4().hex[:8]
+
+
 @pytest.mark.asyncio
 async def test_invite_member_success(client: AsyncClient):
     """Invite a member to the tenant."""
-    # Create tenant first
-    owner_sub = "invite-owner-sub"
-    owner_email = "invite-owner@example.com"
+    uid = _uid()
+    owner_sub = f"inv-owner-{uid}"
+    owner_email = f"inv-owner-{uid}@example.com"
     headers = auth_headers(sub=owner_sub, email=owner_email)
     headers["Content-Type"] = "application/json"
 
     await client.post(
         "/api/v1/tenants/",
-        json={"name": "Invite Test", "slug": "invite-test-tenant"},
+        json={"name": f"Invite Test {uid}", "slug": f"inv-{uid}"},
         headers=headers,
     )
 
     # Invite a member
+    invitee_email = f"invitee-{uid}@example.com"
     invite_resp = await client.post(
         "/api/v1/tenants/me/members/invite",
-        json={"email": "invitee@example.com", "role": "member"},
+        json={"email": invitee_email, "role": "member"},
         headers=auth_headers(sub=owner_sub, email=owner_email),
     )
     assert invite_resp.status_code == 201
     data = invite_resp.json()
-    assert data["email"] == "invitee@example.com"
+    assert data["email"] == invitee_email
     assert data["role"] == "member"
     assert data["status"] == "invited"
 
@@ -37,23 +44,25 @@ async def test_invite_member_success(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_invite_duplicate_rejected(client: AsyncClient):
     """Inviting the same email twice returns 409."""
-    owner_sub = "dup-invite-owner"
-    owner_email = "dup-invite-owner@example.com"
+    uid = _uid()
+    owner_sub = f"dup-inv-{uid}"
+    owner_email = f"dup-inv-{uid}@example.com"
     headers = auth_headers(sub=owner_sub, email=owner_email)
     headers["Content-Type"] = "application/json"
 
     await client.post(
         "/api/v1/tenants/",
-        json={"name": "Dup Invite Test", "slug": "dup-invite-test"},
+        json={"name": f"Dup Invite {uid}", "slug": f"dup-inv-{uid}"},
         headers=headers,
     )
 
     h = auth_headers(sub=owner_sub, email=owner_email)
+    invitee_email = f"dup-invitee-{uid}@example.com"
 
     # First invite
     resp1 = await client.post(
         "/api/v1/tenants/me/members/invite",
-        json={"email": "dup-invitee@example.com", "role": "member"},
+        json={"email": invitee_email, "role": "member"},
         headers=h,
     )
     assert resp1.status_code == 201
@@ -61,7 +70,7 @@ async def test_invite_duplicate_rejected(client: AsyncClient):
     # Second invite same email
     resp2 = await client.post(
         "/api/v1/tenants/me/members/invite",
-        json={"email": "dup-invitee@example.com", "role": "admin"},
+        json={"email": invitee_email, "role": "admin"},
         headers=h,
     )
     assert resp2.status_code == 409
@@ -70,14 +79,15 @@ async def test_invite_duplicate_rejected(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_list_members(client: AsyncClient):
     """List members returns the owner."""
-    owner_sub = "list-members-owner"
-    owner_email = "list-owner@example.com"
+    uid = _uid()
+    owner_sub = f"list-owner-{uid}"
+    owner_email = f"list-owner-{uid}@example.com"
     headers = auth_headers(sub=owner_sub, email=owner_email)
     headers["Content-Type"] = "application/json"
 
     await client.post(
         "/api/v1/tenants/",
-        json={"name": "List Test", "slug": "list-members-test"},
+        json={"name": f"List Test {uid}", "slug": f"list-{uid}"},
         headers=headers,
     )
 
@@ -94,18 +104,18 @@ async def test_list_members(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_accept_invite(client: AsyncClient):
     """Accept invite transitions status from invited to active."""
-    # Owner creates tenant
-    owner_sub = "accept-owner-sub"
-    owner_email = "accept-owner@example.com"
-    invitee_email = "accept-invitee@example.com"
-    invitee_sub = "accept-invitee-sub"
+    uid = _uid()
+    owner_sub = f"acc-owner-{uid}"
+    owner_email = f"acc-owner-{uid}@example.com"
+    invitee_email = f"acc-invitee-{uid}@example.com"
+    invitee_sub = f"acc-invitee-{uid}"
 
     headers = auth_headers(sub=owner_sub, email=owner_email)
     headers["Content-Type"] = "application/json"
 
     await client.post(
         "/api/v1/tenants/",
-        json={"name": "Accept Test", "slug": "accept-invite-test"},
+        json={"name": f"Accept Test {uid}", "slug": f"acc-{uid}"},
         headers=headers,
     )
 
