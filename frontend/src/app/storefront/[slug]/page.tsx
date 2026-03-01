@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
 import { useVisit } from "@/hooks/use-visit";
+import { useCart } from "@/hooks/use-cart";
 
 interface Category {
   id: string;
@@ -44,9 +46,8 @@ export default function StorefrontPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  // visitId is used by checkout/donate/pledge forms (Packet #2)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { visitId } = useVisit(slug);
+  useVisit(slug);
+  const cart = useCart(slug);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<PublicProduct[]>([]);
@@ -55,6 +56,7 @@ export default function StorefrontPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [filterLoading, setFilterLoading] = useState(false);
+  const [addedId, setAddedId] = useState<string | null>(null);
 
   // Initial load: fetch config, categories, and all products in parallel
   useEffect(() => {
@@ -101,8 +103,23 @@ export default function StorefrontPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory]);
 
+  function handleAddToCart(product: PublicProduct) {
+    cart.addItem(
+      {
+        catalogItemId: product.id,
+        name: product.name,
+        priceAmount: product.price_amount,
+        currency: product.effective_currency,
+      },
+      1
+    );
+    setAddedId(product.id);
+    setTimeout(() => setAddedId(null), 1200);
+  }
+
   const primaryColor = config?.primary_color ?? undefined;
   const secondaryColor = config?.secondary_color ?? undefined;
+  const headerTextColor = primaryColor ? "#ffffff" : "#111827";
 
   if (loading) {
     return (
@@ -146,11 +163,65 @@ export default function StorefrontPage() {
             />
           )}
           <h1
-            className="text-2xl font-bold capitalize"
-            style={{ color: primaryColor ? "#ffffff" : "#111827" }}
+            className="flex-1 text-2xl font-bold capitalize"
+            style={{ color: headerTextColor }}
           >
             {config?.hero_text ?? slug}
           </h1>
+
+          {/* Nav links */}
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/storefront/${slug}/donate`}
+              className="rounded-full border px-4 py-1.5 text-sm font-medium transition-colors hover:opacity-80"
+              style={{
+                borderColor: headerTextColor,
+                color: headerTextColor,
+              }}
+            >
+              Donate
+            </Link>
+            <Link
+              href={`/storefront/${slug}/pledge`}
+              className="rounded-full border px-4 py-1.5 text-sm font-medium transition-colors hover:opacity-80"
+              style={{
+                borderColor: headerTextColor,
+                color: headerTextColor,
+              }}
+            >
+              Pledge
+            </Link>
+
+            {/* Cart badge */}
+            <Link
+              href={`/storefront/${slug}/checkout`}
+              className="relative rounded-full border p-2 transition-colors hover:opacity-80"
+              style={{ borderColor: headerTextColor, color: headerTextColor }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+                />
+              </svg>
+              {cart.totalItems > 0 && (
+                <span
+                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{ backgroundColor: secondaryColor ?? "#dc2626" }}
+                >
+                  {cart.totalItems}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -217,20 +288,27 @@ export default function StorefrontPage() {
                   />
                 )}
                 <div className="p-5">
-                <h3 className="text-sm font-semibold text-gray-900">
-                  {product.name}
-                </h3>
-                {product.description && (
-                  <p className="mt-1 line-clamp-2 text-sm text-gray-500">
-                    {product.description}
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {product.name}
+                  </h3>
+                  {product.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                      {product.description}
+                    </p>
+                  )}
+                  <p
+                    className="mt-3 text-base font-bold"
+                    style={{ color: secondaryColor ?? "#111827" }}
+                  >
+                    {product.price_amount} {product.effective_currency}
                   </p>
-                )}
-                <p
-                  className="mt-3 text-base font-bold"
-                  style={{ color: secondaryColor ?? "#111827" }}
-                >
-                  {product.price_amount} {product.effective_currency}
-                </p>
+                  <button
+                    onClick={() => handleAddToCart(product)}
+                    className="mt-3 w-full rounded-lg py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                    style={{ backgroundColor: primaryColor ?? "#2563eb" }}
+                  >
+                    {addedId === product.id ? "Added!" : "Add to Cart"}
+                  </button>
                 </div>
               </div>
             ))}
