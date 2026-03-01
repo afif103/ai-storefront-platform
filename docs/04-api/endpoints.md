@@ -329,45 +329,18 @@ Get a presigned GET URL (15-min expiry).
 
 ## Orders
 
-### `GET /tenants/me/orders`
-**Auth**: member
-
-```
-GET /tenants/me/orders?status=pending&cursor=abc
-```
-
-### `GET /tenants/me/orders/{order_id}`
-**Auth**: member
-
-### `PATCH /tenants/me/orders/{order_id}`
-**Auth**: admin
-
-Update order status or notes.
-
-```json
-{
-  "status": "confirmed",
-  "notes": "Customer confirmed via WhatsApp"
-}
-```
-
-**Error Codes**: `400` (invalid status transition), `404`.
-
 ### `POST /storefront/{slug}/orders`
 **Auth**: public
 
-Place an order from the storefront.
+Place an order from the storefront. Items are validated against the catalog; price/name snapshotted into JSONB. `total_amount` computed as `sum(qty * unit_price)`. Currency from `tenant.default_currency` (fallback KWD). Auto-generates `order_number` (ORD-00001 pattern, tenant-scoped).
 
 ```json
 {
   "customer_name": "Ahmad",
   "customer_phone": "+96512345678",
-  "customer_email": "ahmad@example.com",
-  "items": [
-    {"catalog_item_id": "item-uuid", "qty": 2}
-  ],
-  "payment_notes": "Will pay via bank transfer",
-  "utm_visit_id": "visit-uuid"
+  "items": [{"catalog_item_id": "product-uuid", "qty": 2}],
+  "payment_notes": "Bank transfer",
+  "visit_id": "visit-uuid"
 }
 ```
 
@@ -379,57 +352,110 @@ Place an order from the storefront.
   "total_amount": "10.500",
   "currency": "KWD",
   "status": "pending",
-  "created_at": "2026-02-17T10:00:00Z"
+  "items": [{"catalog_item_id": "...", "name": "Widget", "qty": 2, "unit_price": "5.250", "currency": "KWD", "subtotal": "10.500"}],
+  "created_at": "2026-03-01T12:00:00Z"
 }
+```
+
+**Error Codes**: `422` (invalid product, missing price, invalid visit_id).
+
+### `PATCH /tenants/me/orders/{order_id}/status`
+**Auth**: admin
+
+Transition order status. Allowed: `pending→confirmed|cancelled`, `confirmed→fulfilled|cancelled`. Terminal: `fulfilled`, `cancelled`.
+
+```json
+{"status": "confirmed"}
+```
+
+**200 Response**: full order with updated `status` and `updated_at`.
+
+**422 on invalid transition**:
+```json
+{"detail": {"message": "Cannot transition order from 'pending' to 'fulfilled'", "allowed": ["confirmed", "cancelled"]}}
 ```
 
 ---
 
 ## Donations
 
-### `GET /tenants/me/donations`
-**Auth**: member
-
-### `PATCH /tenants/me/donations/{donation_id}`
-**Auth**: admin
-
 ### `POST /storefront/{slug}/donations`
 **Auth**: public
+
+Submit a donation. Auto-generates `donation_number` (DON-00001). Status starts as `pending`.
 
 ```json
 {
   "donor_name": "Fatima",
   "donor_phone": "+96598765432",
-  "amount": "50.000",
-  "currency": "KWD",
+  "amount": "10.000",
   "campaign": "Ramadan 2026",
   "receipt_requested": true,
-  "utm_visit_id": "visit-uuid"
+  "visit_id": "visit-uuid"
 }
+```
+
+**201 Response**:
+```json
+{
+  "id": "donation-uuid",
+  "donation_number": "DON-00001",
+  "amount": "10.000",
+  "currency": "KWD",
+  "status": "pending",
+  "created_at": "2026-03-01T12:00:00Z"
+}
+```
+
+### `PATCH /tenants/me/donations/{donation_id}/status`
+**Auth**: admin
+
+Allowed: `pending→received|cancelled`, `received→receipted|cancelled`. Terminal: `receipted`, `cancelled`.
+
+```json
+{"status": "received"}
 ```
 
 ---
 
 ## Pledges
 
-### `GET /tenants/me/pledges`
-**Auth**: member
-
-### `PATCH /tenants/me/pledges/{pledge_id}`
-**Auth**: admin
-
 ### `POST /storefront/{slug}/pledges`
 **Auth**: public
+
+Submit a pledge. `target_date` must be in the future (UTC). Auto-generates `pledge_number` (PLG-00001). Status starts as `pledged`.
 
 ```json
 {
   "pledgor_name": "Ali",
   "pledgor_phone": "+96555555555",
   "amount": "100.000",
-  "currency": "KWD",
   "target_date": "2026-06-01",
-  "utm_visit_id": "visit-uuid"
+  "visit_id": "visit-uuid"
 }
+```
+
+**201 Response**:
+```json
+{
+  "id": "pledge-uuid",
+  "pledge_number": "PLG-00001",
+  "amount": "100.000",
+  "currency": "KWD",
+  "status": "pledged",
+  "created_at": "2026-03-01T12:00:00Z"
+}
+```
+
+**Error Codes**: `422` (past target_date, invalid visit_id).
+
+### `PATCH /tenants/me/pledges/{pledge_id}/status`
+**Auth**: admin
+
+Allowed: `pledged→partially_fulfilled|lapsed`, `partially_fulfilled→fulfilled|lapsed`. Terminal: `fulfilled`, `lapsed`.
+
+```json
+{"status": "partially_fulfilled"}
 ```
 
 ---

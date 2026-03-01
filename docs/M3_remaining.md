@@ -1,6 +1,8 @@
 # Remaining M3 — Structured Capture
 
-## Status: NOT STARTED
+## Status: COMPLETE
+
+See [M3_orders_donations_pledges.md](M3_orders_donations_pledges.md) for full docs.
 
 ## Docs Sources
 
@@ -16,19 +18,19 @@
 
 ## Acceptance Criteria (from milestones.md)
 
-- [ ] Public order submission creates order with `pending` status
-- [ ] Public donation submission creates donation with amount in KWD `NUMERIC(12,3)`
-- [ ] Public pledge submission creates pledge with target date
-- [ ] Admin can transition order/donation/pledge through status workflow
-- [ ] Invalid status transitions rejected
-- [ ] Order numbers unique per tenant (auto-generated)
-- [ ] `utm_visit_id` links to visit record for attribution
+- [x] Public order submission creates order with `pending` status
+- [x] Public donation submission creates donation with amount in KWD `NUMERIC(12,3)`
+- [x] Public pledge submission creates pledge with target date
+- [x] Admin can transition order/donation/pledge through status workflow
+- [x] Invalid status transitions rejected
+- [x] Order numbers unique per tenant (auto-generated)
+- [x] `visit_id` links to visit record for attribution
 
 ## Task Checklist
 
 ### Database Layer
 
-- [ ] **3.1 — `orders` table + RLS + migration**
+- [x] **3.1 — `orders` table + RLS + migration**
   - Columns: `id` (UUID PK), `tenant_id` (FK), `order_number` (TEXT), `product_id` (FK → products, nullable), `customer_name` (TEXT), `customer_phone` (TEXT), `customer_email` (TEXT), `items` (JSONB), `total_amount` (NUMERIC(12,3)), `currency` (TEXT, default `'KWD'`), `payment_link` (TEXT), `payment_notes` (TEXT), `status` (TEXT + CHECK), `notes` (TEXT), `visit_id` (FK → visits, nullable), `created_at`, `updated_at`
   - Status values: `pending`, `confirmed`, `fulfilled`, `cancelled`
   - Constraint: `UNIQUE(tenant_id, order_number)`
@@ -37,7 +39,7 @@
   - GRANT SELECT, INSERT, UPDATE, DELETE TO `app_user`
   - JSONB items schema: `[{"catalog_item_id": "uuid", "name": "...", "qty": N, "unit_price": "1.500", "currency": "KWD", "subtotal": "3.000"}]`
 
-- [ ] **3.2 — `donations` table + RLS + migration**
+- [x] **3.2 — `donations` table + RLS + migration**
   - Columns: `id` (UUID PK), `tenant_id` (FK), `donation_number` (TEXT), `product_id` (FK → products, nullable), `donor_name` (TEXT), `donor_phone` (TEXT), `donor_email` (TEXT), `amount` (NUMERIC(12,3)), `currency` (TEXT, default `'KWD'`), `campaign` (TEXT, nullable), `receipt_requested` (BOOLEAN, default false), `payment_link` (TEXT), `payment_notes` (TEXT), `status` (TEXT + CHECK), `notes` (TEXT), `visit_id` (FK → visits, nullable), `created_at`, `updated_at`
   - Status values: `pending`, `received`, `receipted`, `cancelled`
   - Constraint: `UNIQUE(tenant_id, donation_number)`
@@ -45,7 +47,7 @@
   - RLS: same pattern as orders
   - GRANT to `app_user`
 
-- [ ] **3.3 — `pledges` table + RLS + migration**
+- [x] **3.3 — `pledges` table + RLS + migration**
   - Columns: `id` (UUID PK), `tenant_id` (FK), `pledge_number` (TEXT), `product_id` (FK → products, nullable), `pledgor_name` (TEXT), `pledgor_phone` (TEXT), `pledgor_email` (TEXT), `amount` (NUMERIC(12,3)), `currency` (TEXT, default `'KWD'`), `target_date` (DATE), `fulfilled_amount` (NUMERIC(12,3), default 0), `payment_link` (TEXT), `payment_notes` (TEXT), `status` (TEXT + CHECK), `notes` (TEXT), `visit_id` (FK → visits, nullable), `created_at`, `updated_at`
   - Status values: `pledged`, `partially_fulfilled`, `fulfilled`, `lapsed`
   - Constraint: `UNIQUE(tenant_id, pledge_number)`
@@ -53,7 +55,7 @@
   - RLS: same pattern as orders
   - GRANT to `app_user`
 
-- [ ] **3.4 — `utm_events` table + RLS + migration**
+- [x] **3.4 — `utm_events` table + RLS + migration**
   - Columns: `id` (UUID PK), `tenant_id` (FK), `visit_id` (FK → visits), `event_type` (TEXT + CHECK), `event_ref_id` (UUID — polymorphic FK to order/donation/pledge), `created_at`
   - Event types: `page_view`, `order`, `donation`, `pledge`
   - RLS: same pattern
@@ -61,7 +63,7 @@
 
 ### API Layer
 
-- [ ] **3.5 — Public order submission endpoint**
+- [x] **3.5 — Public order submission endpoint**
   - `POST /storefront/{slug}/orders` (anonymous, slug-scoped via `get_db_with_slug`)
   - Validates `items` against catalog (product exists, is_active, belongs to tenant)
   - Calculates `total_amount` from items (sum of `qty * unit_price`)
@@ -71,7 +73,7 @@
   - Creates `utm_events` record if `visit_id` present
   - Returns order ID + order number
 
-- [ ] **3.6 — Public donation submission endpoint**
+- [x] **3.6 — Public donation submission endpoint**
   - `POST /storefront/{slug}/donations` (anonymous, slug-scoped)
   - Validates `amount` as NUMERIC(12,3) > 0
   - Auto-generates `donation_number` (DON-00001 pattern)
@@ -80,7 +82,7 @@
   - Links `visit_id` if provided
   - Creates `utm_events` record if `visit_id` present
 
-- [ ] **3.7 — Public pledge submission endpoint**
+- [x] **3.7 — Public pledge submission endpoint**
   - `POST /storefront/{slug}/pledges` (anonymous, slug-scoped)
   - Validates `target_date` is in the future
   - Validates `amount` as NUMERIC(12,3) > 0
@@ -89,7 +91,7 @@
   - Links `visit_id` if provided
   - Creates `utm_events` record if `visit_id` present
 
-- [ ] **3.8 — Admin status transition endpoints**
+- [x] **3.8 — Admin status transition endpoints**
   - `PATCH /tenants/me/orders/{id}/status` (admin+)
   - `PATCH /tenants/me/donations/{id}/status` (admin+)
   - `PATCH /tenants/me/pledges/{id}/status` (admin+)
@@ -100,15 +102,15 @@
   - Invalid transitions return 422 with allowed transitions listed
   - `updated_at` set on transition
 
-- [ ] **3.9 — Order number auto-generation**
+- [x] **3.9 — Order number auto-generation**
   - Sequential per tenant: `ORD-00001`, `DON-00001`, `PLG-00001`
   - Tenant-scoped uniqueness via `UNIQUE(tenant_id, order_number)` constraint
   - Implementation: `SELECT COALESCE(MAX(...))+1` or sequence per prefix, within same transaction
   - Must be race-safe (use `SELECT ... FOR UPDATE` or advisory lock)
 
-- [ ] **3.10 — Integration tests**
+- [x] **3.10 — Integration tests**
   - `@pytest.mark.m3` marker
-  - Test files: `test_m3_orders.py`, `test_m3_donations.py`, `test_m3_pledges.py`, `test_m3_utm_events.py`
+  - Test files: `test_m3_integration.py`, `test_m3_numbering.py`
   - Coverage:
     - Public submission creates record with correct status + auto-generated number
     - Items validated against catalog (invalid product → 422)
