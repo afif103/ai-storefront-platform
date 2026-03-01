@@ -1,10 +1,12 @@
-"""Public read-only storefront endpoints (anonymous, tenant-scoped by slug).
+"""Public storefront endpoints (anonymous, tenant-scoped by slug).
 
 Flow: slug -> lookup tenant -> SET LOCAL app.current_tenant -> query via RLS.
 All in the same DB session. No tenant_id exposed in responses.
 """
 
 import uuid
+from datetime import UTC, datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, tuple_
@@ -12,17 +14,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db_with_slug
 from app.models.category import Category
+from app.models.donation import Donation
 from app.models.media_asset import MediaAsset
+from app.models.order import Order
+from app.models.pledge import Pledge
 from app.models.product import Product
 from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
+from app.models.utm_event import UtmEvent
 from app.models.visit import Visit
 from app.schemas.category import CategoryResponse
 from app.schemas.common import PaginatedResponse
+from app.schemas.donation import DonationCreateRequest, DonationCreateResponse
+from app.schemas.order import OrderCreateRequest, OrderCreateResponse
+from app.schemas.pledge import PledgeCreateRequest, PledgeCreateResponse
 from app.schemas.product import PublicProductResponse
 from app.schemas.public_storefront_config import PublicStorefrontConfigResponse
 from app.schemas.visit import VisitCreateRequest, VisitCreateResponse
 from app.services.ip_hash import hash_ip
+from app.services.numbering import (
+    get_next_donation_number,
+    get_next_order_number,
+    get_next_pledge_number,
+)
 from app.services.storage import presign_get
 
 router = APIRouter()
@@ -223,3 +237,248 @@ async def capture_visit(
     await db.flush()
 
     return VisitCreateResponse(visit_id=visit.id)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for public submission endpoints
+# ---------------------------------------------------------------------------
+
+
+async def _validate_visit(
+    db: AsyncSession, tenant_id: uuid.UUID, visit_id: uuid.UUID | None
+) -> Visit | None:
+    """If visit_id is provided, verify it belongs to the current tenant."""
+    if visit_id is None:
+        return None
+    result = await db.execute(
+        select(Visit).where(Visit.id == visit_id, Visit.tenant_id == tenant_id)
+    )
+    visit = result.scalar_one_or_none()
+    if visit is None:
+        raise HTTPException(status_code=422, detail="visit_id not found for this storefront")
+    return visit
+
+
+async def _create_utm_event(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    visit_id: uuid.UUID,
+    event_type: str,
+    event_ref_id: uuid.UUID,
+) -> None:
+    """Insert a utm_events row linking a visit to a conversion event."""
+    event = UtmEvent(
+        tenant_id=tenant_id,
+        visit_id=visit_id,
+        event_type=event_type,
+        event_ref_id=event_ref_id,
+    )
+    db.add(event)
+    await db.flush()
+
+
+# ---------------------------------------------------------------------------
+# POST /storefront/{slug}/orders
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{slug}/orders", response_model=OrderCreateResponse, status_code=201)
+async def submit_order(
+    slug: str,
+    body: OrderCreateRequest,
+    db_tenant: tuple[AsyncSession, Tenant] = Depends(get_db_with_slug),
+) -> OrderCreateResponse:
+    """Public order submission. Validates items against catalog, computes total."""
+    db, tenant = db_tenant
+
+    # Validate visit_id if provided
+    await _validate_visit(db, tenant.id, body.visit_id)
+
+    # Fetch all requested products in one query
+    product_ids = [item.catalog_item_id for item in body.items]
+    result = await db.execute(
+        select(Product).where(
+            Product.id.in_(product_ids),
+            Product.tenant_id == tenant.id,
+            Product.is_active.is_(True),
+        )
+    )
+    products_by_id = {p.id: p for p in result.scalars().all()}
+
+    # Validate all items exist, are active, and have a price
+    order_currency = tenant.default_currency or "KWD"
+    for item in body.items:
+        if item.catalog_item_id not in products_by_id:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Product {item.catalog_item_id} not found or inactive",
+            )
+        product = products_by_id[item.catalog_item_id]
+        if product.price_amount is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Product {item.catalog_item_id} has no price",
+            )
+
+    # Build JSONB snapshot and compute total
+    items_jsonb: list[dict] = []
+    total = Decimal("0.000")
+    for item in body.items:
+        product = products_by_id[item.catalog_item_id]
+        unit_price = product.price_amount
+        subtotal = unit_price * item.qty
+        items_jsonb.append(
+            {
+                "catalog_item_id": str(item.catalog_item_id),
+                "name": product.name,
+                "qty": item.qty,
+                "unit_price": str(unit_price),
+                "currency": order_currency,
+                "subtotal": str(subtotal),
+            }
+        )
+        total += subtotal
+
+    order_number = await get_next_order_number(db, str(tenant.id))
+
+    order = Order(
+        tenant_id=tenant.id,
+        order_number=order_number,
+        customer_name=body.customer_name,
+        customer_phone=body.customer_phone,
+        customer_email=body.customer_email,
+        items=items_jsonb,
+        total_amount=total,
+        currency=order_currency,
+        payment_notes=body.payment_notes,
+        notes=body.notes,
+        status="pending",
+        visit_id=body.visit_id,
+    )
+    db.add(order)
+    await db.flush()
+
+    # Create UTM event if visit_id was provided
+    if body.visit_id:
+        await _create_utm_event(db, tenant.id, body.visit_id, "order", order.id)
+
+    return OrderCreateResponse.model_validate(order)
+
+
+# ---------------------------------------------------------------------------
+# POST /storefront/{slug}/donations
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{slug}/donations", response_model=DonationCreateResponse, status_code=201)
+async def submit_donation(
+    slug: str,
+    body: DonationCreateRequest,
+    db_tenant: tuple[AsyncSession, Tenant] = Depends(get_db_with_slug),
+) -> DonationCreateResponse:
+    """Public donation submission."""
+    db, tenant = db_tenant
+
+    # Validate visit_id if provided
+    await _validate_visit(db, tenant.id, body.visit_id)
+
+    # Validate product_id if provided
+    if body.product_id is not None:
+        result = await db.execute(
+            select(Product).where(
+                Product.id == body.product_id,
+                Product.tenant_id == tenant.id,
+                Product.is_active.is_(True),
+            )
+        )
+        if result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=422, detail=f"Product {body.product_id} not found or inactive"
+            )
+
+    donation_number = await get_next_donation_number(db, str(tenant.id))
+
+    donation = Donation(
+        tenant_id=tenant.id,
+        donation_number=donation_number,
+        product_id=body.product_id,
+        donor_name=body.donor_name,
+        donor_phone=body.donor_phone,
+        donor_email=body.donor_email,
+        amount=body.amount,
+        currency=body.currency,
+        campaign=body.campaign,
+        receipt_requested=body.receipt_requested,
+        payment_notes=body.payment_notes,
+        notes=body.notes,
+        status="pending",
+        visit_id=body.visit_id,
+    )
+    db.add(donation)
+    await db.flush()
+
+    if body.visit_id:
+        await _create_utm_event(db, tenant.id, body.visit_id, "donation", donation.id)
+
+    return DonationCreateResponse.model_validate(donation)
+
+
+# ---------------------------------------------------------------------------
+# POST /storefront/{slug}/pledges
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{slug}/pledges", response_model=PledgeCreateResponse, status_code=201)
+async def submit_pledge(
+    slug: str,
+    body: PledgeCreateRequest,
+    db_tenant: tuple[AsyncSession, Tenant] = Depends(get_db_with_slug),
+) -> PledgeCreateResponse:
+    """Public pledge submission. target_date must be in the future."""
+    db, tenant = db_tenant
+
+    # Validate target_date is in the future
+    if body.target_date <= datetime.now(UTC).date():
+        raise HTTPException(status_code=422, detail="target_date must be in the future")
+
+    # Validate visit_id if provided
+    await _validate_visit(db, tenant.id, body.visit_id)
+
+    # Validate product_id if provided
+    if body.product_id is not None:
+        result = await db.execute(
+            select(Product).where(
+                Product.id == body.product_id,
+                Product.tenant_id == tenant.id,
+                Product.is_active.is_(True),
+            )
+        )
+        if result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=422, detail=f"Product {body.product_id} not found or inactive"
+            )
+
+    pledge_number = await get_next_pledge_number(db, str(tenant.id))
+
+    pledge = Pledge(
+        tenant_id=tenant.id,
+        pledge_number=pledge_number,
+        product_id=body.product_id,
+        pledgor_name=body.pledgor_name,
+        pledgor_phone=body.pledgor_phone,
+        pledgor_email=body.pledgor_email,
+        amount=body.amount,
+        currency=body.currency,
+        target_date=body.target_date,
+        status="pledged",
+        payment_notes=body.payment_notes,
+        notes=body.notes,
+        visit_id=body.visit_id,
+    )
+    db.add(pledge)
+    await db.flush()
+
+    if body.visit_id:
+        await _create_utm_event(db, tenant.id, body.visit_id, "pledge", pledge.id)
+
+    return PledgeCreateResponse.model_validate(pledge)
