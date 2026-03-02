@@ -1,7 +1,7 @@
 """AI provider abstraction layer.
 
-Protocol + concrete AnthropicProvider. All AI calls go through this module;
-route handlers and the gateway never import provider SDKs directly.
+Protocol + concrete providers (Anthropic, OpenAI). All AI calls go through
+this module; route handlers and the gateway never import provider SDKs directly.
 """
 
 from __future__ import annotations
@@ -72,11 +72,51 @@ class AnthropicProvider:
         )
 
 
+class OpenAIProvider:
+    """OpenAI provider using the official SDK."""
+
+    def __init__(self, api_key: str, model: str) -> None:
+        import openai
+
+        self._client = openai.AsyncOpenAI(api_key=api_key)
+        self._model = model
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 1024,
+    ) -> AIResponse:
+        response = await self._client.chat.completions.create(
+            model=self._model,
+            max_tokens=max_tokens,
+            messages=messages,
+        )
+
+        choice = response.choices[0]
+        usage = response.usage
+
+        return AIResponse(
+            content=choice.message.content or "",
+            tokens_in=usage.prompt_tokens if usage else 0,
+            tokens_out=usage.completion_tokens if usage else 0,
+            model=self._model,
+        )
+
+
 def get_provider() -> AIProvider:
-    """Factory: return the configured provider instance."""
+    """Factory: return the configured provider instance.
+
+    Set AI_PROVIDER to "anthropic" or "openai" in config/.env.
+    """
     provider_name = settings.AI_PROVIDER.lower()
     if provider_name == "anthropic":
         return AnthropicProvider(
+            api_key=settings.AI_API_KEY,
+            model=settings.AI_MODEL,
+        )
+    if provider_name == "openai":
+        return OpenAIProvider(
             api_key=settings.AI_API_KEY,
             model=settings.AI_MODEL,
         )
