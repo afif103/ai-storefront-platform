@@ -40,7 +40,7 @@ Captured when a visit leads to an order, donation, or pledge.
 | `created_at` | TIMESTAMPTZ | Server time |
 
 **Table**: `utm_events`
-**Trigger**: created automatically when an order/donation/pledge is submitted with a `utm_visit_id`.
+**Trigger**: created automatically when an order/donation/pledge is submitted with a `visit_id`.
 
 ### 3. AI Usage Events
 

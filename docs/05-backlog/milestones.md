@@ -83,7 +83,7 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | Admin can transition order/donation/pledge through status workflow |
 | Invalid status transitions rejected |
 | Order numbers unique per tenant (auto-generated) |
-| `utm_visit_id` links to visit record for attribution |
+| `visit_id` links to visit record for attribution |
 
 ---
 

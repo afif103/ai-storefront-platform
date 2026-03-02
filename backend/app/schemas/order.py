@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -39,6 +40,7 @@ class OrderListItem(BaseModel):
 class OrderCreateResponse(BaseModel):
     id: uuid.UUID
     order_number: str
+    items: list[Any]
     total_amount: Decimal
     currency: str
     status: str
