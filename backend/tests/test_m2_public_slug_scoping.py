@@ -78,10 +78,13 @@ async def test_public_products_with_currency_fallback(client: AsyncClient):
     """Public products include effective_currency from tenant default."""
     headers, slug = await create_tenant_get_headers(client, slug_prefix="pub-prod-c")
 
-    # Create a product without explicit currency
+    # Create a product without explicit currency.
+    # sort_order=-1 ensures it appears first in the results — the superuser
+    # test connection bypasses RLS, so products from ALL tenants accumulate
+    # across runs and can exceed the page limit.
     prod_resp = await client.post(
         "/api/v1/tenants/me/products",
-        json={"name": "Widget PPC", "price_amount": "1.500"},
+        json={"name": "Widget PPC", "price_amount": "1.500", "sort_order": -1},
         headers=headers,
     )
     assert prod_resp.status_code == 201
@@ -91,7 +94,7 @@ async def test_public_products_with_currency_fallback(client: AsyncClient):
     assert resp.status_code == 200
     items = resp.json()["items"]
     product = next((p for p in items if p["id"] == prod_id), None)
-    assert product is not None
+    assert product is not None, f"product {prod_id} not in {len(items)} items"
     # Should fall back to tenant default currency (KWD)
     assert product["effective_currency"] == "KWD"
 
