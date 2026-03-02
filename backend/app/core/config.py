@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str | None = None
     AWS_SECRET_ACCESS_KEY: str | None = None
 
+    # AI
+    AI_PROVIDER: str = "anthropic"
+    AI_API_KEY: str = ""
+    AI_MODEL: str = "claude-sonnet-4-5-20250514"
+    AI_MAX_INPUT_CHARS: int = 2000
+    AI_MAX_OUTPUT_TOKENS: int = 1024
+
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
 

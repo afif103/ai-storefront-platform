@@ -1,3 +1,5 @@
+from app.models.ai_conversation import AIConversation
+from app.models.ai_usage_log import AIUsageLog
 from app.models.audit_event import AuditEvent
 from app.models.category import Category
 from app.models.donation import Donation
@@ -14,6 +16,8 @@ from app.models.utm_event import UtmEvent
 from app.models.visit import Visit
 
 __all__ = [
+    "AIConversation",
+    "AIUsageLog",
     "AuditEvent",
     "Category",
     "Donation",
