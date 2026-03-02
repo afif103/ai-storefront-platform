@@ -1,3 +1,4 @@
+from app.models.audit_event import AuditEvent
 from app.models.category import Category
 from app.models.donation import Donation
 from app.models.media_asset import MediaAsset
@@ -13,6 +14,7 @@ from app.models.utm_event import UtmEvent
 from app.models.visit import Visit
 
 __all__ = [
+    "AuditEvent",
     "Category",
     "Donation",
     "MediaAsset",

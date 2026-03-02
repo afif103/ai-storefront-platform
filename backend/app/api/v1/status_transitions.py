@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
+from app.models.audit_event import AuditEvent
 from app.models.donation import Donation
 from app.models.order import Order
 from app.models.pledge import Pledge
@@ -74,6 +75,29 @@ def _validate_transition(
         )
 
 
+async def _log_audit(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    entity_type: str,
+    entity_id: uuid.UUID,
+    from_status: str,
+    to_status: str,
+) -> None:
+    """Insert an audit_events row for a status transition."""
+    event = AuditEvent(
+        tenant_id=tenant_id,
+        actor_user_id=user_id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action="status_transition",
+        from_status=from_status,
+        to_status=to_status,
+    )
+    db.add(event)
+    await db.flush()
+
+
 # ---------------------------------------------------------------------------
 # PATCH /tenants/me/orders/{order_id}/status
 # ---------------------------------------------------------------------------
@@ -95,11 +119,13 @@ async def transition_order_status(
         raise HTTPException(status_code=404, detail="Order not found")
 
     requested = body.status.strip().lower()
-    _validate_transition(order.status, requested, ORDER_TRANSITIONS, "order")
+    old_status = order.status
+    _validate_transition(old_status, requested, ORDER_TRANSITIONS, "order")
 
     order.status = requested
     order.updated_at = datetime.now(UTC)
     await db.flush()
+    await _log_audit(db, tenant_id, user.id, "order", order_id, old_status, requested)
     await db.refresh(order)
 
     return OrderStatusResponse.model_validate(order)
@@ -126,11 +152,13 @@ async def transition_donation_status(
         raise HTTPException(status_code=404, detail="Donation not found")
 
     requested = body.status.strip().lower()
-    _validate_transition(donation.status, requested, DONATION_TRANSITIONS, "donation")
+    old_status = donation.status
+    _validate_transition(old_status, requested, DONATION_TRANSITIONS, "donation")
 
     donation.status = requested
     donation.updated_at = datetime.now(UTC)
     await db.flush()
+    await _log_audit(db, tenant_id, user.id, "donation", donation_id, old_status, requested)
     await db.refresh(donation)
 
     return DonationStatusResponse.model_validate(donation)
@@ -157,11 +185,13 @@ async def transition_pledge_status(
         raise HTTPException(status_code=404, detail="Pledge not found")
 
     requested = body.status.strip().lower()
-    _validate_transition(pledge.status, requested, PLEDGE_TRANSITIONS, "pledge")
+    old_status = pledge.status
+    _validate_transition(old_status, requested, PLEDGE_TRANSITIONS, "pledge")
 
     pledge.status = requested
     pledge.updated_at = datetime.now(UTC)
     await db.flush()
+    await _log_audit(db, tenant_id, user.id, "pledge", pledge_id, old_status, requested)
     await db.refresh(pledge)
 
     return PledgeStatusResponse.model_validate(pledge)
