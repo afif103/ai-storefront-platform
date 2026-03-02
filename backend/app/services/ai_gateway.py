@@ -29,9 +29,9 @@ from app.services.ai_quota import (
 
 # Pricing per 1k tokens (fallback; production reads from SSM)
 _PRICING: dict[str, dict[str, float]] = {
-    "claude-sonnet-4-5-20250514": {"input_per_1k": 0.003, "output_per_1k": 0.015},
-    "claude-haiku-4-5-20251001": {"input_per_1k": 0.001, "output_per_1k": 0.005},
     "gpt-4o": {"input_per_1k": 0.005, "output_per_1k": 0.015},
+    "gpt-4o-mini": {"input_per_1k": 0.00015, "output_per_1k": 0.0006},
+    "claude-sonnet-4-5-20250514": {"input_per_1k": 0.003, "output_per_1k": 0.015},
 }
 
 _MAX_CONTEXT_TURNS = 10  # keep last N user+assistant turn pairs

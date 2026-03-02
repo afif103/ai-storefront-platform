@@ -65,7 +65,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 |---|------|-------|-----|
 | 4.1 | Create `ai_conversations` + `ai_usage_log` tables + RLS + migrations | Claude | Tables per `data-model.md`, RLS policies, indexes |
 | 4.2 | Implement AI gateway (`app/services/ai_gateway.py`) | Claude | Quota reserve → provider call → adjust/rollback → log. Matches `ai-architecture.md` pseudocode. |
-| 4.3 | Implement provider abstraction layer | Claude | `AIProvider` protocol + one concrete implementation (Anthropic or OpenAI). Configurable via SSM. |
+| 4.3 | Implement provider abstraction layer | Claude | `AIProvider` protocol + OpenAI (default) and Anthropic (fallback). Configurable via SSM. |
 | 4.4 | Implement Redis quota check with reserve/rollback | Claude | INCRBY estimated → call → DECRBY on failure OR adjust delta on success. Integration test proves rollback. |
 | 4.5 | Implement soft/hard limit logic + notification | Claude | Soft limit → Celery task (deduped). Hard limit → 429. |
 | 4.6 | Implement tenant system prompt builder | Claude | Builds prompt with tenant name + catalog summary. Catalog cached in Redis (5-min TTL). |

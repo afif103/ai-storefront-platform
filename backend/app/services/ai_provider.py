@@ -1,7 +1,8 @@
 """AI provider abstraction layer.
 
-Protocol + concrete providers (Anthropic, OpenAI). All AI calls go through
-this module; route handlers and the gateway never import provider SDKs directly.
+Protocol + concrete providers. Default is OpenAI; Anthropic kept as optional
+fallback. All AI calls go through this module; route handlers and the gateway
+never import provider SDKs directly.
 """
 
 from __future__ import annotations
@@ -107,7 +108,7 @@ class OpenAIProvider:
 def get_provider() -> AIProvider:
     """Factory: return the configured provider instance.
 
-    Set AI_PROVIDER to "anthropic" or "openai" in config/.env.
+    Default: "openai". Set AI_PROVIDER to "anthropic" for fallback.
     """
     provider_name = settings.AI_PROVIDER.lower()
     if provider_name == "anthropic":

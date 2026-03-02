@@ -57,7 +57,7 @@ Every successful AI call logs to `ai_usage_log`:
 | `tenant_id` | UUID FK | RLS-enforced |
 | `user_id` | UUID FK nullable | Null for anonymous storefront visitors |
 | `conversation_id` | UUID FK | Links to `ai_conversations` |
-| `model` | TEXT | Provider model identifier (e.g., `gpt-4o`, `claude-sonnet`) |
+| `model` | TEXT | Provider model identifier (e.g., `gpt-4o`, `gpt-4o-mini`) |
 | `tokens_in` | INT | Input tokens |
 | `tokens_out` | INT | Output tokens |
 | `cost_usd` | NUMERIC(10,6) | Calculated from provider pricing |

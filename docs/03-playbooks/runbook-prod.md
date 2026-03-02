@@ -123,11 +123,13 @@ aws logs tail /prod/backend --since 30m --region me-south-1 \
 **Symptoms**: AI chat returning errors, `ai_gateway` logs show provider timeouts.
 
 **Steps**:
-1. Check provider status page (Anthropic / OpenAI).
-2. If provider is down: the AI gateway returns a user-friendly fallback message. No action needed unless prolonged.
-3. If prolonged (>30 min): switch provider via SSM config if alternate provider is configured:
+1. Check OpenAI status page (https://status.openai.com).
+2. If provider is down: the AI gateway returns a user-friendly 502 error. No action needed unless prolonged.
+3. If prolonged (>30 min): switch to Anthropic fallback via SSM:
    ```bash
-   aws ssm put-parameter --name /prod/ai/provider --value "openai" \
+   aws ssm put-parameter --name /prod/ai/provider --value "anthropic" \
+     --type String --overwrite --region me-south-1
+   aws ssm put-parameter --name /prod/ai/model --value "claude-sonnet-4-5-20250514" \
      --type String --overwrite --region me-south-1
    ```
    Then restart backend tasks to pick up new config.

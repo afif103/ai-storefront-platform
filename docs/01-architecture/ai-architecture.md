@@ -24,7 +24,7 @@ The platform provides a conversational AI assistant on each tenant's storefront.
                                                         ▼
                                           ┌───────────────────────────┐
                                           │    Provider Call           │
-                                          │  (Anthropic / OpenAI)     │
+                                          │  (OpenAI — default)       │
                                           │  Tenant-scoped sys prompt  │
                                           │  Max tokens capped         │
                                           └─────────────┬─────────────┘
@@ -187,16 +187,16 @@ class AIProvider(Protocol):
         timeout: int,
     ) -> ProviderResult: ...
 
-class AnthropicProvider(AIProvider):
-    """Wraps the Anthropic SDK."""
+class OpenAIProvider(AIProvider):
+    """Wraps the OpenAI SDK (default)."""
     ...
 
-class OpenAIProvider(AIProvider):
-    """Wraps the OpenAI SDK."""
+class AnthropicProvider(AIProvider):
+    """Wraps the Anthropic SDK (optional fallback)."""
     ...
 ```
 
-MVP ships with one provider (configurable via `/{env}/ai/provider` in SSM). The abstraction allows switching providers without changing gateway logic.
+Default provider is OpenAI (`AI_PROVIDER=openai`, `AI_MODEL=gpt-4o`). Anthropic is available as a fallback. Configurable via `/{env}/ai/provider` in SSM.
 
 ---
 
@@ -205,8 +205,9 @@ MVP ships with one provider (configurable via `/{env}/ai/provider` in SSM). The 
 ```python
 # Pricing table (loaded from config, not hardcoded)
 PRICING = {
-    "claude-sonnet": {"input_per_1k": 0.003, "output_per_1k": 0.015},
     "gpt-4o": {"input_per_1k": 0.005, "output_per_1k": 0.015},
+    "gpt-4o-mini": {"input_per_1k": 0.00015, "output_per_1k": 0.0006},
+    "claude-sonnet-4-5-20250514": {"input_per_1k": 0.003, "output_per_1k": 0.015},
 }
 
 def calculate_cost(model: str, tokens_in: int, tokens_out: int) -> Decimal:

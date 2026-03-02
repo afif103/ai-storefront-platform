@@ -32,9 +32,9 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str | None = None
 
     # AI
-    AI_PROVIDER: str = "anthropic"
+    AI_PROVIDER: str = "openai"
     AI_API_KEY: str = ""
-    AI_MODEL: str = "claude-sonnet-4-5-20250514"
+    AI_MODEL: str = "gpt-4o"
     AI_MAX_INPUT_CHARS: int = 2000
     AI_MAX_OUTPUT_TOKENS: int = 1024
 

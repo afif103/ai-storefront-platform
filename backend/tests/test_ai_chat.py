@@ -29,7 +29,7 @@ def _mock_provider_success() -> AsyncMock:
             content="Here are your products...",
             tokens_in=50,
             tokens_out=30,
-            model="claude-sonnet-4-5-20250514",
+            model="gpt-4o",
         )
     )
     return provider
@@ -100,7 +100,7 @@ async def test_ai_chat_success(client: AsyncClient, db: AsyncSession):
     log = log_result.scalar_one()
     assert log.tokens_in == 50
     assert log.tokens_out == 30
-    assert log.model == "claude-sonnet-4-5-20250514"
+    assert log.model == "gpt-4o"
 
 
 async def test_ai_chat_continues_conversation(client: AsyncClient):
