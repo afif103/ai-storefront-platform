@@ -31,6 +31,7 @@ from app.services.ai_quota import (
 _PRICING: dict[str, dict[str, float]] = {
     "gpt-4o": {"input_per_1k": 0.005, "output_per_1k": 0.015},
     "gpt-4o-mini": {"input_per_1k": 0.00015, "output_per_1k": 0.0006},
+    "llama-3.3-70b-versatile": {"input_per_1k": 0.00059, "output_per_1k": 0.00079},
     "claude-sonnet-4-5-20250514": {"input_per_1k": 0.003, "output_per_1k": 0.015},
 }
 

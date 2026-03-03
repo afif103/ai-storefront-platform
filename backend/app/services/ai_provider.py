@@ -74,12 +74,15 @@ class AnthropicProvider:
 
 
 class OpenAIProvider:
-    """OpenAI provider using the official SDK."""
+    """OpenAI-compatible provider. Works with OpenAI, Groq, and other
+    services that expose the OpenAI chat completions API."""
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(
+        self, api_key: str, model: str, base_url: str | None = None
+    ) -> None:
         import openai
 
-        self._client = openai.AsyncOpenAI(api_key=api_key)
+        self._client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._model = model
 
     async def chat(
@@ -105,10 +108,13 @@ class OpenAIProvider:
         )
 
 
+_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+
+
 def get_provider() -> AIProvider:
     """Factory: return the configured provider instance.
 
-    Default: "openai". Set AI_PROVIDER to "anthropic" for fallback.
+    Supported: "openai" (default), "groq", "anthropic".
     """
     provider_name = settings.AI_PROVIDER.lower()
     if provider_name == "anthropic":
@@ -120,5 +126,11 @@ def get_provider() -> AIProvider:
         return OpenAIProvider(
             api_key=settings.AI_API_KEY,
             model=settings.AI_MODEL,
+        )
+    if provider_name == "groq":
+        return OpenAIProvider(
+            api_key=settings.AI_API_KEY,
+            model=settings.AI_MODEL,
+            base_url=_GROQ_BASE_URL,
         )
     raise ValueError(f"Unknown AI provider: {provider_name}")
