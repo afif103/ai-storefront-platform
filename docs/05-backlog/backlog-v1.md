@@ -76,15 +76,19 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ---
 
-## M5 — Attribution & Dashboard
+## M5 — Attribution & Dashboard (Analytics/Funnel)
 
 | # | Task | Owner | DoD |
 |---|------|-------|-----|
-| 5.1 | Implement dashboard summary endpoint | Claude | Returns counts + totals (KWD) for orders/donations/pledges, visits, conversion rate, AI usage |
-| 5.2 | Implement conversions-by-channel endpoint | Claude | Groups conversions by `utm_source`, returns visit count + conversion count + rate |
-| 5.3 | Implement AI usage dashboard endpoint | Claude | Returns tokens used + cost (USD) per month for the tenant |
-| 5.4 | Build tenant dashboard UI (Next.js) | Claude | Charts for orders over time, conversion by channel, AI cost. Responsive. |
-| 5.5 | Write dashboard integration tests | Claude | Data matches manual DB counts, RLS filters correctly, empty state handled |
+| 5.1 | Analytics DB schema: `attribution_visitors` / `attribution_sessions` / `attribution_events` tables + indexes | Claude | Alembic migration runs clean, indexes on tenant_id + occurred_at + event_name, reversible downgrade |
+| 5.2 | RLS policies: public INSERT-only; tenant/admin SELECT requires authenticated user context | Claude | Public can insert analytics events, public cannot read. Tenant can read own data only. Cross-tenant isolation test passes. |
+| 5.3 | Public batch ingest endpoint: `POST /api/v1/storefront/{slug}/analytics/events` (rate-limited) | Claude | Accepts visitor_id + session_id + utm/referrer + events array. Rate-limited per session+IP. Upserts visitor/session, inserts events. |
+| 5.4 | Dedupe/spam guard v1: `storefront_view` once per 10 min per session | Claude | Duplicate `storefront_view` within 10-min window is skipped. Index-backed query. |
+| 5.5 | Dashboard analytics summary endpoint: `GET /api/v1/tenants/me/analytics/summary` | Claude | Returns visitors, sessions, event counts, funnel conversion rates, daily series. Date range validated (max 180 days). |
+| 5.6 | Dashboard UI Analytics page (KPI cards + funnel + optional daily series) | Claude | Next.js page consuming summary API. Responsive. Date range picker. |
+| 5.7 | Storefront instrumentation (view/product/cart/checkout/submit + chat open/message) | Claude | `lib/analytics.ts` with visitor_id localStorage, session_id rolling expiry, batch flush to ingest endpoint. |
+| 5.8 | Dashboard integration tests (RLS + correctness vs DB counts) | Claude | Happy path ingest, dedupe, invalid event rejection, RLS isolation, summary correctness. |
+| 5.9 | _(Optional)_ CSV export (bounded date range, admin-only) | Claude | Export analytics events as CSV. Date range capped. RLS ensures tenant isolation. |
 
 ---
 
@@ -161,9 +165,9 @@ Ordered epics M1–M9. Each task has a suggested owner:
 | M2 Storefront | 10 | 8 | 2 | 0 |
 | M3 Structured Capture | 10 | 10 | 0 | 0 |
 | M4 AI Assistant | 10 | 9 | 1 | 0 |
-| M5 Dashboard | 5 | 5 | 0 | 0 |
+| M5 Attribution & Dashboard | 9 | 9 | 0 | 0 |
 | M6 Admin Panel | 7 | 7 | 0 | 0 |
 | M7 Notifications | 7 | 6 | 1 | 0 |
 | M8 Infra & DevOps | 13 | 4 | 9 | 0 |
 | M9 Hardening | 10 | 6 | 1 | 3 |
-| **Total** | **83** | **64** | **16** | **3** |
+| **Total** | **87** | **68** | **16** | **3** |

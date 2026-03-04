@@ -105,10 +105,10 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 
 ---
 
-### M5 — Attribution & Dashboard
+### M5 — Attribution & Dashboard (Analytics/Funnel)
 **Priority**: P1
-**Target**: 1.5 weeks
-**Dependencies**: M3 (needs orders/donations data), M4 (needs AI usage data)
+**Target**: 2 weeks
+**Dependencies**: M3 (needs orders/donations data), M4 (needs AI usage data + storefront chat events)
 
 | Acceptance Criteria |
 |---------------------|
@@ -117,6 +117,13 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | Conversions broken down by UTM source/campaign |
 | AI usage dashboard shows tokens used + cost (USD) per month |
 | Data matches reality (manual DB count matches dashboard) |
+| Event-based funnel analytics: storefront_view → product_view → add_to_cart → begin_checkout → submit_order/donation/pledge |
+| Public batch ingest endpoint accepts storefront events (rate-limited, deduped) |
+| Attribution via UTM params + referrer tracked per session |
+| Dashboard analytics summary endpoint returns funnel conversion rates + daily series |
+| Analytics page on dashboard consumes summary API (KPI cards + funnel chart) |
+| RLS verified: public can insert analytics only (no reads); tenant can read own data only |
+| Storefront instrumentation tracks view/product/cart/checkout/submit + chat open/message events |
 
 ---
 
@@ -196,7 +203,7 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | M2 Storefront | 2 weeks | Week 4 |
 | M3 Structured Capture | 2 weeks | Week 6 |
 | M4 AI Assistant | 2 weeks | Week 8 |
-| M5 Dashboard | 1.5 weeks | Week 9.5 |
+| M5 Attribution & Dashboard | 2 weeks | Week 10 |
 | M6 Admin Panel | 1.5 weeks | Week 11 |
 | M7 Notifications | 1 week | Week 12 |
 | M8 Infra (parallel) | — | — |
