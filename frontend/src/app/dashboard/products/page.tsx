@@ -30,6 +30,7 @@ function ProductsContent() {
   const [loading, setLoading] = useState(true);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState("");
   const searchParams = useSearchParams();
 
   const fetchProducts = useCallback(async () => {
@@ -76,18 +77,21 @@ function ProductsContent() {
         next.delete(id);
         return next;
       });
+      showToast(`Deleted "${name}"`);
     } else {
       setError(`Failed to delete "${name}": ${result.detail}`);
     }
   }
 
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  }
+
   async function handleBulkDelete() {
     if (selected.size === 0) return;
-    const names = products
-      .filter((p) => selected.has(p.id))
-      .map((p) => p.name);
-    if (!confirm(`Delete ${selected.size} product(s)?\n${names.join(", ")}`))
-      return;
+    const count = selected.size;
+    if (!confirm(`Delete ${count} product(s)?`)) return;
 
     const ids = [...selected];
     setDeletingIds(new Set(ids));
@@ -107,9 +111,9 @@ function ProductsContent() {
       const deletedSet = new Set(ids);
       setProducts((prev) => prev.filter((p) => !deletedSet.has(p.id)));
       setSelected(new Set());
+      showToast(`Deleted ${result.data.deleted} product(s)`);
     } else {
       setError(`Bulk delete failed: ${result.detail}`);
-      await fetchProducts();
     }
   }
 
@@ -257,6 +261,12 @@ function ProductsContent() {
           </div>
         )}
       </main>
+
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

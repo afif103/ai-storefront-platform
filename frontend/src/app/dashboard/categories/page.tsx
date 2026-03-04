@@ -27,6 +27,7 @@ function CategoriesContent() {
   const [loading, setLoading] = useState(true);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState("");
   const searchParams = useSearchParams();
 
   const fetchCategories = useCallback(async () => {
@@ -73,18 +74,21 @@ function CategoriesContent() {
         next.delete(id);
         return next;
       });
+      showToast(`Deleted "${name}"`);
     } else {
       setError(`Failed to delete "${name}": ${result.detail}`);
     }
   }
 
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  }
+
   async function handleBulkDelete() {
     if (selected.size === 0) return;
-    const names = categories
-      .filter((c) => selected.has(c.id))
-      .map((c) => c.name);
-    if (!confirm(`Delete ${selected.size} category(ies)?\n${names.join(", ")}`))
-      return;
+    const count = selected.size;
+    if (!confirm(`Delete ${count} category(ies)?`)) return;
 
     const ids = [...selected];
     setDeletingIds(new Set(ids));
@@ -104,9 +108,9 @@ function CategoriesContent() {
       const deletedSet = new Set(ids);
       setCategories((prev) => prev.filter((c) => !deletedSet.has(c.id)));
       setSelected(new Set());
+      showToast(`Deleted ${result.data.deleted} category(ies)`);
     } else {
       setError(`Bulk delete failed: ${result.detail}`);
-      await fetchCategories();
     }
   }
 
@@ -259,6 +263,12 @@ function CategoriesContent() {
           </div>
         )}
       </main>
+
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
