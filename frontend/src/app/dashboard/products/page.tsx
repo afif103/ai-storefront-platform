@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { RequireAuth } from "@/components/require-auth";
@@ -28,37 +28,105 @@ function ProductsContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const searchParams = useSearchParams();
 
-  // Re-fetch when searchParams change (create/edit append ?t=<timestamp>)
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    const result = await apiFetch<PaginatedProducts>(
+      "/api/v1/tenants/me/products",
+    );
+    if (result.ok) {
+      setProducts(result.data.items);
+    } else {
+      setError(result.detail);
+    }
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
-      const result = await apiFetch<PaginatedProducts>(
-        "/api/v1/tenants/me/products",
-      );
+    (async () => {
+      await fetchProducts();
       if (cancelled) return;
-      if (result.ok) {
-        setProducts(result.data.items);
-      } else {
-        setError(result.detail);
-      }
-      setLoading(false);
-    }
-    load();
+    })();
     return () => { cancelled = true; };
-  }, [searchParams]);
+  }, [searchParams, fetchProducts]);
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this product?")) return;
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete "${name}"?`)) return;
+    setDeletingIds((prev) => new Set(prev).add(id));
+    setError("");
+
     const result = await apiFetch(`/api/v1/tenants/me/products/${id}`, {
       method: "DELETE",
     });
+
+    setDeletingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
     if (result.ok) {
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } else {
-      setError(result.detail);
+      setError(`Failed to delete "${name}": ${result.detail}`);
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selected.size === 0) return;
+    const names = products
+      .filter((p) => selected.has(p.id))
+      .map((p) => p.name);
+    if (!confirm(`Delete ${selected.size} product(s)?\n${names.join(", ")}`))
+      return;
+
+    const ids = [...selected];
+    setDeletingIds(new Set(ids));
+    setError("");
+
+    const result = await apiFetch<{ deleted: number }>(
+      "/api/v1/tenants/me/products/bulk-delete",
+      {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      },
+    );
+
+    setDeletingIds(new Set());
+
+    if (result.ok) {
+      const deletedSet = new Set(ids);
+      setProducts((prev) => prev.filter((p) => !deletedSet.has(p.id)));
+      setSelected(new Set());
+    } else {
+      setError(`Bulk delete failed: ${result.detail}`);
+      await fetchProducts();
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === products.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(products.map((p) => p.id)));
     }
   }
 
@@ -73,12 +141,23 @@ function ProductsContent() {
             <span className="text-gray-300">/</span>
             <h1 className="text-lg font-semibold text-gray-900">Products</h1>
           </div>
-          <Link
-            href="/dashboard/products/new"
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Add Product
-          </Link>
+          <div className="flex items-center gap-2">
+            {selected.size > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                disabled={deletingIds.size > 0}
+                className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                Delete {selected.size} selected
+              </button>
+            )}
+            <Link
+              href="/dashboard/products/new"
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Add Product
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -106,6 +185,14 @@ function ProductsContent() {
             <table className="w-full text-left text-sm">
               <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
+                  <th className="px-4 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={selected.size === products.length && products.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded"
+                    />
+                  </th>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3">Active</th>
@@ -114,44 +201,57 @@ function ProductsContent() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {products.map((prod) => (
-                  <tr key={prod.id}>
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {prod.name}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {prod.price_amount} {prod.effective_currency}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          prod.is_active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {prod.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{prod.sort_order}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/dashboard/products/${prod.id}/edit`}
-                          className="text-blue-600 hover:underline"
+                {products.map((prod) => {
+                  const isDeleting = deletingIds.has(prod.id);
+                  return (
+                    <tr key={prod.id} className={isDeleting ? "opacity-50" : ""}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(prod.id)}
+                          onChange={() => toggleSelect(prod.id)}
+                          disabled={isDeleting}
+                          className="rounded"
+                        />
+                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {prod.name}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {prod.price_amount} {prod.effective_currency}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                            prod.is_active
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
                         >
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(prod.id)}
-                          className="text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {prod.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{prod.sort_order}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/dashboard/products/${prod.id}/edit`}
+                            className="text-blue-600 hover:underline"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(prod.id, prod.name)}
+                            disabled={isDeleting}
+                            className="text-red-600 hover:underline disabled:opacity-50"
+                          >
+                            {isDeleting ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

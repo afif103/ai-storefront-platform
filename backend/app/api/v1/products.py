@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +12,7 @@ from app.core.dependencies import get_current_user, get_db_with_tenant, require_
 from app.models.product import Product
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.schemas.common import PaginatedResponse
+from app.schemas.common import BulkDeleteRequest, BulkDeleteResponse, PaginatedResponse
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 
 router = APIRouter()
@@ -167,6 +168,24 @@ async def update_product(
     await db.flush()
     await db.refresh(product)
     return _product_response(product, tenant)
+
+
+@router.post("/bulk-delete", response_model=BulkDeleteResponse)
+async def bulk_delete_products(
+    body: BulkDeleteRequest,
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> BulkDeleteResponse:
+    """Delete multiple products in a single transaction. RLS scopes to tenant."""
+    db, tenant_id = db_tenant
+    await require_role("admin", db, tenant_id, user)
+
+    result = await db.execute(
+        sa_delete(Product).where(Product.id.in_(body.ids)).returning(Product.id)
+    )
+    deleted_ids = result.fetchall()
+    await db.flush()
+    return BulkDeleteResponse(deleted=len(deleted_ids))
 
 
 @router.delete("/{product_id}", status_code=204)

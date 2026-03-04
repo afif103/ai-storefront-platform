@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +12,7 @@ from app.core.dependencies import get_current_user, get_db_with_tenant, require_
 from app.models.category import Category
 from app.models.user import User
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
-from app.schemas.common import PaginatedResponse
+from app.schemas.common import BulkDeleteRequest, BulkDeleteResponse, PaginatedResponse
 
 router = APIRouter()
 
@@ -124,6 +125,24 @@ async def update_category(
     await db.flush()
     await db.refresh(category)
     return CategoryResponse.model_validate(category)
+
+
+@router.post("/bulk-delete", response_model=BulkDeleteResponse)
+async def bulk_delete_categories(
+    body: BulkDeleteRequest,
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> BulkDeleteResponse:
+    """Delete multiple categories in a single transaction. RLS scopes to tenant."""
+    db, tenant_id = db_tenant
+    await require_role("admin", db, tenant_id, user)
+
+    result = await db.execute(
+        sa_delete(Category).where(Category.id.in_(body.ids)).returning(Category.id)
+    )
+    deleted_ids = result.fetchall()
+    await db.flush()
+    return BulkDeleteResponse(deleted=len(deleted_ids))
 
 
 @router.delete("/{category_id}", status_code=204)
