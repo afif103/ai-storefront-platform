@@ -23,6 +23,7 @@ from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
 from app.models.utm_event import UtmEvent
 from app.models.visit import Visit
+from app.schemas.analytics import AnalyticsIngestRequest, AnalyticsIngestResponse
 from app.schemas.category import CategoryResponse
 from app.schemas.common import PaginatedResponse
 from app.schemas.donation import DonationCreateRequest, DonationCreateResponse
@@ -36,6 +37,7 @@ from app.schemas.storefront_ai_chat import (
     StorefrontAIChatUsage,
 )
 from app.schemas.visit import VisitCreateRequest, VisitCreateResponse
+from app.services.analytics_ingest import handle_analytics_ingest
 from app.services.ip_hash import hash_ip
 from app.services.numbering import (
     get_next_donation_number,
@@ -552,3 +554,20 @@ async def storefront_ai_chat(
             cost_usd=result.cost_usd,
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# POST /storefront/{slug}/analytics/events
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{slug}/analytics/events", response_model=AnalyticsIngestResponse)
+async def ingest_analytics_events(
+    slug: str,
+    body: AnalyticsIngestRequest,
+    request: Request,
+    db_tenant: tuple[AsyncSession, Tenant] = Depends(get_db_with_slug),
+) -> AnalyticsIngestResponse:
+    """Public analytics event ingest. Rate-limited, deduped for storefront_view."""
+    db, tenant = db_tenant
+    return await handle_analytics_ingest(db, tenant, body, request)

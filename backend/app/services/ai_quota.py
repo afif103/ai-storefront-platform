@@ -67,6 +67,24 @@ async def check_session_rate_limit(tenant_id: str, session_id: str) -> bool:
         await r.aclose()
 
 
+_ANALYTICS_RATE_LIMIT_MESSAGES = 60  # per session+ip per 5-min window
+
+
+async def check_analytics_rate_limit(
+    tenant_id: str, session_id: str, ip_hash: str
+) -> bool:
+    """Return True if an analytics ingest session is within rate limit."""
+    r = await _get_redis()
+    try:
+        key = f"analytics:rate:{tenant_id}:{session_id}:{ip_hash}"
+        count = await r.incr(key)
+        if count == 1:
+            await r.expire(key, _RATE_LIMIT_WINDOW)
+        return count <= _ANALYTICS_RATE_LIMIT_MESSAGES
+    finally:
+        await r.aclose()
+
+
 async def reserve_tokens(tenant_id: str, estimated: int, hard_limit: int) -> QuotaResult:
     """Reserve estimated tokens. Returns whether the request is allowed."""
     if hard_limit <= 0:
