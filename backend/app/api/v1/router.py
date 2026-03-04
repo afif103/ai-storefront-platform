@@ -6,6 +6,7 @@ from app.api.v1.admin_lists import router as admin_lists_router
 from app.api.v1.ai_chat import router as ai_chat_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.categories import router as categories_router
+from app.api.v1.dashboard_analytics import router as dashboard_analytics_router
 from app.api.v1.health import router as health_router
 from app.api.v1.media import router as media_router
 from app.api.v1.members import router as members_router
@@ -32,10 +33,9 @@ api_v1_router.include_router(
 api_v1_router.include_router(
     status_transitions_router, prefix="/tenants/me", tags=["status-transitions"]
 )
+api_v1_router.include_router(admin_lists_router, prefix="/tenants/me", tags=["admin-lists"])
+api_v1_router.include_router(ai_chat_router, prefix="/tenants/me", tags=["ai-chat"])
 api_v1_router.include_router(
-    admin_lists_router, prefix="/tenants/me", tags=["admin-lists"]
-)
-api_v1_router.include_router(
-    ai_chat_router, prefix="/tenants/me", tags=["ai-chat"]
+    dashboard_analytics_router, prefix="/tenants/me", tags=["dashboard-analytics"]
 )
 api_v1_router.include_router(public_storefront_router, prefix="/storefront", tags=["storefront"])
