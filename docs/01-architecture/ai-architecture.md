@@ -1,7 +1,14 @@
 # AI Architecture
 
 ## Overview
-The platform provides a conversational AI assistant on each tenant's storefront. All AI calls are routed through a single gateway service that enforces quotas, logs usage, and isolates tenant context.
+The platform provides two AI chat interfaces, each with a dedicated gateway, tables, and system prompt, but sharing the same provider abstraction and per-tenant quota pool:
+
+| Audience | Endpoint | Gateway | Tables | Auth | Context Turns |
+|----------|----------|---------|--------|------|---------------|
+| **Dashboard** (tenant members) | `POST /tenants/me/ai/chat` | `ai_gateway.py` | `ai_conversations`, `ai_usage_log` | JWT (member+) | Last 10 |
+| **Storefront** (anonymous buyers) | `POST /storefront/{slug}/ai/chat` | `storefront_ai_gateway.py` | `storefront_ai_conversations`, `storefront_ai_usage_log` | None (public) | Last 6 |
+
+The storefront chat is **read-only** — the system prompt explicitly forbids creating orders, donations, or pledges. It uses a session-based rate limit (10 messages / 5 min per `session_id`) and fewer context turns to control costs.
 
 ---
 
@@ -196,7 +203,7 @@ class AnthropicProvider(AIProvider):
     ...
 ```
 
-Default provider is OpenAI (`AI_PROVIDER=openai`, `AI_MODEL=gpt-4o`). Anthropic is available as a fallback. Configurable via `/{env}/ai/provider` in SSM.
+Default provider is OpenAI (`AI_PROVIDER=openai`, `AI_MODEL=gpt-4o`). Groq is available as a fast/free-tier alternative (`AI_PROVIDER=groq`, `AI_MODEL=llama-3.3-70b-versatile`). Anthropic support planned. Configurable via env vars or `/{env}/ai/provider` in SSM.
 
 ---
 

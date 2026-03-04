@@ -462,9 +462,49 @@ Allowed: `pledged→partially_fulfilled|lapsed`, `partially_fulfilled→fulfille
 
 ## AI Chat
 
-### `POST /storefront/{slug}/ai/chat`
-**Auth**: public (rate-limited: 10 messages / 5 min per session)
+Two audiences share the same provider/quota infrastructure but use separate tables and endpoints.
 
+### `POST /tenants/me/ai/chat`
+**Auth**: member+
+
+Dashboard AI assistant for logged-in tenant members. Uses `ai_conversations` / `ai_usage_log` tables. Context: last 10 turns.
+
+**Request**:
+```json
+{
+  "message": "How many orders came in today?"
+}
+```
+
+**200 Response**:
+```json
+{
+  "conversation_id": "conv-uuid",
+  "reply": "You received 5 orders today totaling 42.500 KWD.",
+  "usage": {
+    "tokens_in": 280,
+    "tokens_out": 45,
+    "cost_usd": "0.002075"
+  }
+}
+```
+
+**Error Codes**:
+| Status | `type` | Meaning |
+|--------|--------|---------|
+| `422` | `validation_error` | Message empty or exceeds max length |
+| `429` | `rate_limited` | Per-user rate limit exceeded |
+| `429` | `quota_exhausted` | Tenant monthly AI token quota reached |
+| `502` | `provider_error` | AI provider unavailable |
+
+---
+
+### `POST /storefront/{slug}/ai/chat`
+**Auth**: public (anonymous, rate-limited: 10 messages / 5 min per `session_id`)
+
+Buyer-facing read-only chat. Uses separate `storefront_ai_conversations` / `storefront_ai_usage_log` tables. Context: last 6 turns. The assistant can describe products and answer questions but **cannot** create orders, donations, or pledges.
+
+**Request**:
 ```json
 {
   "session_id": "visitor-session-uuid",
@@ -475,13 +515,25 @@ Allowed: `pledged→partially_fulfilled|lapsed`, `partially_fulfilled→fulfille
 **200 Response**:
 ```json
 {
-  "reply": "We have several products including...",
   "conversation_id": "conv-uuid",
-  "tokens_used": 342
+  "reply": "We have several products including...",
+  "usage": {
+    "tokens_in": 340,
+    "tokens_out": 52,
+    "cost_usd": "0.002480"
+  }
 }
 ```
 
-**Error Codes**: `429` (rate limit or quota exhausted — body includes `"type": "quota_exhausted"` or `"type": "rate_limited"`).
+**Error Codes**:
+| Status | `type` | Meaning |
+|--------|--------|---------|
+| `422` | `validation_error` | Message empty or exceeds max length |
+| `429` | `rate_limited` | Session rate limit (10 msgs / 5 min) exceeded |
+| `429` | `quota_exhausted` | Tenant monthly AI token quota reached |
+| `502` | `provider_error` | AI provider unavailable |
+
+**Safety**: The storefront chat is strictly read-only. The system prompt instructs the AI to direct buyers to checkout/donate/pledge pages rather than performing actions itself.
 
 ---
 

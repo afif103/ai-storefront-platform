@@ -85,9 +85,21 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 |-----------|--------|
 | M1 Auth & Tenancy | Complete (Cognito mock mode for local dev) |
 | M2 Storefront & Catalog | Complete (categories, products, public storefront) |
-| M3–M9 | Not started |
+| M3 Structured Capture | Complete |
+| M3.5 Conversion UI | Complete |
+| M4 AI Assistant | Complete |
+| M4.2 Storefront Chat | Complete |
+| M5–M9 | Not started |
 
-**M2 scope delivered**: Categories, products, storefront config, media assets, presigned S3 uploads, UTM visit tracking, public storefront with branding. Full dashboard CRUD + anonymous storefront browsing. 27 integration tests (26 pass, 1 skip).
+**M2**: Categories, products, storefront config, media assets, presigned S3 uploads, UTM visit tracking, public storefront with branding. Full dashboard CRUD + anonymous storefront browsing.
+
+**M3**: Orders, donations, pledges tables + public submit endpoints + admin status transitions (with `audit_events` logging) + tenant-scoped numbering (ORD/DON/PLG-00001). 84 integration tests.
+
+**M3.5**: Storefront conversion UI — cart/checkout, donate, and pledge pages. Dashboard list views with status transition controls.
+
+**M4**: Dashboard AI assistant (`/dashboard/assistant`) with per-tenant quota enforcement, rate limiting, and usage logging. Provider abstraction (OpenAI default, Groq supported). All calls through `ai_gateway.py`.
+
+**M4.2**: Public buyer-facing storefront chat endpoint (`POST /storefront/{slug}/ai/chat`) + floating chat bubble widget. Session-based rate limit (10 msgs / 5 min). Read-only — no order/donation/pledge creation.
 
 ## Running Tests
 
@@ -115,5 +127,19 @@ cd frontend && npm run build
 - **AI**: Metered usage with per-tenant quotas in Redis. All calls through AI gateway service.
 - **Monetary**: `NUMERIC(12,3)` for KWD (3 decimal places). Products store an optional `currency` (ISO 4217); when null, `effective_currency` falls back to `tenant.default_currency`.
 - **Deployment**: AWS ECS Fargate, RDS, ElastiCache, S3, CloudFront + WAF.
+
+## Local AI Setup
+
+The AI assistant requires a provider API key. Configure in your `.env` (never `.env.example`):
+
+```
+AI_PROVIDER=openai          # "openai" (default) or "groq"
+AI_API_KEY=your-key-here    # NEVER commit real keys
+AI_MODEL=gpt-4o             # or gpt-4o-mini, llama-3.3-70b-versatile (Groq)
+AI_MAX_INPUT_CHARS=4000
+AI_MAX_OUTPUT_TOKENS=400
+```
+
+**Key safety**: `.env.example` must only contain placeholders. If a real key is ever committed, rotate it immediately in the provider dashboard.
 
 See `docs/` for full architecture documentation.

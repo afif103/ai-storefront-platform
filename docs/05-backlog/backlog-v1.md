@@ -61,18 +61,18 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M4 — AI Assistant
 
-| # | Task | Owner | DoD |
-|---|------|-------|-----|
-| 4.1 | Create `ai_conversations` + `ai_usage_log` tables + RLS + migrations | Claude | Tables per `data-model.md`, RLS policies, indexes |
-| 4.2 | Implement AI gateway (`app/services/ai_gateway.py`) | Claude | Quota reserve → provider call → adjust/rollback → log. Matches `ai-architecture.md` pseudocode. |
-| 4.3 | Implement provider abstraction layer | Claude | `AIProvider` protocol + OpenAI (default) and Anthropic (fallback). Configurable via SSM. |
-| 4.4 | Implement Redis quota check with reserve/rollback | Claude | INCRBY estimated → call → DECRBY on failure OR adjust delta on success. Integration test proves rollback. |
-| 4.5 | Implement soft/hard limit logic + notification | Claude | Soft limit → Celery task (deduped). Hard limit → 429. |
-| 4.6 | Implement tenant system prompt builder | Claude | Builds prompt with tenant name + catalog summary. Catalog cached in Redis (5-min TTL). |
-| 4.7 | Build AI chat widget (Next.js storefront component) | Claude | Chat UI, sends messages, displays responses, shows "quota exhausted" on 429 |
-| 4.8 | Implement conversation context management | Claude | Loads last 10 turns from `ai_conversations.messages` JSONB, truncates if context window exceeded |
-| 4.9 | Set up AI pricing config in SSM | Kimi | `/{env}/ai/pricing` populated with provider pricing. `/{env}/ai/provider` set. |
-| 4.10 | Write AI gateway integration tests | Claude | Quota enforcement, rollback on failure, usage logging, rate limiting |
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 4.1 | Create `ai_conversations` + `ai_usage_log` tables + RLS + migrations | Claude | **DONE** | Tables per `data-model.md`, RLS policies, indexes |
+| 4.2 | Implement AI gateway (`app/services/ai_gateway.py`) | Claude | **DONE** | Quota reserve → provider call → adjust/rollback → log. Two gateways: dashboard (`ai_gateway.py`, last 10 turns) + storefront (`storefront_ai_gateway.py`, last 6 turns). |
+| 4.3 | Implement provider abstraction layer | Claude | **DONE** | `AIProvider` protocol + OpenAI (default) and Groq (fast/free). Configurable via `AI_PROVIDER` env. |
+| 4.4 | Implement Redis quota check with reserve/rollback | Claude | **DONE** | INCRBY estimated → call → DECRBY on failure OR adjust delta on success. Integration test proves rollback. |
+| 4.5 | Implement soft/hard limit logic + notification | Claude | Partial | Hard limit → 429. Soft limit notification not yet implemented. |
+| 4.6 | Implement tenant system prompt builder | Claude | **DONE** | Builds prompt with tenant name + catalog summary. Dashboard: tenant-scoped ops summary. Storefront: product catalog (up to 50 items). |
+| 4.7 | Build AI chat widget (Next.js storefront component) | Claude | **DONE** (M4.2) | Floating chat bubble on storefront pages. Session-based (`localStorage` key `session_id`, shared with `useVisit`). Rate limited: 10 msgs / 5 min per session. Read-only — no actions. |
+| 4.8 | Implement conversation context management | Claude | **DONE** | Dashboard: last 10 turns from `ai_conversations.messages` JSONB. Storefront: last 6 turns from `storefront_ai_conversations.messages` JSONB. |
+| 4.9 | Set up AI pricing config in SSM | Kimi | | `/{env}/ai/pricing` populated with provider pricing. `/{env}/ai/provider` set. |
+| 4.10 | Write AI gateway integration tests | Claude | **DONE** | Quota enforcement, rollback on failure, usage logging, rate limiting. 10 tests (5 dashboard + 5 storefront). |
 
 ---
 

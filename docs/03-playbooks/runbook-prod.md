@@ -187,6 +187,25 @@ Use Vercel dashboard → Deployments → select previous deployment → "Promote
 
 ---
 
+## AI Chat Troubleshooting
+
+### Common AI Error Codes
+
+| HTTP Status | Error Type | Cause | Resolution |
+|-------------|-----------|-------|------------|
+| `429` | `rate_limited` | Session exceeded 10 msgs / 5 min | Wait. Auto-resets after window expires. |
+| `429` | `quota_exhausted` | Tenant monthly token quota reached | Upgrade plan or wait for monthly reset. Run reconciliation if Redis was flushed. |
+| `502` | `provider_error` | AI provider timeout or outage | Check provider status page. Switch provider via SSM if prolonged (see Scenario E). |
+
+### API Key Safety
+
+- **NEVER** commit real API keys to `.env.example` or any tracked file.
+- Keys belong in `.env` (gitignored) locally, and Secrets Manager (`/{env}/ai/api-key`) in production.
+- If a key is accidentally committed: **rotate immediately** in the provider dashboard (OpenAI, Groq, etc.), then force-push to remove from git history.
+- GitHub Push Protection will block pushes containing known key patterns, but do not rely on this as the sole safeguard.
+
+---
+
 ## Post-Incident Notes
 - After every production incident, create a brief post-mortem (see `incident-response.md`).
 - Update this runbook with any new scenarios encountered.
