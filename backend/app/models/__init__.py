@@ -8,6 +8,8 @@ from app.models.order import Order
 from app.models.plan import Plan
 from app.models.pledge import Pledge
 from app.models.product import Product
+from app.models.storefront_ai_conversation import StorefrontAIConversation
+from app.models.storefront_ai_usage_log import StorefrontAIUsageLog
 from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
 from app.models.tenant_member import TenantMember
@@ -26,6 +28,8 @@ __all__ = [
     "Plan",
     "Pledge",
     "Product",
+    "StorefrontAIConversation",
+    "StorefrontAIUsageLog",
     "StorefrontConfig",
     "Tenant",
     "TenantMember",

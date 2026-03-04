@@ -30,6 +30,11 @@ from app.schemas.order import OrderCreateRequest, OrderCreateResponse
 from app.schemas.pledge import PledgeCreateRequest, PledgeCreateResponse
 from app.schemas.product import PublicProductResponse
 from app.schemas.public_storefront_config import PublicStorefrontConfigResponse
+from app.schemas.storefront_ai_chat import (
+    StorefrontAIChatRequest,
+    StorefrontAIChatResponse,
+    StorefrontAIChatUsage,
+)
 from app.schemas.visit import VisitCreateRequest, VisitCreateResponse
 from app.services.ip_hash import hash_ip
 from app.services.numbering import (
@@ -482,3 +487,68 @@ async def submit_pledge(
         await _create_utm_event(db, tenant.id, body.visit_id, "pledge", pledge.id)
 
     return PledgeCreateResponse.model_validate(pledge)
+
+
+# ---------------------------------------------------------------------------
+# POST /storefront/{slug}/ai/chat
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{slug}/ai/chat", response_model=StorefrontAIChatResponse)
+async def storefront_ai_chat(
+    slug: str,
+    body: StorefrontAIChatRequest,
+    db_tenant: tuple[AsyncSession, Tenant] = Depends(get_db_with_slug),
+) -> StorefrontAIChatResponse:
+    """Public buyer-facing AI chat. Read-only — cannot perform actions."""
+
+    from app.services.ai_provider import get_provider
+    from app.services.storefront_ai_gateway import (
+        StorefrontAIGatewayError,
+        handle_storefront_chat,
+    )
+
+    db, tenant = db_tenant
+
+    # Load plan quota separately to avoid lazy-load greenlet issues
+    ai_token_quota = 0
+    if tenant.plan_id:
+        from app.models.plan import Plan
+
+        plan_result = await db.execute(select(Plan).where(Plan.id == tenant.plan_id))
+        plan = plan_result.scalar_one_or_none()
+        if plan:
+            ai_token_quota = plan.ai_token_quota
+
+    provider = get_provider()
+
+    try:
+        result = await handle_storefront_chat(
+            db,
+            tenant,
+            slug,
+            body.session_id,
+            body.message,
+            provider,
+            ai_token_quota=ai_token_quota,
+        )
+    except StorefrontAIGatewayError as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail={"message": e.detail, "type": e.error_type},
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"message": "AI assistant temporarily unavailable", "type": "provider_error"},
+        ) from e
+
+    return StorefrontAIChatResponse(
+        conversation_id=result.conversation_id,
+        reply=result.reply,
+        usage=StorefrontAIChatUsage(
+            tokens_in=result.tokens_in,
+            tokens_out=result.tokens_out,
+            cost_usd=result.cost_usd,
+        ),
+    )

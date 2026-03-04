@@ -51,9 +51,23 @@ async def check_rate_limit(tenant_id: str, user_id: str) -> bool:
         await r.aclose()
 
 
-async def reserve_tokens(
-    tenant_id: str, estimated: int, hard_limit: int
-) -> QuotaResult:
+_SF_RATE_LIMIT_MESSAGES = 10  # per session per 5-min window
+
+
+async def check_session_rate_limit(tenant_id: str, session_id: str) -> bool:
+    """Return True if a storefront visitor session is within rate limit."""
+    r = await _get_redis()
+    try:
+        key = f"ai:sf_rate:{tenant_id}:{session_id}"
+        count = await r.incr(key)
+        if count == 1:
+            await r.expire(key, _RATE_LIMIT_WINDOW)
+        return count <= _SF_RATE_LIMIT_MESSAGES
+    finally:
+        await r.aclose()
+
+
+async def reserve_tokens(tenant_id: str, estimated: int, hard_limit: int) -> QuotaResult:
     """Reserve estimated tokens. Returns whether the request is allowed."""
     if hard_limit <= 0:
         # No quota configured — allow unlimited
@@ -73,9 +87,7 @@ async def reserve_tokens(
         if new_total > hard_limit:
             # Over hard limit — rollback and deny
             await r.decrby(key, estimated)
-            return QuotaResult(
-                allowed=False, over_soft=True, reason="quota_exhausted"
-            )
+            return QuotaResult(allowed=False, over_soft=True, reason="quota_exhausted")
 
         return QuotaResult(
             allowed=True,
