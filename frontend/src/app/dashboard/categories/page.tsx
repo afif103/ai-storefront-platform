@@ -33,7 +33,6 @@ function CategoriesContent() {
       setLoading(true);
       const result = await apiFetch<PaginatedCategories>(
         "/api/v1/tenants/me/categories",
-        { cache: "no-store" },
       );
       if (cancelled) return;
       if (result.ok) {

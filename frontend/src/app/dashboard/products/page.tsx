@@ -37,7 +37,6 @@ function ProductsContent() {
       setLoading(true);
       const result = await apiFetch<PaginatedProducts>(
         "/api/v1/tenants/me/products",
-        { cache: "no-store" },
       );
       if (cancelled) return;
       if (result.ok) {

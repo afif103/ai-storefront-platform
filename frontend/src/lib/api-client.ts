@@ -110,6 +110,7 @@ export async function apiFetch<T = unknown>(
   const doFetch = (token: string | null) =>
     fetch(url, {
       ...init,
+      cache: "no-store" as RequestCache,
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
