@@ -6,6 +6,7 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
 import { useVisit } from "@/hooks/use-visit";
 import { useCart } from "@/hooks/use-cart";
+import { StorefrontChat } from "@/components/storefront-chat";
 
 interface Category {
   id: string;
@@ -315,6 +316,8 @@ export default function StorefrontPage() {
           </div>
         )}
       </main>
+
+      <StorefrontChat slug={slug} primaryColor={primaryColor} />
     </div>
   );
 }
