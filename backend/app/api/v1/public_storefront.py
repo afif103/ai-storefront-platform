@@ -51,6 +51,13 @@ router = APIRouter()
 DEFAULT_PAGE_SIZE = 20
 
 
+def _stock_display(product: Product) -> str | None:
+    if not product.track_inventory:
+        return None
+    qty = product.stock_qty or 0
+    return f"{qty} left" if qty > 0 else "Out of stock"
+
+
 def _public_product(
     product: Product,
     tenant: Tenant,
@@ -68,6 +75,7 @@ def _public_product(
         metadata=product.metadata_,
         image_url=image_url,
         in_stock=not product.track_inventory or (product.stock_qty or 0) > 0,
+        stock_display=_stock_display(product),
     )
 
 

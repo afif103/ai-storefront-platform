@@ -16,6 +16,8 @@ interface Product {
   effective_currency: string;
   is_active: boolean;
   sort_order: number;
+  track_inventory: boolean;
+  stock_qty: number | null;
 }
 
 interface PaginatedProducts {
@@ -200,6 +202,7 @@ function ProductsContent() {
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3">Active</th>
+                  <th className="px-4 py-3">Stock</th>
                   <th className="px-4 py-3">Sort</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
@@ -234,6 +237,15 @@ function ProductsContent() {
                         >
                           {prod.is_active ? "Active" : "Inactive"}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {!prod.track_inventory ? (
+                          <span className="text-xs text-gray-400">Unlimited</span>
+                        ) : (prod.stock_qty ?? 0) > 0 ? (
+                          <span className="text-xs text-gray-700">{prod.stock_qty} left</span>
+                        ) : (
+                          <span className="text-xs font-medium text-red-600">Out of stock</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-600">{prod.sort_order}</td>
                       <td className="px-4 py-3">

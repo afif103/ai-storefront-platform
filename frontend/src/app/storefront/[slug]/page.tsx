@@ -25,6 +25,8 @@ interface PublicProduct {
   effective_currency: string;
   sort_order: number;
   image_url: string | null;
+  in_stock: boolean;
+  stock_display: string | null;
 }
 
 interface StorefrontConfig {
@@ -313,12 +315,26 @@ export default function StorefrontPage() {
                   >
                     {product.price_amount} {product.effective_currency}
                   </p>
+                  {product.stock_display && (
+                    <p
+                      className={`mt-1 text-xs font-medium ${
+                        product.in_stock ? "text-gray-500" : "text-red-600"
+                      }`}
+                    >
+                      {product.stock_display}
+                    </p>
+                  )}
                   <button
                     onClick={() => handleAddToCart(product)}
-                    className="mt-3 w-full rounded-lg py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                    disabled={!product.in_stock}
+                    className="mt-3 w-full rounded-lg py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ backgroundColor: primaryColor ?? "#2563eb" }}
                   >
-                    {addedId === product.id ? "Added!" : "Add to Cart"}
+                    {!product.in_stock
+                      ? "Out of Stock"
+                      : addedId === product.id
+                        ? "Added!"
+                        : "Add to Cart"}
                   </button>
                 </div>
               </div>

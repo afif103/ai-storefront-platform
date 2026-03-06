@@ -86,5 +86,6 @@ class PublicProductResponse(BaseModel):
     metadata: dict | None = None
     image_url: str | None = None
     in_stock: bool
+    stock_display: str | None = None
 
     model_config = {"from_attributes": True}

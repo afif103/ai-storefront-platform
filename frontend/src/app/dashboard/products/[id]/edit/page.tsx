@@ -26,6 +26,8 @@ interface Product {
   currency: string | null;
   is_active: boolean;
   sort_order: number;
+  track_inventory: boolean;
+  stock_qty: number | null;
 }
 
 /** Tracks a single image upload (in-progress or completed). */
@@ -61,6 +63,8 @@ function EditProductContent() {
   const [currency, setCurrency] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [sortOrder, setSortOrder] = useState(0);
+  const [trackInventory, setTrackInventory] = useState(true);
+  const [stockQty, setStockQty] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -88,6 +92,8 @@ function EditProductContent() {
         setCurrency(p.currency ?? "");
         setIsActive(p.is_active);
         setSortOrder(p.sort_order);
+        setTrackInventory(p.track_inventory);
+        setStockQty(p.stock_qty ?? 0);
       } else {
         setError(productResult.detail);
       }
@@ -242,6 +248,8 @@ function EditProductContent() {
         currency: currency.toUpperCase() || null,
         is_active: isActive,
         sort_order: sortOrder,
+        track_inventory: trackInventory,
+        stock_qty: trackInventory ? stockQty : null,
       }),
     });
 
@@ -389,6 +397,35 @@ function EditProductContent() {
                 Active
               </label>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={trackInventory}
+                  onChange={(e) => setTrackInventory(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                Track Inventory
+              </label>
+            </div>
+
+            {trackInventory && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Stock Qty
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={stockQty}
+                  onChange={(e) => setStockQty(parseInt(e.target.value) || 0)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

@@ -108,25 +108,80 @@ async def test_track_inventory_false_bypasses_stock(client: AsyncClient):
     assert r.status_code == 201
 
 
-async def test_public_product_list_shows_in_stock(client: AsyncClient):
-    """Public product list returns in_stock=True when stock > 0, False when 0."""
-    _headers, slug, pid_stocked, _vid = await _setup(client, stock_qty=5)
+async def _setup_with_category(
+    client: AsyncClient,
+    *,
+    stock_qty: int = 10,
+    track_inventory: bool = True,
+) -> tuple[str, str, str]:
+    """Create tenant + category + product. Return (slug, product_id, category_id).
 
-    r = await client.get(f"/api/v1/storefront/{slug}/products?limit=100")
+    The category lets public-list tests filter precisely, avoiding cross-tenant
+    noise when the test DB superuser bypasses RLS.
+    """
+    uid = _uid()
+    headers = auth_headers(sub=f"inv-{uid}", email=f"inv-{uid}@test.com")
+    headers["Content-Type"] = "application/json"
+    slug = f"inv-{uid}"
+
+    r = await client.post(
+        "/api/v1/tenants/", json={"name": f"Inv {uid}", "slug": slug}, headers=headers
+    )
+    assert r.status_code == 201
+
+    r = await client.post(
+        "/api/v1/tenants/me/categories",
+        json={"name": f"Cat-{uid}"},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    category_id = r.json()["id"]
+
+    r = await client.post(
+        "/api/v1/tenants/me/products",
+        json={
+            "name": f"StockItem-{uid}",
+            "price_amount": "2.500",
+            "is_active": True,
+            "track_inventory": track_inventory,
+            "stock_qty": stock_qty,
+            "category_id": category_id,
+        },
+        headers=headers,
+    )
+    assert r.status_code == 201
+    product_id = r.json()["id"]
+
+    return slug, product_id, category_id
+
+
+async def test_public_product_list_shows_in_stock(client: AsyncClient):
+    """Public product list returns in_stock=True and stock_display when stock > 0."""
+    slug, pid, cat_id = await _setup_with_category(client, stock_qty=5)
+
+    r = await client.get(f"/api/v1/storefront/{slug}/products?category_id={cat_id}")
     assert r.status_code == 200
-    product = next(p for p in r.json()["items"] if p["id"] == pid_stocked)
+    items = r.json()["items"]
+    assert len(items) == 1
+    product = items[0]
+    assert product["id"] == pid
     assert product["in_stock"] is True
+    assert product["stock_display"] == "5 left"
     assert "stock_qty" not in product  # raw qty not exposed
 
 
 async def test_public_product_out_of_stock(client: AsyncClient):
-    """Public product list returns in_stock=False when stock=0."""
-    _headers, slug, pid, _vid = await _setup(client, stock_qty=0)
+    """Public product list returns in_stock=False and 'Out of stock' when stock=0."""
+    slug, pid, cat_id = await _setup_with_category(client, stock_qty=0)
 
-    r = await client.get(f"/api/v1/storefront/{slug}/products?limit=100")
+    r = await client.get(f"/api/v1/storefront/{slug}/products?category_id={cat_id}")
     assert r.status_code == 200
-    product = next(p for p in r.json()["items"] if p["id"] == pid)
+    items = r.json()["items"]
+    assert len(items) == 1
+    product = items[0]
+    assert product["id"] == pid
     assert product["in_stock"] is False
+    assert product["stock_display"] == "Out of stock"
 
 
 async def test_stock_decrement_is_atomic_no_oversell(client: AsyncClient):
