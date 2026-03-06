@@ -92,6 +92,19 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ---
 
+## M5b — Inventory / Stock v1
+
+| # | Task | Owner | DoD |
+|---|------|-------|-----|
+| 5b.1 | Add `track_inventory` + `stock_qty` fields to products table + migration | Claude | Alembic migration adds columns with CHECK(stock_qty >= 0), reversible downgrade |
+| 5b.2 | Update product create/edit schemas to accept inventory fields | Claude | ProductCreate/ProductUpdate include track_inventory + stock_qty. Validation: if track_inventory=true, stock_qty required. |
+| 5b.3 | Enforce stock on order submit (atomic decrement, 409 on insufficient) | Claude | UPDATE ... WHERE stock_qty >= :qty. Rowcount 0 → 409. Entire order rolled back on any item failure. |
+| 5b.4 | Expose `in_stock` in public product list | Claude | PublicProductResponse includes `in_stock: bool`. Computed from track_inventory + stock_qty. |
+| 5b.5 | Storefront UI: disable Add to Cart when out of stock + checkout 409 error | Claude | Button shows "Out of Stock" (disabled). Checkout error on 409 displayed clearly. |
+| 5b.6 | Integration tests: stock decrement, zero stock → 409, track_inventory=false bypass | Claude | Tests cover happy path, out-of-stock, and unlimited (track_inventory=false) scenarios. |
+
+---
+
 ## M6 — Admin Panel
 
 | # | Task | Owner | DoD |
@@ -166,8 +179,9 @@ Ordered epics M1–M9. Each task has a suggested owner:
 | M3 Structured Capture | 10 | 10 | 0 | 0 |
 | M4 AI Assistant | 10 | 9 | 1 | 0 |
 | M5 Attribution & Dashboard | 9 | 9 | 0 | 0 |
+| M5b Inventory / Stock v1 | 6 | 6 | 0 | 0 |
 | M6 Admin Panel | 7 | 7 | 0 | 0 |
 | M7 Notifications | 7 | 6 | 1 | 0 |
 | M8 Infra & DevOps | 13 | 4 | 9 | 0 |
 | M9 Hardening | 10 | 6 | 1 | 3 |
-| **Total** | **87** | **68** | **16** | **3** |
+| **Total** | **93** | **74** | **16** | **3** |

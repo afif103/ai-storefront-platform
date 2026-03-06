@@ -127,6 +127,25 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 
 ---
 
+### M5b — Inventory / Stock v1
+**Priority**: P1
+**Target**: 1 week
+**Dependencies**: M3 (needs products + orders)
+
+| Acceptance Criteria |
+|---------------------|
+| Products have `track_inventory` (bool) and `stock_qty` (int, CHECK >= 0) fields |
+| Dashboard product create/edit supports setting inventory fields |
+| Order submit atomically decrements stock (`UPDATE ... WHERE stock_qty >= :qty`) |
+| Insufficient stock returns 409 Conflict (entire order rolled back) |
+| Products with `track_inventory=false` skip stock checks (unlimited) |
+| Public product list exposes `in_stock` boolean |
+| Storefront disables "Add to Cart" when out of stock |
+| Checkout shows clear error on 409 (out of stock) |
+| Integration tests: buy→stock decrements, second buy on zero stock→409 |
+
+---
+
 ### M6 — Admin Panel
 **Priority**: P1
 **Target**: 1.5 weeks
@@ -204,9 +223,10 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | M3 Structured Capture | 2 weeks | Week 6 |
 | M4 AI Assistant | 2 weeks | Week 8 |
 | M5 Attribution & Dashboard | 2 weeks | Week 10 |
-| M6 Admin Panel | 1.5 weeks | Week 11 |
-| M7 Notifications | 1 week | Week 12 |
+| M5b Inventory / Stock v1 | 1 week | Week 11 |
+| M6 Admin Panel | 1.5 weeks | Week 12.5 |
+| M7 Notifications | 1 week | Week 13.5 |
 | M8 Infra (parallel) | — | — |
-| M9 Hardening | 1.5 weeks | Week 13.5 |
+| M9 Hardening | 1.5 weeks | Week 15 |
 
-**Estimated MVP delivery: ~14 weeks** (with M8 infra running in parallel throughout).
+**Estimated MVP delivery: ~15 weeks** (with M8 infra running in parallel throughout).
