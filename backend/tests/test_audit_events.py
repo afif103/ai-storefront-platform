@@ -40,7 +40,7 @@ async def test_order_transition_creates_audit_event(
     # Create product
     r = await client.post(
         "/api/v1/tenants/me/products",
-        json={"name": f"AudProd-{uid}", "price_amount": "1.000", "is_active": True},
+        json={"name": f"AudProd-{uid}", "price_amount": "1.000", "is_active": True, "stock_qty": 100},
         headers=headers,
     )
     assert r.status_code == 201

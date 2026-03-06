@@ -42,7 +42,7 @@ async def _setup_tenant_product_visit(
     # Create product
     r = await client.post(
         "/api/v1/tenants/me/products",
-        json={"name": f"Widget-{uid}", "price_amount": "5.250", "is_active": True},
+        json={"name": f"Widget-{uid}", "price_amount": "5.250", "is_active": True, "stock_qty": 100},
         headers=headers,
     )
     assert r.status_code == 201
