@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
-import { initAnalytics, track, flush } from "@/lib/analytics";
+import { initAnalytics, track, flush, getOrCreateSessionId } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
 import { useCart } from "@/hooks/use-cart";
 
@@ -36,11 +36,15 @@ export default function CheckoutPage() {
     .toFixed(3);
   const cartCurrency = cart.items[0]?.currency ?? "KWD";
 
-  // Analytics: begin_checkout on mount (only if cart has items)
+  // Analytics: begin_checkout on mount (guarded to prevent StrictMode double-fire)
   useEffect(() => {
     initAnalytics(slug);
     if (cart.items.length > 0) {
-      track("begin_checkout", { cart_value: cartTotal });
+      const key = `analytics_begin_checkout_fired:${slug}:${getOrCreateSessionId()}`;
+      if (!localStorage.getItem(key)) {
+        track("begin_checkout", { cart_value: cartTotal });
+        localStorage.setItem(key, "1");
+      }
     }
     return () => flush();
     // eslint-disable-next-line react-hooks/exhaustive-deps
