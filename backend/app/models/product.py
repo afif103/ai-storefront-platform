@@ -41,6 +41,8 @@ class Product(TenantScopedBase):
     currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    track_inventory: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    stock_qty: Mapped[int | None] = mapped_column(Integer, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

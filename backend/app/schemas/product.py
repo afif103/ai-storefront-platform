@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
 
@@ -19,6 +19,8 @@ class ProductCreate(BaseModel):
     is_active: bool = True
     sort_order: int = 0
     metadata: dict | None = None
+    track_inventory: bool = True
+    stock_qty: int | None = Field(None, ge=0)
 
     @field_validator("currency")
     @classmethod
@@ -26,6 +28,12 @@ class ProductCreate(BaseModel):
         if v is not None and not CURRENCY_PATTERN.match(v):
             raise ValueError("Currency must be a 3-letter uppercase ISO 4217 code")
         return v
+
+    @model_validator(mode="after")
+    def default_stock_qty(self) -> "ProductCreate":
+        if self.track_inventory and self.stock_qty is None:
+            self.stock_qty = 0
+        return self
 
 
 class ProductUpdate(BaseModel):
@@ -37,6 +45,8 @@ class ProductUpdate(BaseModel):
     is_active: bool | None = None
     sort_order: int | None = None
     metadata: dict | None = None
+    track_inventory: bool | None = None
+    stock_qty: int | None = Field(None, ge=0)
 
     @field_validator("currency")
     @classmethod
@@ -57,6 +67,8 @@ class ProductResponse(BaseModel):
     is_active: bool
     sort_order: int
     metadata: dict | None = None
+    track_inventory: bool
+    stock_qty: int | None = None
     created_at: datetime
     updated_at: datetime | None = None
 
@@ -73,5 +85,6 @@ class PublicProductResponse(BaseModel):
     sort_order: int
     metadata: dict | None = None
     image_url: str | None = None
+    in_stock: bool
 
     model_config = {"from_attributes": True}

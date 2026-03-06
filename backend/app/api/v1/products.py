@@ -41,6 +41,8 @@ def _product_response(product: Product, tenant: Tenant) -> ProductResponse:
         is_active=product.is_active,
         sort_order=product.sort_order,
         metadata=product.metadata_,
+        track_inventory=product.track_inventory,
+        stock_qty=product.stock_qty,
         created_at=product.created_at,
         updated_at=product.updated_at,
     )
@@ -117,6 +119,8 @@ async def create_product(
         is_active=body.is_active,
         sort_order=body.sort_order,
         metadata_=body.metadata,
+        track_inventory=body.track_inventory,
+        stock_qty=body.stock_qty,
     )
     db.add(product)
     await db.flush()

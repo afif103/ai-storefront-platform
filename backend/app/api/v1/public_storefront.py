@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select, tuple_
+from sqlalchemy import select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db_with_slug
@@ -67,6 +67,7 @@ def _public_product(
         sort_order=product.sort_order,
         metadata=product.metadata_,
         image_url=image_url,
+        in_stock=not product.track_inventory or (product.stock_qty or 0) > 0,
     )
 
 
@@ -345,6 +346,33 @@ async def submit_order(
             }
         )
         total += subtotal
+
+    # Atomic stock decrement — runs in same transaction as order creation.
+    # get_db() rolls back entire transaction on any exception (including 409).
+    for item in body.items:
+        product = products_by_id[item.catalog_item_id]
+        if not product.track_inventory:
+            continue
+        result_stock = await db.execute(
+            text(
+                "UPDATE products "
+                "SET stock_qty = stock_qty - :qty "
+                "WHERE tenant_id = :tenant_id "
+                "  AND id = :product_id "
+                "  AND track_inventory = true "
+                "  AND stock_qty >= :qty"
+            ),
+            {
+                "qty": item.qty,
+                "tenant_id": str(tenant.id),
+                "product_id": str(item.catalog_item_id),
+            },
+        )
+        if result_stock.rowcount == 0:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Insufficient stock for product '{product.name}'",
+            )
 
     order_number = await get_next_order_number(db, str(tenant.id))
 
