@@ -117,6 +117,20 @@ function DashboardContent() {
 
         <div className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Analytics
+          </h2>
+          <div className="flex gap-4">
+            <Link
+              href="/dashboard/analytics"
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Analytics Dashboard
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
             AI
           </h2>
           <div className="flex gap-4">
