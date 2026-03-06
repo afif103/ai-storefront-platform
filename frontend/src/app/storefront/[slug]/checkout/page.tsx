@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
+import { initAnalytics, track, flush } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
 import { useCart } from "@/hooks/use-cart";
 
@@ -35,6 +36,16 @@ export default function CheckoutPage() {
     .toFixed(3);
   const cartCurrency = cart.items[0]?.currency ?? "KWD";
 
+  // Analytics: begin_checkout on mount (only if cart has items)
+  useEffect(() => {
+    initAnalytics(slug);
+    if (cart.items.length > 0) {
+      track("begin_checkout", { cart_value: cartTotal });
+    }
+    return () => flush();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -60,6 +71,11 @@ export default function CheckoutPage() {
 
     setSubmitting(false);
     if (result.ok) {
+      track("submit_order", {
+        order_number: result.data.order_number,
+        value: result.data.total_amount,
+      });
+      flush();
       setSuccess(result.data);
       cart.clearCart();
     } else {

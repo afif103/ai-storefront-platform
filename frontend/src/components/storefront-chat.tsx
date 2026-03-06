@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { track } from "@/lib/analytics";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -68,6 +69,7 @@ export function StorefrontChat({
     const text = input.trim();
     if (!text || sending) return;
 
+    track("chat_message_sent", { chars: text.length });
     setError("");
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: text }]);
@@ -101,7 +103,10 @@ export function StorefrontChat({
       {/* Floating button */}
       {!open && (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setOpen(true);
+            track("chat_open", { path: window.location.pathname });
+          }}
           className="fixed right-5 bottom-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105"
           style={{ backgroundColor: accent }}
           aria-label="Open chat"

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
+import { initAnalytics, track, flush } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
 import { useCart } from "@/hooks/use-cart";
 import { StorefrontChat } from "@/components/storefront-chat";
@@ -49,6 +50,13 @@ export default function StorefrontPage() {
 
   useVisit(slug);
   const cart = useCart(slug);
+
+  // Analytics: init tracker + fire storefront_view once on mount
+  useEffect(() => {
+    initAnalytics(slug);
+    track("storefront_view", { path: window.location.pathname });
+    return () => flush();
+  }, [slug]);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<PublicProduct[]>([]);
@@ -114,6 +122,8 @@ export default function StorefrontPage() {
       },
       1
     );
+    track("product_view", { product_id: product.id });
+    track("add_to_cart", { product_id: product.id, qty: 1 });
     setAddedId(product.id);
     setTimeout(() => setAddedId(null), 1200);
   }

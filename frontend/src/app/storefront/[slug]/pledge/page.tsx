@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
+import { initAnalytics, track, flush } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
 
 interface PledgeResponse {
@@ -19,6 +20,11 @@ export default function PledgePage() {
   const params = useParams();
   const slug = params.slug as string;
   const { visitId } = useVisit(slug);
+
+  useEffect(() => {
+    initAnalytics(slug);
+    return () => flush();
+  }, [slug]);
 
   const [pledgorName, setPledgorName] = useState("");
   const [pledgorPhone, setPledgorPhone] = useState("");
@@ -74,6 +80,11 @@ export default function PledgePage() {
 
     setSubmitting(false);
     if (result.ok) {
+      track("submit_pledge", {
+        pledge_number: result.data.pledge_number,
+        value: result.data.amount,
+      });
+      flush();
       setSuccess(result.data);
     } else {
       setError(typeof result.detail === "string" ? result.detail : JSON.stringify(result.detail));
