@@ -139,7 +139,7 @@ async def handle_analytics_ingest(
                 INSERT INTO attribution_events
                     (tenant_id, session_id, occurred_at, event_name, props)
                 VALUES
-                    (:tenant_id, :session_id, :occurred_at, :event_name, :props::jsonb)
+                    (:tenant_id, :session_id, :occurred_at, :event_name, CAST(:props AS jsonb))
                 """
             ),
             {

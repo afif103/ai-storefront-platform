@@ -1,6 +1,7 @@
 """Analytics ingest + dashboard summary integration tests."""
 
 import uuid
+from datetime import date, timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -10,6 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.conftest import auth_headers
 
 pytestmark = pytest.mark.m5
+
+
+def _summary_qs() -> str:
+    """Return query string with a valid date range covering today."""
+    today = date.today()
+    from_date = today - timedelta(days=7)
+    to_date = today + timedelta(days=1)
+    return f"from={from_date}&to={to_date}"
 
 
 def _uid() -> str:
@@ -167,7 +176,7 @@ async def test_summary_is_tenant_scoped(client: AsyncClient):
 
     # Tenant A summary should see its own events only
     r_a = await client.get(
-        "/api/v1/tenants/me/analytics/summary?from=2020-01-01&to=2030-01-01",
+        f"/api/v1/tenants/me/analytics/summary?{_summary_qs()}",
         headers=headers_a,
     )
     assert r_a.status_code == 200
@@ -177,7 +186,7 @@ async def test_summary_is_tenant_scoped(client: AsyncClient):
 
     # Tenant B summary should see only its own storefront_view
     r_b = await client.get(
-        "/api/v1/tenants/me/analytics/summary?from=2020-01-01&to=2030-01-01",
+        f"/api/v1/tenants/me/analytics/summary?{_summary_qs()}",
         headers=headers_b,
     )
     assert r_b.status_code == 200
@@ -211,7 +220,7 @@ async def test_summary_correctness(client: AsyncClient):
 
     # Query summary
     r_s = await client.get(
-        "/api/v1/tenants/me/analytics/summary?from=2020-01-01&to=2030-01-01",
+        f"/api/v1/tenants/me/analytics/summary?{_summary_qs()}",
         headers=headers,
     )
     assert r_s.status_code == 200

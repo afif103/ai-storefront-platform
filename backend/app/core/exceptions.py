@@ -50,6 +50,20 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
     )
 
 
+def _sanitize_errors(errors: list[dict]) -> list[dict]:
+    """Make Pydantic validation errors JSON-serializable.
+
+    ctx values (e.g. ValueError instances) are not serializable by default.
+    """
+    sanitized = []
+    for err in errors:
+        clean = {k: v for k, v in err.items() if k != "ctx"}
+        if "ctx" in err and err["ctx"]:
+            clean["ctx"] = {k: str(v) for k, v in err["ctx"].items()}
+        sanitized.append(clean)
+    return sanitized
+
+
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
@@ -59,7 +73,7 @@ async def validation_exception_handler(
             "type": "about:blank",
             "title": "Validation Error",
             "status": 422,
-            "detail": exc.errors(),
+            "detail": _sanitize_errors(exc.errors()),
             "instance": str(request.url.path),
         },
         media_type="application/problem+json",
