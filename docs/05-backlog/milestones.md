@@ -146,6 +146,24 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 
 ---
 
+### M5c — Inventory Movements & Stock Ops (Packet 1: Foundation + Cancel Restore)
+**Priority**: P1
+**Target**: 0.5 week
+**Dependencies**: M5b
+
+| Acceptance Criteria |
+|---------------------|
+| `stock_movements` table tracks all inventory changes (product_id, delta_qty, reason, note, order_id, actor_user_id) |
+| Reason codes: `manual_restock`, `manual_adjustment`, `order_cancel_restore` |
+| RLS policies on `stock_movements` (tenant-scoped SELECT + INSERT) |
+| Unique partial index prevents double-restore per order+product |
+| Order cancel restores stock for tracked-inventory items only |
+| Cancel restore is idempotent (code check + DB unique index) |
+| `record_stock_movement()` service inserts movement + atomically updates stock_qty |
+| Integration tests: cancel restores tracked, skips untracked, no double-restore, mixed order, movement rows correct |
+
+---
+
 ### M6 — Admin Panel
 **Priority**: P1
 **Target**: 1.5 weeks
@@ -224,7 +242,8 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | M4 AI Assistant | 2 weeks | Week 8 |
 | M5 Attribution & Dashboard | 2 weeks | Week 10 |
 | M5b Inventory / Stock v1 | 1 week | Week 11 |
-| M6 Admin Panel | 1.5 weeks | Week 12.5 |
+| M5c Inv Movements (P1) | 0.5 week | Week 11.5 |
+| M6 Admin Panel | 1.5 weeks | Week 13 |
 | M7 Notifications | 1 week | Week 13.5 |
 | M8 Infra (parallel) | — | — |
 | M9 Hardening | 1.5 weeks | Week 15 |

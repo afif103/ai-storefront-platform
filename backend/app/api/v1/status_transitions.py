@@ -26,6 +26,7 @@ from app.schemas.status_transition import (
     PledgeStatusResponse,
     StatusTransitionRequest,
 )
+from app.services.inventory import restore_stock_for_cancelled_order
 
 router = APIRouter()
 
@@ -67,9 +68,7 @@ def _validate_transition(
         raise HTTPException(
             status_code=422,
             detail={
-                "message": (
-                    f"Cannot transition {entity_type} from '{current}' to '{requested}'"
-                ),
+                "message": (f"Cannot transition {entity_type} from '{current}' to '{requested}'"),
                 "allowed": allowed,
             },
         )
@@ -126,6 +125,13 @@ async def transition_order_status(
     order.updated_at = datetime.now(UTC)
     await db.flush()
     await _log_audit(db, tenant_id, user.id, "order", order_id, old_status, requested)
+
+    # Restore stock on true transition into cancelled
+    if requested == "cancelled" and old_status != "cancelled":
+        await restore_stock_for_cancelled_order(
+            db, tenant_id=tenant_id, order=order, actor_user_id=user.id
+        )
+
     await db.refresh(order)
 
     return OrderStatusResponse.model_validate(order)

@@ -105,6 +105,20 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ---
 
+## M5c — Inventory Movements & Stock Ops
+
+### Packet 1 — Foundation + Cancel Restore (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 5c.1 | Create `stock_movements` table + RLS + migration | Claude | **DONE** | Table with tenant_id, product_id, delta_qty, reason (CHECK), note, order_id, actor_user_id. RLS policies. Unique partial index on (order_id, product_id) WHERE reason = 'order_cancel_restore'. |
+| 5c.2 | Create `StockMovement` ORM model | Claude | **DONE** | Model registered in `__init__.py`. FK to products (RESTRICT), orders, users. |
+| 5c.3 | Create inventory service (`record_stock_movement` + `restore_stock_for_cancelled_order`) | Claude | **DONE** | Single code path for all stock movements. Atomic INSERT + UPDATE in same transaction. Idempotent cancel restore (code check + DB unique index). |
+| 5c.4 | Wire cancel restore into order status transitions | Claude | **DONE** | Only triggers on true transition into `cancelled` from a prior state. Passes actor_user_id. |
+| 5c.5 | Integration tests for cancel restore + movement audit | Claude | **DONE** | 5 tests: tracked restore, untracked skip, no double-restore, movement rows correct, mixed order. |
+
+---
+
 ## M6 — Admin Panel
 
 | # | Task | Owner | DoD |

@@ -1,10 +1,13 @@
-"""M5b inventory / stock enforcement integration tests."""
+"""M5b/M5c inventory / stock enforcement + movement integration tests."""
 
 import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.stock_movement import StockMovement
 from tests.conftest import auth_headers
 
 pytestmark = pytest.mark.inventory
@@ -199,3 +202,222 @@ async def test_stock_decrement_is_atomic_no_oversell(client: AsyncClient):
 
     r2 = await _submit_order(client, slug, product_id, visit_id2, qty=1)
     assert r2.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# M5c Packet 1 — cancel restore + stock movement tests
+# ---------------------------------------------------------------------------
+
+
+async def test_cancel_restores_stock_for_tracked_product(client: AsyncClient):
+    """Cancelling an order restores stock for tracked-inventory products."""
+    headers, slug, product_id, visit_id = await _setup(client, stock_qty=10)
+
+    # Buy qty=3 → stock should be 7
+    r = await _submit_order(client, slug, product_id, visit_id, qty=3)
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    # Cancel the order
+    r = await client.patch(
+        f"/api/v1/tenants/me/orders/{order_id}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "cancelled"
+
+    # Verify stock restored to 10
+    r2 = await client.get("/api/v1/tenants/me/products", headers=headers)
+    product = next(p for p in r2.json()["items"] if p["id"] == product_id)
+    assert product["stock_qty"] == 10
+
+
+async def test_cancel_does_not_affect_untracked_product(client: AsyncClient):
+    """Cancelling an order with track_inventory=False does not create movements."""
+    headers, slug, product_id, visit_id = await _setup(client, stock_qty=0, track_inventory=False)
+
+    r = await _submit_order(client, slug, product_id, visit_id, qty=2)
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    # Cancel — should succeed but not touch stock
+    r = await client.patch(
+        f"/api/v1/tenants/me/orders/{order_id}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+    # Stock should still be 0 (untracked, no restore)
+    r2 = await client.get("/api/v1/tenants/me/products", headers=headers)
+    product = next(p for p in r2.json()["items"] if p["id"] == product_id)
+    assert product["stock_qty"] == 0
+
+
+async def test_repeated_cancel_does_not_double_restore(client: AsyncClient):
+    """Second cancel attempt is rejected by transition rules; stock restored only once."""
+    headers, slug, product_id, visit_id = await _setup(client, stock_qty=10)
+
+    r = await _submit_order(client, slug, product_id, visit_id, qty=5)
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    # First cancel → 200, stock restored
+    r = await client.patch(
+        f"/api/v1/tenants/me/orders/{order_id}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+    # Second cancel → 422 (cancelled→cancelled not allowed)
+    r = await client.patch(
+        f"/api/v1/tenants/me/orders/{order_id}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert r.status_code == 422
+
+    # Stock should be exactly 10 (not 15)
+    r2 = await client.get("/api/v1/tenants/me/products", headers=headers)
+    product = next(p for p in r2.json()["items"] if p["id"] == product_id)
+    assert product["stock_qty"] == 10
+
+
+async def test_cancel_writes_stock_movement_rows(client: AsyncClient, db: AsyncSession):
+    """Cancelling an order creates correct stock_movements rows."""
+    headers, slug, product_id, visit_id = await _setup(client, stock_qty=10)
+
+    r = await _submit_order(client, slug, product_id, visit_id, qty=4)
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    # Get tenant_id
+    r_t = await client.get("/api/v1/tenants/me", headers=headers)
+    tenant_id = r_t.json()["id"]
+
+    # Cancel
+    r = await client.patch(
+        f"/api/v1/tenants/me/orders/{order_id}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+    # Query stock_movements via DB
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
+        {"tid": tenant_id},
+    )
+    result = await db.execute(
+        select(StockMovement).where(
+            StockMovement.order_id == uuid.UUID(order_id),
+        )
+    )
+    movements = list(result.scalars().all())
+
+    assert len(movements) == 1
+    m = movements[0]
+    assert m.product_id == uuid.UUID(product_id)
+    assert m.delta_qty == 4
+    assert m.reason == "order_cancel_restore"
+    assert m.order_id == uuid.UUID(order_id)
+    assert m.actor_user_id is not None  # admin who cancelled
+    assert m.note is not None and "cancelled" in m.note.lower()
+
+
+async def test_mixed_order_tracked_and_untracked_restore(client: AsyncClient, db: AsyncSession):
+    """Cancel of a mixed order restores only tracked items, not untracked."""
+    uid = _uid()
+    sub = f"inv-{uid}"
+    email = f"inv-{uid}@test.com"
+    slug = f"inv-{uid}"
+    headers = auth_headers(sub=sub, email=email)
+    headers["Content-Type"] = "application/json"
+
+    r = await client.post(
+        "/api/v1/tenants/", json={"name": f"Inv {uid}", "slug": slug}, headers=headers
+    )
+    assert r.status_code == 201
+    tenant_id = r.json()["id"]
+
+    # Create tracked product (stock=10)
+    r = await client.post(
+        "/api/v1/tenants/me/products",
+        json={
+            "name": f"Tracked-{uid}",
+            "price_amount": "3.000",
+            "is_active": True,
+            "track_inventory": True,
+            "stock_qty": 10,
+        },
+        headers=headers,
+    )
+    assert r.status_code == 201
+    tracked_id = r.json()["id"]
+
+    # Create untracked product
+    r = await client.post(
+        "/api/v1/tenants/me/products",
+        json={
+            "name": f"Untracked-{uid}",
+            "price_amount": "2.000",
+            "is_active": True,
+            "track_inventory": False,
+            "stock_qty": 0,
+        },
+        headers=headers,
+    )
+    assert r.status_code == 201
+    untracked_id = r.json()["id"]
+
+    # Create visit
+    r = await client.post(f"/api/v1/storefront/{slug}/visit", json={"session_id": f"sess-{uid}"})
+    assert r.status_code == 201
+    visit_id = r.json()["visit_id"]
+
+    # Submit order with both products
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "MixTest",
+            "items": [
+                {"catalog_item_id": tracked_id, "qty": 3},
+                {"catalog_item_id": untracked_id, "qty": 2},
+            ],
+            "visit_id": visit_id,
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    # Cancel
+    r = await client.patch(
+        f"/api/v1/tenants/me/orders/{order_id}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+    # Tracked product should be restored: 10-3+3 = 10
+    r2 = await client.get("/api/v1/tenants/me/products", headers=headers)
+    products = {p["id"]: p for p in r2.json()["items"]}
+    assert products[tracked_id]["stock_qty"] == 10
+    # Untracked product stock unchanged
+    assert products[untracked_id]["stock_qty"] == 0
+
+    # Only 1 stock_movement row (tracked product only)
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
+        {"tid": tenant_id},
+    )
+    result = await db.execute(
+        select(StockMovement).where(
+            StockMovement.order_id == uuid.UUID(order_id),
+        )
+    )
+    movements = list(result.scalars().all())
+    assert len(movements) == 1
+    assert movements[0].product_id == uuid.UUID(tracked_id)
+    assert movements[0].delta_qty == 3
