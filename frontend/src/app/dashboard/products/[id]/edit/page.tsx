@@ -98,7 +98,7 @@ function EditProductContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Restock
-  const [restockQty, setRestockQty] = useState(1);
+  const [restockQty, setRestockQty] = useState("");
   const [restockNote, setRestockNote] = useState("");
   const [restocking, setRestocking] = useState(false);
   const [restockMsg, setRestockMsg] = useState("");
@@ -194,7 +194,7 @@ function EditProductContent() {
       {
         method: "POST",
         body: JSON.stringify({
-          qty: restockQty,
+          qty: parseInt(restockQty),
           note: restockNote || null,
         }),
       },
@@ -203,7 +203,7 @@ function EditProductContent() {
     if (result.ok) {
       setStockQty(result.data.stock_qty ?? 0);
       setRestockMsg(`Added ${restockQty} units`);
-      setRestockQty(1);
+      setRestockQty("");
       setRestockNote("");
       if (restockTimerRef.current) clearTimeout(restockTimerRef.current);
       restockTimerRef.current = setTimeout(() => setRestockMsg(""), 3000);
@@ -545,8 +545,9 @@ function EditProductContent() {
                 <input
                   type="number"
                   min="1"
+                  placeholder="Qty"
                   value={restockQty}
-                  onChange={(e) => setRestockQty(parseInt(e.target.value) || 1)}
+                  onChange={(e) => setRestockQty(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -565,7 +566,7 @@ function EditProductContent() {
               </div>
               <button
                 type="submit"
-                disabled={restocking || restockQty < 1}
+                disabled={restocking || !restockQty || parseInt(restockQty) < 1}
                 className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
               >
                 {restocking ? "Adding..." : "Restock"}
