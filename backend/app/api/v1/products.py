@@ -38,6 +38,13 @@ async def _get_tenant(db: AsyncSession, tenant_id: uuid.UUID) -> Tenant:
 
 def _product_response(product: Product, tenant: Tenant) -> ProductResponse:
     """Build ProductResponse with effective_currency fallback."""
+    is_low_stock = (
+        product.track_inventory
+        and product.low_stock_threshold is not None
+        and product.low_stock_threshold > 0
+        and product.stock_qty is not None
+        and 0 < product.stock_qty <= product.low_stock_threshold
+    )
     return ProductResponse(
         id=product.id,
         category_id=product.category_id,
@@ -51,6 +58,8 @@ def _product_response(product: Product, tenant: Tenant) -> ProductResponse:
         metadata=product.metadata_,
         track_inventory=product.track_inventory,
         stock_qty=product.stock_qty,
+        low_stock_threshold=product.low_stock_threshold,
+        is_low_stock=is_low_stock,
         created_at=product.created_at,
         updated_at=product.updated_at,
     )
@@ -129,6 +138,7 @@ async def create_product(
         metadata_=body.metadata,
         track_inventory=body.track_inventory,
         stock_qty=body.stock_qty,
+        low_stock_threshold=body.low_stock_threshold,
     )
     db.add(product)
     await db.flush()

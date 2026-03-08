@@ -28,6 +28,7 @@ interface Product {
   sort_order: number;
   track_inventory: boolean;
   stock_qty: number | null;
+  low_stock_threshold: number | null;
 }
 
 /** Tracks a single image upload (in-progress or completed). */
@@ -88,6 +89,7 @@ function EditProductContent() {
   const [sortOrder, setSortOrder] = useState(0);
   const [trackInventory, setTrackInventory] = useState(true);
   const [stockQty, setStockQty] = useState(0);
+  const [lowStockThreshold, setLowStockThreshold] = useState("5");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -128,6 +130,7 @@ function EditProductContent() {
         setSortOrder(p.sort_order);
         setTrackInventory(p.track_inventory);
         setStockQty(p.stock_qty ?? 0);
+        setLowStockThreshold(p.low_stock_threshold != null ? String(p.low_stock_threshold) : "");
       } else {
         setError(productResult.detail);
       }
@@ -336,6 +339,9 @@ function EditProductContent() {
         sort_order: sortOrder,
         track_inventory: trackInventory,
         stock_qty: trackInventory ? stockQty : null,
+        low_stock_threshold: trackInventory && lowStockThreshold
+          ? parseInt(lowStockThreshold)
+          : null,
       }),
     });
 
@@ -513,6 +519,25 @@ function EditProductContent() {
               </div>
             )}
           </div>
+
+          {trackInventory && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Low Stock Threshold
+                  <span className="ml-1 text-gray-400">(0 = disabled)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="5"
+                  value={lowStockThreshold}
+                  onChange={(e) => setLowStockThreshold(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <Link

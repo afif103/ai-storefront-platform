@@ -18,6 +18,8 @@ interface Product {
   sort_order: number;
   track_inventory: boolean;
   stock_qty: number | null;
+  low_stock_threshold: number | null;
+  is_low_stock: boolean;
 }
 
 interface PaginatedProducts {
@@ -32,6 +34,7 @@ function ProductsContent() {
   const [loading, setLoading] = useState(true);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [stockFilter, setStockFilter] = useState<"all" | "low">("all");
   const [toast, setToast] = useState("");
   const searchParams = useSearchParams();
 
@@ -174,6 +177,36 @@ function ProductsContent() {
           </div>
         )}
 
+        {!loading && products.length > 0 && (
+          <div className="mb-4 flex items-center gap-2">
+            <button
+              onClick={() => setStockFilter("all")}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                stockFilter === "all"
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setStockFilter("low")}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                stockFilter === "low"
+                  ? "bg-amber-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Low stock only
+              {products.filter((p) => p.is_low_stock).length > 0 && (
+                <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-200 text-[10px] font-bold text-amber-800">
+                  {products.filter((p) => p.is_low_stock).length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <p className="text-sm text-gray-400">Loading...</p>
         ) : products.length === 0 ? (
@@ -208,7 +241,10 @@ function ProductsContent() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {products.map((prod) => {
+                {(stockFilter === "low"
+                  ? products.filter((p) => p.is_low_stock)
+                  : products
+                ).map((prod) => {
                   const isDeleting = deletingIds.has(prod.id);
                   return (
                     <tr key={prod.id} className={isDeleting ? "opacity-50" : ""}>
@@ -241,10 +277,14 @@ function ProductsContent() {
                       <td className="px-4 py-3">
                         {!prod.track_inventory ? (
                           <span className="text-xs text-gray-400">Unlimited</span>
-                        ) : (prod.stock_qty ?? 0) > 0 ? (
-                          <span className="text-xs text-gray-700">{prod.stock_qty} left</span>
-                        ) : (
+                        ) : (prod.stock_qty ?? 0) === 0 ? (
                           <span className="text-xs font-medium text-red-600">Out of stock</span>
+                        ) : prod.is_low_stock ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            {prod.stock_qty} left
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-700">{prod.stock_qty} left</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-gray-600">{prod.sort_order}</td>

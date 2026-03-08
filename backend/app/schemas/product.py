@@ -21,6 +21,7 @@ class ProductCreate(BaseModel):
     metadata: dict | None = None
     track_inventory: bool = True
     stock_qty: int | None = Field(None, ge=0)
+    low_stock_threshold: int | None = Field(5, ge=0)
 
     @field_validator("currency")
     @classmethod
@@ -47,6 +48,7 @@ class ProductUpdate(BaseModel):
     metadata: dict | None = None
     track_inventory: bool | None = None
     stock_qty: int | None = Field(None, ge=0)
+    low_stock_threshold: int | None = Field(None, ge=0)
 
     @field_validator("currency")
     @classmethod
@@ -69,6 +71,8 @@ class ProductResponse(BaseModel):
     metadata: dict | None = None
     track_inventory: bool
     stock_qty: int | None = None
+    low_stock_threshold: int | None = None
+    is_low_stock: bool = False
     created_at: datetime
     updated_at: datetime | None = None
 

@@ -165,6 +165,11 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | **Packet 2:** `GET /products/{id}/stock-movements` — cursor-paginated history, newest-first |
 | **Packet 2:** Dashboard restock form + movement history table on product edit page |
 | **Packet 2:** Integration tests: restock happy path, rejects untracked, rejects bad qty, history correctness |
+| **Packet 3:** Per-product `low_stock_threshold` column (default 5, 0/NULL = disabled) |
+| **Packet 3:** Backend computed `is_low_stock` in product response (excludes out-of-stock and untracked) |
+| **Packet 3:** Dashboard products list: amber low-stock badge + "All" / "Low stock only" frontend filter |
+| **Packet 3:** Product create/edit UI: low-stock threshold input field |
+| **Packet 3:** Integration tests: 7 tests covering threshold logic edge cases |
 
 ---
 

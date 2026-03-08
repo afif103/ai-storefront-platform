@@ -129,6 +129,22 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 **Tech debt:** Direct `stock_qty` edit via `PATCH /products/{id}` still bypasses movement trail. Not addressed in this packet.
 
+**Future cleanup — Inventory UX consolidation:**
+- Product edit page currently shows both direct `Stock Qty` editing and the audited Restock form, which is confusing about which path to use.
+- When `track_inventory = true`: make stock display read-only, rename label to "Current Stock", add helper text ("Use Restock below to add inventory").
+- Route all stock changes through audited movement flows (`/restock`, future `/adjust`) instead of direct `stock_qty` PATCH.
+
+### Packet 3 — Low-stock Alerts in Dashboard (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 5c.11 | Add `low_stock_threshold` column to products + migration | Claude | **DONE** | Nullable INT, server_default=5. Migration reversible. |
+| 5c.12 | Add `low_stock_threshold` to Create/Update schemas + `is_low_stock` to Response | Claude | **DONE** | Computed: `track_inventory AND threshold > 0 AND 0 < stock_qty <= threshold`. Create default=5, Update optional. |
+| 5c.13 | Compute `is_low_stock` in `_product_response()` | Claude | **DONE** | Out-of-stock (qty=0) is NOT low-stock. Untracked products never low-stock. Threshold 0/NULL = disabled. |
+| 5c.14 | Dashboard products list: amber "Low stock" badge + filter toggle | Claude | **DONE** | Amber pill for low-stock items. "All" / "Low stock only" frontend filter buttons with count badge. |
+| 5c.15 | Product create/edit UI: low-stock threshold input | Claude | **DONE** | Shown when track_inventory=true. Placeholder 5, label "(0 = disabled)". Included in create + edit submit body. |
+| 5c.16 | Integration tests for `is_low_stock` computation | Claude | **DONE** | 7 tests: at threshold, below, above, out-of-stock, untracked, threshold=0, custom threshold. |
+
 ---
 
 ## M6 — Admin Panel

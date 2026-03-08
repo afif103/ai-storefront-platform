@@ -529,3 +529,123 @@ async def test_stock_movements_history_endpoint(client: AsyncClient):
     assert items[1]["reason"] == "manual_restock"
     assert items[1]["delta_qty"] == 5
     assert items[1]["note"] == "first restock"
+
+
+# ---------------------------------------------------------------------------
+# M5c Packet 3 — low-stock threshold + is_low_stock tests
+# ---------------------------------------------------------------------------
+
+
+async def test_is_low_stock_true_when_at_threshold(client: AsyncClient):
+    """Product with stock_qty == low_stock_threshold → is_low_stock=True."""
+    headers, _slug, product_id, _visit_id = await _setup(client, stock_qty=5)
+
+    # Default threshold is 5, stock=5 → at threshold → low stock
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["is_low_stock"] is True
+    assert data["low_stock_threshold"] == 5
+
+
+async def test_is_low_stock_true_when_below_threshold(client: AsyncClient):
+    """Product with stock_qty < low_stock_threshold → is_low_stock=True."""
+    headers, _slug, product_id, _visit_id = await _setup(client, stock_qty=3)
+
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["is_low_stock"] is True
+
+
+async def test_is_low_stock_false_when_above_threshold(client: AsyncClient):
+    """Product with stock_qty > low_stock_threshold → is_low_stock=False."""
+    headers, _slug, product_id, _visit_id = await _setup(client, stock_qty=10)
+
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["is_low_stock"] is False
+
+
+async def test_is_low_stock_false_when_out_of_stock(client: AsyncClient):
+    """Product with stock_qty=0 → is_low_stock=False (out-of-stock is separate state)."""
+    headers, _slug, product_id, _visit_id = await _setup(client, stock_qty=0)
+
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["is_low_stock"] is False
+
+
+async def test_is_low_stock_false_when_untracked(client: AsyncClient):
+    """Untracked products never report is_low_stock=True."""
+    headers, _slug, product_id, _visit_id = await _setup(
+        client, stock_qty=0, track_inventory=False
+    )
+
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["is_low_stock"] is False
+
+
+async def test_is_low_stock_false_when_threshold_zero(client: AsyncClient):
+    """Product with low_stock_threshold=0 (disabled) → is_low_stock=False."""
+    uid = _uid()
+    headers = auth_headers(sub=f"inv-{uid}", email=f"inv-{uid}@test.com")
+    headers["Content-Type"] = "application/json"
+
+    r = await client.post(
+        "/api/v1/tenants/",
+        json={"name": f"Inv {uid}", "slug": f"inv-{uid}"},
+        headers=headers,
+    )
+    assert r.status_code == 201
+
+    r = await client.post(
+        "/api/v1/tenants/me/products",
+        json={
+            "name": f"Item-{uid}",
+            "price_amount": "1.000",
+            "track_inventory": True,
+            "stock_qty": 2,
+            "low_stock_threshold": 0,
+        },
+        headers=headers,
+    )
+    assert r.status_code == 201
+    product_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["is_low_stock"] is False
+
+
+async def test_custom_threshold_respected(client: AsyncClient):
+    """Product with custom low_stock_threshold=20 and stock=15 → is_low_stock=True."""
+    uid = _uid()
+    headers = auth_headers(sub=f"inv-{uid}", email=f"inv-{uid}@test.com")
+    headers["Content-Type"] = "application/json"
+
+    r = await client.post(
+        "/api/v1/tenants/",
+        json={"name": f"Inv {uid}", "slug": f"inv-{uid}"},
+        headers=headers,
+    )
+    assert r.status_code == 201
+
+    r = await client.post(
+        "/api/v1/tenants/me/products",
+        json={
+            "name": f"Item-{uid}",
+            "price_amount": "1.000",
+            "track_inventory": True,
+            "stock_qty": 15,
+            "low_stock_threshold": 20,
+        },
+        headers=headers,
+    )
+    assert r.status_code == 201
+    product_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["is_low_stock"] is True
+    assert r.json()["low_stock_threshold"] == 20
