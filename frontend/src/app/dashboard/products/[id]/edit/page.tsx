@@ -47,6 +47,29 @@ interface MediaAsset {
   s3_key: string;
 }
 
+interface StockMovement {
+  id: string;
+  product_id: string;
+  delta_qty: number;
+  reason: string;
+  note: string | null;
+  order_id: string | null;
+  actor_user_id: string | null;
+  created_at: string;
+}
+
+interface PaginatedMovements {
+  items: StockMovement[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
+const REASON_LABELS: Record<string, string> = {
+  manual_restock: "Manual Restock",
+  manual_adjustment: "Manual Adjustment",
+  order_cancel_restore: "Order Cancel Restore",
+};
+
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -73,6 +96,17 @@ function EditProductContent() {
   const [images, setImages] = useState<ImageEntry[]>([]);
   const [imageError, setImageError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Restock
+  const [restockQty, setRestockQty] = useState(1);
+  const [restockNote, setRestockNote] = useState("");
+  const [restocking, setRestocking] = useState(false);
+  const [restockMsg, setRestockMsg] = useState("");
+  const restockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stock movement history
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [movementsLoading, setMovementsLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -127,6 +161,58 @@ function EditProductContent() {
     }
     fetchData();
   }, [productId]);
+
+  async function fetchMovements() {
+    setMovementsLoading(true);
+    const result = await apiFetch<PaginatedMovements>(
+      `/api/v1/tenants/me/products/${productId}/stock-movements?limit=20`,
+    );
+    if (result.ok) {
+      setMovements(result.data.items);
+    } else {
+      setMovements([]);
+    }
+    setMovementsLoading(false);
+  }
+
+  // Load movements on mount; clean up restock toast timer on unmount
+  useEffect(() => {
+    fetchMovements();
+    return () => {
+      if (restockTimerRef.current) clearTimeout(restockTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
+  async function handleRestock(e: React.FormEvent) {
+    e.preventDefault();
+    setRestocking(true);
+    setRestockMsg("");
+
+    const result = await apiFetch<Product>(
+      `/api/v1/tenants/me/products/${productId}/restock`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          qty: restockQty,
+          note: restockNote || null,
+        }),
+      },
+    );
+
+    if (result.ok) {
+      setStockQty(result.data.stock_qty ?? 0);
+      setRestockMsg(`Added ${restockQty} units`);
+      setRestockQty(1);
+      setRestockNote("");
+      if (restockTimerRef.current) clearTimeout(restockTimerRef.current);
+      restockTimerRef.current = setTimeout(() => setRestockMsg(""), 3000);
+      fetchMovements();
+    } else {
+      setRestockMsg(`Error: ${result.detail}`);
+    }
+    setRestocking(false);
+  }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -444,6 +530,99 @@ function EditProductContent() {
             </button>
           </div>
         </form>
+
+        {/* Restock Section — only for tracked-inventory products */}
+        {trackInventory && (
+          <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              Restock
+            </h2>
+            <form onSubmit={handleRestock} className="flex items-end gap-3">
+              <div className="w-24">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Qty to add
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={restockQty}
+                  onChange={(e) => setRestockQty(parseInt(e.target.value) || 1)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Note <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  maxLength={500}
+                  placeholder="e.g. Weekly shipment"
+                  value={restockNote}
+                  onChange={(e) => setRestockNote(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={restocking || restockQty < 1}
+                className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {restocking ? "Adding..." : "Restock"}
+              </button>
+            </form>
+            {restockMsg && (
+              <p className={`mt-2 text-xs ${restockMsg.startsWith("Error") ? "text-red-600" : "text-green-600"}`}>
+                {restockMsg}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Stock Movement History */}
+        {trackInventory && (
+          <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              Stock Movement History
+            </h2>
+            {movementsLoading ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : movements.length === 0 ? (
+              <p className="text-sm text-gray-400">No stock movements yet.</p>
+            ) : (
+              <div className="overflow-hidden rounded border">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2">Date</th>
+                      <th className="px-3 py-2">Reason</th>
+                      <th className="px-3 py-2 text-right">Qty</th>
+                      <th className="px-3 py-2">Note</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {movements.map((m) => (
+                      <tr key={m.id}>
+                        <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">
+                          {new Date(m.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 text-xs">
+                          {REASON_LABELS[m.reason] ?? m.reason}
+                        </td>
+                        <td className={`px-3 py-2 text-right text-xs font-medium ${m.delta_qty > 0 ? "text-green-600" : "text-red-600"}`}>
+                          {m.delta_qty > 0 ? `+${m.delta_qty}` : m.delta_qty}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-gray-500">
+                          {m.note ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Product Images Section */}
         <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">

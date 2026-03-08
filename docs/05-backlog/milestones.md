@@ -161,6 +161,10 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | Cancel restore is idempotent (code check + DB unique index) |
 | `record_stock_movement()` service inserts movement + atomically updates stock_qty |
 | Integration tests: cancel restores tracked, skips untracked, no double-restore, mixed order, movement rows correct |
+| **Packet 2:** `POST /products/{id}/restock` — positive qty, optional note, tracked-inventory only |
+| **Packet 2:** `GET /products/{id}/stock-movements` — cursor-paginated history, newest-first |
+| **Packet 2:** Dashboard restock form + movement history table on product edit page |
+| **Packet 2:** Integration tests: restock happy path, rejects untracked, rejects bad qty, history correctness |
 
 ---
 

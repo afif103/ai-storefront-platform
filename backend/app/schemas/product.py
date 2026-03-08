@@ -75,6 +75,24 @@ class ProductResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class RestockRequest(BaseModel):
+    qty: int = Field(..., gt=0, description="Positive quantity to add to stock")
+    note: str | None = Field(None, max_length=500)
+
+
+class StockMovementResponse(BaseModel):
+    id: uuid.UUID
+    product_id: uuid.UUID
+    delta_qty: int
+    reason: str
+    note: str | None = None
+    order_id: uuid.UUID | None = None
+    actor_user_id: uuid.UUID | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class PublicProductResponse(BaseModel):
     id: uuid.UUID
     category_id: uuid.UUID | None = None

@@ -10,10 +10,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
 from app.models.product import Product
+from app.models.stock_movement import StockMovement
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.common import BulkDeleteRequest, BulkDeleteResponse, PaginatedResponse
-from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
+from app.schemas.product import (
+    ProductCreate,
+    ProductResponse,
+    ProductUpdate,
+    RestockRequest,
+    StockMovementResponse,
+)
+from app.services.inventory import record_stock_movement
 
 router = APIRouter()
 
@@ -172,6 +180,91 @@ async def update_product(
     await db.flush()
     await db.refresh(product)
     return _product_response(product, tenant)
+
+
+@router.post("/{product_id}/restock", response_model=ProductResponse)
+async def restock_product(
+    product_id: uuid.UUID,
+    body: RestockRequest,
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> ProductResponse:
+    """Add stock to a tracked-inventory product via audited movement."""
+    db, tenant_id = db_tenant
+    await require_role("admin", db, tenant_id, user)
+
+    tenant = await _get_tenant(db, tenant_id)
+
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if not product.track_inventory:
+        raise HTTPException(
+            status_code=422,
+            detail="Cannot restock a product that does not track inventory",
+        )
+
+    await record_stock_movement(
+        db,
+        tenant_id=tenant_id,
+        product_id=product.id,
+        delta_qty=body.qty,
+        reason="manual_restock",
+        note=body.note,
+        actor_user_id=user.id,
+    )
+    await db.refresh(product)
+    return _product_response(product, tenant)
+
+
+@router.get(
+    "/{product_id}/stock-movements",
+    response_model=PaginatedResponse[StockMovementResponse],
+)
+async def list_stock_movements(
+    product_id: uuid.UUID,
+    cursor: str | None = Query(None),
+    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> PaginatedResponse[StockMovementResponse]:
+    """List stock movements for a product, newest first."""
+    db, tenant_id = db_tenant
+    await require_role("member", db, tenant_id, user)
+
+    # Verify product exists
+    prod_result = await db.execute(select(Product).where(Product.id == product_id))
+    if prod_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    stmt = (
+        select(StockMovement)
+        .where(StockMovement.product_id == product_id)
+        .order_by(StockMovement.created_at.desc(), StockMovement.id.desc())
+    )
+
+    if cursor is not None:
+        cursor_dt, cursor_id = _decode_cursor(cursor)
+        stmt = stmt.where(
+            tuple_(StockMovement.created_at, StockMovement.id) < tuple_(cursor_dt, cursor_id)
+        )
+
+    stmt = stmt.limit(limit + 1)
+    result = await db.execute(stmt)
+    rows = list(result.scalars().all())
+
+    has_more = len(rows) > limit
+    items = rows[:limit]
+
+    def _movement_cursor(m: StockMovement) -> str:
+        return f"{m.created_at.isoformat()}|{m.id}"
+
+    return PaginatedResponse(
+        items=[StockMovementResponse.model_validate(m) for m in items],
+        next_cursor=_movement_cursor(items[-1]) if has_more and items else None,
+        has_more=has_more,
+    )
 
 
 @router.post("/bulk-delete", response_model=BulkDeleteResponse)

@@ -117,6 +117,18 @@ Ordered epics M1–M9. Each task has a suggested owner:
 | 5c.4 | Wire cancel restore into order status transitions | Claude | **DONE** | Only triggers on true transition into `cancelled` from a prior state. Passes actor_user_id. |
 | 5c.5 | Integration tests for cancel restore + movement audit | Claude | **DONE** | 5 tests: tracked restore, untracked skip, no double-restore, movement rows correct, mixed order. |
 
+### Packet 2 — Dashboard Restock + Movement History (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 5c.6 | `POST /tenants/me/products/{id}/restock` endpoint | Claude | **DONE** | Positive qty only, optional note, tracked-inventory products only. Reuses `record_stock_movement(reason="manual_restock")`. Returns updated product. |
+| 5c.7 | `GET /tenants/me/products/{id}/stock-movements` endpoint | Claude | **DONE** | Cursor-paginated, newest-first. Returns delta_qty, reason, note, order_id, actor_user_id, created_at. |
+| 5c.8 | Dashboard restock UI on product edit page | Claude | **DONE** | Qty + note form, green Restock button. Only shown when track_inventory=true. Updates stock display on success. |
+| 5c.9 | Dashboard movement history UI on product edit page | Claude | **DONE** | Table showing last 20 movements with reason label, signed delta, note, timestamp. Refreshes after restock. |
+| 5c.10 | Integration tests for restock + history | Claude | **DONE** | 4 tests: restock increases stock + creates movement, rejects untracked, rejects zero/negative qty, history returns correct rows. |
+
+**Tech debt:** Direct `stock_qty` edit via `PATCH /products/{id}` still bypasses movement trail. Not addressed in this packet.
+
 ---
 
 ## M6 — Admin Panel

@@ -421,3 +421,111 @@ async def test_mixed_order_tracked_and_untracked_restore(client: AsyncClient, db
     assert len(movements) == 1
     assert movements[0].product_id == uuid.UUID(tracked_id)
     assert movements[0].delta_qty == 3
+
+
+# ---------------------------------------------------------------------------
+# M5c Packet 2 — restock + stock movement history tests
+# ---------------------------------------------------------------------------
+
+
+async def test_restock_increases_stock_and_creates_movement(client: AsyncClient, db: AsyncSession):
+    """POST /restock adds qty, returns updated product, creates movement row."""
+    headers, slug, product_id, _visit_id = await _setup(client, stock_qty=5)
+
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/restock",
+        json={"qty": 10, "note": "Weekly restock"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["stock_qty"] == 15
+
+    # Verify movement row
+    r_t = await client.get("/api/v1/tenants/me", headers=headers)
+    tenant_id = r_t.json()["id"]
+    await db.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
+        {"tid": tenant_id},
+    )
+    result = await db.execute(
+        select(StockMovement).where(
+            StockMovement.product_id == uuid.UUID(product_id),
+            StockMovement.reason == "manual_restock",
+        )
+    )
+    movements = list(result.scalars().all())
+    assert len(movements) == 1
+    assert movements[0].delta_qty == 10
+    assert movements[0].note == "Weekly restock"
+    assert movements[0].actor_user_id is not None
+
+
+async def test_restock_rejects_untracked_product(client: AsyncClient):
+    """POST /restock on track_inventory=False returns 422."""
+    headers, _slug, product_id, _visit_id = await _setup(
+        client, stock_qty=0, track_inventory=False
+    )
+
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/restock",
+        json={"qty": 5},
+        headers=headers,
+    )
+    assert r.status_code == 422
+    assert "does not track inventory" in r.json()["detail"]
+
+
+async def test_restock_rejects_zero_and_negative_qty(client: AsyncClient):
+    """POST /restock with qty <= 0 returns 422 (Pydantic validation)."""
+    headers, _slug, product_id, _visit_id = await _setup(client, stock_qty=5)
+
+    for bad_qty in [0, -3]:
+        r = await client.post(
+            f"/api/v1/tenants/me/products/{product_id}/restock",
+            json={"qty": bad_qty},
+            headers=headers,
+        )
+        assert r.status_code == 422
+
+
+async def test_stock_movements_history_endpoint(client: AsyncClient):
+    """GET /stock-movements returns recent movements newest-first."""
+    headers, slug, product_id, visit_id = await _setup(client, stock_qty=10)
+
+    # Create a movement via restock
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/restock",
+        json={"qty": 5, "note": "first restock"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+    # Create another movement via cancel
+    r = await _submit_order(client, slug, product_id, visit_id, qty=2)
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/orders/{order_id}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+    # Fetch history
+    r = await client.get(
+        f"/api/v1/tenants/me/products/{product_id}/stock-movements",
+        headers=headers,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    items = data["items"]
+
+    # Should have 2 movements: cancel restore (newest) + restock
+    assert len(items) == 2
+    assert items[0]["reason"] == "order_cancel_restore"
+    assert items[0]["delta_qty"] == 2
+    assert items[0]["order_id"] == order_id
+    assert items[1]["reason"] == "manual_restock"
+    assert items[1]["delta_qty"] == 5
+    assert items[1]["note"] == "first restock"
