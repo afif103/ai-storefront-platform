@@ -89,7 +89,10 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 | M3.5 Conversion UI | Complete |
 | M4 AI Assistant | Complete |
 | M4.2 Storefront Chat | Complete |
-| M5–M9 | Not started |
+| M5 Attribution & Dashboard | Complete |
+| M5b Inventory / Stock v1 | Complete |
+| M5c Inventory Movements & Stock Ops | Complete (P1–P4) |
+| M6–M9 | Not started |
 
 **M2**: Categories, products, storefront config, media assets, presigned S3 uploads, UTM visit tracking, public storefront with branding. Full dashboard CRUD + anonymous storefront browsing.
 
@@ -100,6 +103,12 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 **M4**: Dashboard AI assistant (`/dashboard/assistant`) with per-tenant quota enforcement, rate limiting, and usage logging. Provider abstraction (OpenAI default, Groq supported). All calls through `ai_gateway.py`.
 
 **M4.2**: Public buyer-facing storefront chat endpoint (`POST /storefront/{slug}/ai/chat`) + floating chat bubble widget. Session-based rate limit (10 msgs / 5 min). Read-only — no order/donation/pledge creation.
+
+**M5**: Event-based analytics (visitor/session/event tracking, UTM attribution, funnel conversion rates, daily series). Dashboard analytics page with KPI cards + funnel table + daily activity. CSV export.
+
+**M5b**: Product inventory fields (`track_inventory`, `stock_qty`). Atomic stock decrement on order submit. 409 on insufficient stock. Public `in_stock` flag. Storefront out-of-stock UI.
+
+**M5c**: Stock movement audit trail (`stock_movements` table). Cancel-restore with idempotency. Dashboard restock + movement history. Per-product low-stock threshold with amber alerts. Analytics CSV export.
 
 ## Running Tests
 
