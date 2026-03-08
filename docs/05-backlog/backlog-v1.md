@@ -145,6 +145,14 @@ Ordered epics M1–M9. Each task has a suggested owner:
 | 5c.15 | Product create/edit UI: low-stock threshold input | Claude | **DONE** | Shown when track_inventory=true. Placeholder 5, label "(0 = disabled)". Included in create + edit submit body. |
 | 5c.16 | Integration tests for `is_low_stock` computation | Claude | **DONE** | 7 tests: at threshold, below, above, out-of-stock, untracked, threshold=0, custom threshold. |
 
+### Packet 4 — Analytics CSV Export (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 5c.17 | Frontend CSV export from analytics summary data | Claude | **DONE** | `buildCsv()` helper generates 3-section CSV: KPI summary, funnel with rates, daily series. No new backend endpoint. |
+| 5c.18 | "Export CSV" button on analytics dashboard | Claude | **DONE** | In header next to range selector. Disabled while loading or when no data. Filename includes preset + date. |
+| 5c.19 | Update docs for shipped Packet 4 | Claude | **DONE** | Backlog + milestones updated. |
+
 ---
 
 ## M6 — Admin Panel

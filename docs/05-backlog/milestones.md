@@ -170,6 +170,8 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | **Packet 3:** Dashboard products list: amber low-stock badge + "All" / "Low stock only" frontend filter |
 | **Packet 3:** Product create/edit UI: low-stock threshold input field |
 | **Packet 3:** Integration tests: 7 tests covering threshold logic edge cases |
+| **Packet 4:** Frontend-generated CSV export from analytics summary (KPI + funnel + daily series) |
+| **Packet 4:** "Export CSV" button on analytics dashboard, disabled when loading/empty, filename includes preset + date |
 
 ---
 

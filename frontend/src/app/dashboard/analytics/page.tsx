@@ -65,6 +65,58 @@ const FUNNEL_LABELS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// CSV export
+// ---------------------------------------------------------------------------
+
+function buildCsv(data: SummaryData, preset: RangePreset): string {
+  const rows: string[] = [];
+
+  // Section 1: KPI Summary
+  rows.push("Section,Metric,Value");
+  rows.push(`Summary,Visitors,${data.visitors}`);
+  rows.push(`Summary,Sessions,${data.sessions}`);
+  for (const step of data.funnel) {
+    const label = FUNNEL_LABELS[step.event_name] ?? step.event_name;
+    rows.push(`Summary,${label},${step.count}`);
+  }
+
+  // Blank line between sections
+  rows.push("");
+
+  // Section 2: Funnel with rates
+  rows.push("Funnel Step,Count,Rate (%)");
+  for (const step of data.funnel) {
+    const label = FUNNEL_LABELS[step.event_name] ?? step.event_name;
+    rows.push(`${label},${step.count},${(step.rate * 100).toFixed(1)}`);
+  }
+
+  // Section 3: Daily series (if present)
+  if (data.daily_series && data.daily_series.length > 0) {
+    rows.push("");
+    rows.push("Date,Storefront Views,Submissions");
+    for (const day of data.daily_series) {
+      rows.push(`${day.date},${day.storefront_views},${day.submissions}`);
+    }
+  }
+
+  return rows.join("\n");
+}
+
+function downloadCsv(data: SummaryData, preset: RangePreset): void {
+  const csv = buildCsv(data, preset);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const today = new Date().toISOString().split("T")[0];
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `analytics-${preset}-${today}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -117,20 +169,29 @@ function AnalyticsContent() {
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500">{RANGE_LABELS[preset]}</span>
           </div>
-          <div className="flex gap-1">
-            {(["7d", "30d", "90d"] as RangePreset[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPreset(p)}
-                className={`rounded px-3 py-1.5 text-sm font-medium ${
-                  preset === p
-                    ? "bg-blue-600 text-white"
-                    : "border border-gray-300 text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1">
+              {(["7d", "30d", "90d"] as RangePreset[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPreset(p)}
+                  className={`rounded px-3 py-1.5 text-sm font-medium ${
+                    preset === p
+                      ? "bg-blue-600 text-white"
+                      : "border border-gray-300 text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => data && downloadCsv(data, preset)}
+              disabled={loading || !data || data.visitors === 0}
+              className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Export CSV
+            </button>
           </div>
         </div>
       </header>
