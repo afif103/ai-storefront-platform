@@ -4,6 +4,7 @@ Flow: slug -> lookup tenant -> SET LOCAL app.current_tenant -> query via RLS.
 All in the same DB session. No tenant_id exposed in responses.
 """
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -45,6 +46,12 @@ from app.services.numbering import (
     get_next_pledge_number,
 )
 from app.services.storage import presign_get
+from app.workers.tasks.notifications import (
+    send_donation_notification,
+    send_order_notification,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -405,6 +412,15 @@ async def submit_order(
     if body.visit_id:
         await _create_utm_event(db, tenant.id, body.visit_id, "order", order.id)
 
+    # Commit before dispatching so the worker can see the row
+    await db.commit()
+
+    # Dispatch notification (fire-and-forget, after commit)
+    try:
+        send_order_notification.delay(str(tenant.id), str(order.id))
+    except Exception:
+        logger.exception("Failed to enqueue order notification for order=%s", order.id)
+
     return OrderCreateResponse.model_validate(order)
 
 
@@ -462,6 +478,15 @@ async def submit_donation(
 
     if body.visit_id:
         await _create_utm_event(db, tenant.id, body.visit_id, "donation", donation.id)
+
+    # Commit before dispatching so the worker can see the row
+    await db.commit()
+
+    # Dispatch notification (fire-and-forget, after commit)
+    try:
+        send_donation_notification.delay(str(tenant.id), str(donation.id))
+    except Exception:
+        logger.exception("Failed to enqueue donation notification for donation=%s", donation.id)
 
     return DonationCreateResponse.model_validate(donation)
 

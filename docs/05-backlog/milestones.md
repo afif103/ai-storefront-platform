@@ -220,9 +220,9 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | Telegram notification service (Bot API HTTP + env-var token) | P2 | **DONE** |
 | Celery tasks for order + donation email/Telegram notifications | P2 | **DONE** |
 | Integration tests for notification services (mocked providers) | P2 | **DONE** |
-| Order creation dispatches notification Celery task (fire-and-forget after commit) | P3 | |
-| Donation creation dispatches notification Celery task | P3 | |
-| Dispatch integration tests (verify task enqueued) | P3 | |
+| Order creation dispatches notification Celery task (fire-and-forget after commit) | P3 | **DONE** |
+| Donation creation dispatches notification Celery task | P3 | **DONE** |
+| Dispatch integration tests (verify task enqueued) | P3 | **DONE** |
 | Donation receipt email to donor (when receipt_requested=true) | P4+ | |
 | Pledge due-soon periodic Telegram reminder (Celery Beat) | P4+ | |
 | AI soft-limit notification wiring (ADR-0004) | P4+ | |

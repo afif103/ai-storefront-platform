@@ -225,13 +225,13 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 **Deferred from P2:** Secrets Manager fetch (env-var only for now), pledge notifications (periodic/Celery Beat), donor receipt email.
 
-### Packet 3 — Dispatch Wiring (not started)
+### Packet 3 — Dispatch Wiring (shipped)
 
 | # | Task | Owner | Status | DoD |
 |---|------|-------|--------|-----|
-| 7.5a | Wire notification dispatch on order creation | Claude | | After `session.commit()` in public order endpoint → `send_order_notification.delay()`. Fire-and-forget. |
-| 7.5b | Wire notification dispatch on donation creation | Claude | | Same pattern for donation endpoint. |
-| 7.7c | Dispatch wiring integration tests | Claude | | Create order → verify task enqueued (mock `.delay()`). Create donation → same. |
+| 7.5a | Wire notification dispatch on order creation | Claude | **DONE** | Explicit `await db.commit()` in public order endpoint, then `send_order_notification.delay()`. Fire-and-forget, wrapped in try/except so dispatch failure never breaks the API response. |
+| 7.5b | Wire notification dispatch on donation creation | Claude | **DONE** | Same pattern for donation endpoint (explicit commit, then .delay()). |
+| 7.7c | Dispatch wiring integration tests | Claude | **DONE** | 4 tests: order dispatches .delay() with correct args, donation dispatches .delay() with correct args, order still 201 when .delay() raises, donation still 201 when .delay() raises. |
 
 ### Packet 4+ — Remaining (not started)
 
