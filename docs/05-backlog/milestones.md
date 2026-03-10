@@ -194,9 +194,11 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | Tenant admin can export orders/donations/pledges as CSV (date-filtered, RLS-isolated) | P2 | **DONE** |
 | List + export queries use defense-in-depth tenant_id filter | P2 | **DONE** |
 | 13 integration tests (7 role change + 6 CSV export) all pass | P2 | **DONE** |
-| Super admin tenant list includes usage summary (order count, AI usage) | P3+ | |
-| Super admin UI (Next.js): tenant list, suspend/reactivate | P3+ | |
-| Tenant admin UI (Next.js): team management, export buttons | P3+ | |
+| Platform admin SELECT RLS policies on orders/donations/pledges (production-correct) | P3 | **DONE** |
+| Admin tenant list includes usage summary (order/donation/pledge counts, last_activity_at) | P3 | **DONE** |
+| 3 integration tests (superuser with-data + empty, RLS-validated) all pass | P3 | **DONE** |
+| Super admin UI (Next.js): tenant list, suspend/reactivate | P4+ | |
+| Tenant admin UI (Next.js): team management, export buttons | P4+ | |
 
 ---
 

@@ -23,6 +23,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, require_platform_admin
 from app.models.audit_event import AuditEvent
+from app.models.donation import Donation
+from app.models.order import Order
+from app.models.pledge import Pledge
 from app.models.tenant import Tenant
 from app.models.tenant_member import TenantMember
 from app.models.user import User
@@ -58,8 +61,61 @@ async def list_tenants(
         .label("member_count")
     )
 
+    order_count_sub = (
+        select(func.count(Order.id))
+        .where(Order.tenant_id == Tenant.id)
+        .correlate(Tenant)
+        .scalar_subquery()
+        .label("order_count")
+    )
+
+    donation_count_sub = (
+        select(func.count(Donation.id))
+        .where(Donation.tenant_id == Tenant.id)
+        .correlate(Tenant)
+        .scalar_subquery()
+        .label("donation_count")
+    )
+
+    pledge_count_sub = (
+        select(func.count(Pledge.id))
+        .where(Pledge.tenant_id == Tenant.id)
+        .correlate(Tenant)
+        .scalar_subquery()
+        .label("pledge_count")
+    )
+
+    last_order = (
+        select(func.max(Order.created_at))
+        .where(Order.tenant_id == Tenant.id)
+        .correlate(Tenant)
+        .scalar_subquery()
+    )
+    last_donation = (
+        select(func.max(Donation.created_at))
+        .where(Donation.tenant_id == Tenant.id)
+        .correlate(Tenant)
+        .scalar_subquery()
+    )
+    last_pledge = (
+        select(func.max(Pledge.created_at))
+        .where(Pledge.tenant_id == Tenant.id)
+        .correlate(Tenant)
+        .scalar_subquery()
+    )
+    last_activity_sub = func.greatest(
+        last_order, last_donation, last_pledge
+    ).label("last_activity_at")
+
     stmt = (
-        select(Tenant, member_count_sub)
+        select(
+            Tenant,
+            member_count_sub,
+            order_count_sub,
+            donation_count_sub,
+            pledge_count_sub,
+            last_activity_sub,
+        )
         .order_by(Tenant.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -70,14 +126,18 @@ async def list_tenants(
 
     return [
         AdminTenantListItem(
-            id=tenant.id,
-            name=tenant.name,
-            slug=tenant.slug,
-            is_active=tenant.is_active,
-            created_at=tenant.created_at,
-            member_count=member_count,
+            id=t.id,
+            name=t.name,
+            slug=t.slug,
+            is_active=t.is_active,
+            created_at=t.created_at,
+            member_count=mc,
+            order_count=oc,
+            donation_count=dc,
+            pledge_count=pc,
+            last_activity_at=la,
         )
-        for tenant, member_count in rows
+        for t, mc, oc, dc, pc, la in rows
     ]
 
 

@@ -275,6 +275,96 @@ async def test_reactivate_already_active_returns_409(client: AsyncClient, db: As
 # --- Test: Non-admin cannot suspend ---
 
 
+async def test_admin_list_includes_usage_summary(client: AsyncClient, db: AsyncSession):
+    """Admin tenant list includes order/donation/pledge counts and last_activity_at."""
+    admin_headers, _ = await _create_platform_admin(client, db)
+    owner_headers, slug, tenant_id = await _create_tenant(client)
+
+    # Create a product (track_inventory=false to avoid stock issues)
+    r = await client.post(
+        "/api/v1/tenants/me/products",
+        json={
+            "name": "SummaryProd",
+            "price_amount": "5.000",
+            "is_active": True,
+            "track_inventory": False,
+        },
+        headers=owner_headers,
+    )
+    assert r.status_code == 201
+    product_id = r.json()["id"]
+
+    # Create a visit for linking
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/visit", json={"session_id": "summ-sess"}
+    )
+    assert r.status_code == 201
+    visit_id = r.json()["visit_id"]
+
+    # Create order
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Summary",
+            "customer_phone": "+96500000001",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+            "visit_id": visit_id,
+        },
+    )
+    assert r.status_code == 201
+
+    # Create donation
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/donations",
+        json={"donor_name": "Donor", "amount": "10.000", "visit_id": visit_id},
+    )
+    assert r.status_code == 201
+
+    # Create pledge
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/pledges",
+        json={
+            "pledgor_name": "Pledgor",
+            "amount": "25.000",
+            "target_date": "2026-12-31",
+            "visit_id": visit_id,
+        },
+    )
+    assert r.status_code == 201
+
+    # Admin list tenants
+    r = await client.get("/api/v1/admin/tenants", headers=admin_headers)
+    assert r.status_code == 200
+    matching = [t for t in r.json() if t["slug"] == slug]
+    assert len(matching) == 1
+    tenant_data = matching[0]
+
+    assert tenant_data["order_count"] == 1
+    assert tenant_data["donation_count"] == 1
+    assert tenant_data["pledge_count"] == 1
+    assert tenant_data["last_activity_at"] is not None
+
+
+async def test_admin_list_empty_tenant_has_zero_counts(client: AsyncClient, db: AsyncSession):
+    """New tenant with no activity has zero counts and null last_activity_at."""
+    admin_headers, _ = await _create_platform_admin(client, db)
+    _, slug, _ = await _create_tenant(client)
+
+    r = await client.get("/api/v1/admin/tenants", headers=admin_headers)
+    assert r.status_code == 200
+    matching = [t for t in r.json() if t["slug"] == slug]
+    assert len(matching) == 1
+    tenant_data = matching[0]
+
+    assert tenant_data["order_count"] == 0
+    assert tenant_data["donation_count"] == 0
+    assert tenant_data["pledge_count"] == 0
+    assert tenant_data["last_activity_at"] is None
+
+
+# --- Test: Non-admin cannot suspend ---
+
+
 async def test_non_admin_cannot_suspend(client: AsyncClient):
     """Regular user cannot suspend tenants."""
     _, _, tenant_id = await _create_tenant(client)

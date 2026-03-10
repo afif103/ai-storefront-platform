@@ -178,11 +178,18 @@ Ordered epics M1–M9. Each task has a suggested owner:
 | 6.4b | List endpoints add explicit tenant_id filter | Claude | **DONE** | Defense-in-depth: all list + export queries filter by tenant_id in addition to RLS. |
 | 6.7b | Role change + CSV export integration tests | Claude | **DONE** | 13 tests: 7 role change (promote, demote, non-owner 403, self-change 400, last-owner 400, audit event, same-role 409) + 6 CSV export (orders/donations/pledges, empty, RLS isolation, member 403). |
 
-### Packet 3+ — Remaining (not started)
+### Packet 3 — Admin Tenant List Usage Summary (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 6.1e | Platform admin SELECT RLS policies on orders/donations/pledges | Claude | **DONE** | Migration adds SELECT-only policies (same pattern as tenant_members). Production-correct under app_user. |
+| 6.1f | Extend `GET /admin/tenants` with usage summary | Claude | **DONE** | order_count, donation_count, pledge_count, last_activity_at. Correlated subqueries, bounded by LIMIT 50. |
+| 6.7c | Usage summary integration tests (superuser + RLS) | Claude | **DONE** | 3 tests: with-data counts, empty-tenant zeros, RLS-validated counts under app_user. |
+
+### Packet 4+ — Remaining (not started)
 
 | # | Task | Owner | DoD |
 |---|------|-------|-----|
-| 6.1e | Add usage summary to admin tenant list | Claude | Extend `GET /admin/tenants` with order count, AI usage, etc. |
 | 6.5 | Build super admin UI (Next.js) | Claude | Tenant list, usage overview, suspend/reactivate actions |
 | 6.6 | Build tenant admin UI (Next.js) | Claude | Team management, storefront config, export buttons |
 

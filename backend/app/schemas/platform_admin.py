@@ -13,6 +13,10 @@ class AdminTenantListItem(BaseModel):
     is_active: bool
     created_at: datetime
     member_count: int
+    order_count: int = 0
+    donation_count: int = 0
+    pledge_count: int = 0
+    last_activity_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
