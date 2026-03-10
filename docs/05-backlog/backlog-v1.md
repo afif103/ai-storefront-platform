@@ -1,6 +1,6 @@
 # Backlog v1
 
-Ordered epics M1–M9. Each task has a suggested owner:
+Ordered epics M1–M9. Each task has a primary implementor:
 - **Claude**: AI-assisted implementation (code generation, migrations, boilerplate, tests).
 - **Kimi**: manual work (design decisions, config, cloud provisioning, manual testing, copy).
 - **Both**: collaborative tasks requiring human review of AI output.
@@ -9,7 +9,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M1 — Auth & Tenancy
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 1.1 | Create Cognito User Pool in `me-south-1` (password policy, MFA, app client) | Kimi | Pool exists, app client secret in Secrets Manager |
 | 1.2 | Build custom Next.js auth pages (signup, login, forgot password, MFA setup) | Claude | Pages render, forms submit to Cognito, error handling works |
@@ -27,7 +27,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M2 — Storefront & Catalog
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 2.1 | Create `storefront_config` table + RLS + migration | Claude | Table with `UNIQUE(tenant_id)`, RLS policies, isolation test |
 | 2.2 | Create `catalog_items` table + RLS + migration | Claude | Table with type discriminator (`TEXT+CHECK`), metadata JSONB, indexes per `data-model.md` |
@@ -44,7 +44,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M3 — Structured Capture
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 3.1 | Create `orders` table + RLS + migration | Claude | Status `TEXT+CHECK`, JSONB items, `UNIQUE(tenant_id, order_number)`, indexes |
 | 3.2 | Create `donations` table + RLS + migration | Claude | Amount `NUMERIC(12,3)`, campaign field, receipt flag |
@@ -61,7 +61,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M4 — AI Assistant
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 4.1 | Create `ai_conversations` + `ai_usage_log` tables + RLS + migrations | Claude | **DONE** | Tables per `data-model.md`, RLS policies, indexes |
 | 4.2 | Implement AI gateway (`app/services/ai_gateway.py`) | Claude | **DONE** | Quota reserve → provider call → adjust/rollback → log. Two gateways: dashboard (`ai_gateway.py`, last 10 turns) + storefront (`storefront_ai_gateway.py`, last 6 turns). |
@@ -78,7 +78,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M5 — Attribution & Dashboard (Analytics/Funnel)
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 5.1 | Analytics DB schema: `attribution_visitors` / `attribution_sessions` / `attribution_events` tables + indexes | Claude | Alembic migration runs clean, indexes on tenant_id + occurred_at + event_name, reversible downgrade |
 | 5.2 | RLS policies: public INSERT-only; tenant/admin SELECT requires authenticated user context | Claude | Public can insert analytics events, public cannot read. Tenant can read own data only. Cross-tenant isolation test passes. |
@@ -94,7 +94,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M5b — Inventory / Stock v1
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 5b.1 | Add `track_inventory` + `stock_qty` fields to products table + migration | Claude | Alembic migration adds columns with CHECK(stock_qty >= 0), reversible downgrade |
 | 5b.2 | Update product create/edit schemas to accept inventory fields | Claude | ProductCreate/ProductUpdate include track_inventory + stock_qty. Validation: if track_inventory=true, stock_qty required. |
@@ -109,7 +109,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 1 — Foundation + Cancel Restore (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 5c.1 | Create `stock_movements` table + RLS + migration | Claude | **DONE** | Table with tenant_id, product_id, delta_qty, reason (CHECK), note, order_id, actor_user_id. RLS policies. Unique partial index on (order_id, product_id) WHERE reason = 'order_cancel_restore'. |
 | 5c.2 | Create `StockMovement` ORM model | Claude | **DONE** | Model registered in `__init__.py`. FK to products (RESTRICT), orders, users. |
@@ -119,7 +119,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 2 — Dashboard Restock + Movement History (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 5c.6 | `POST /tenants/me/products/{id}/restock` endpoint | Claude | **DONE** | Positive qty only, optional note, tracked-inventory products only. Reuses `record_stock_movement(reason="manual_restock")`. Returns updated product. |
 | 5c.7 | `GET /tenants/me/products/{id}/stock-movements` endpoint | Claude | **DONE** | Cursor-paginated, newest-first. Returns delta_qty, reason, note, order_id, actor_user_id, created_at. |
@@ -136,7 +136,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 3 — Low-stock Alerts in Dashboard (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 5c.11 | Add `low_stock_threshold` column to products + migration | Claude | **DONE** | Nullable INT, server_default=5. Migration reversible. |
 | 5c.12 | Add `low_stock_threshold` to Create/Update schemas + `is_low_stock` to Response | Claude | **DONE** | Computed: `track_inventory AND threshold > 0 AND 0 < stock_qty <= threshold`. Create default=5, Update optional. |
@@ -147,7 +147,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 4 — Analytics CSV Export (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 5c.17 | Frontend CSV export from analytics summary data | Claude | **DONE** | `buildCsv()` helper generates 3-section CSV: KPI summary, funnel with rates, daily series. No new backend endpoint. |
 | 5c.18 | "Export CSV" button on analytics dashboard | Claude | **DONE** | In header next to range selector. Disabled while loading or when no data. Filename includes preset + date. |
@@ -159,7 +159,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 1 — Platform Admin Foundation + Tenant Suspension (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 6.1a | Add `is_platform_admin` to users table + migration | Claude | **DONE** | Boolean, non-null, default false. Manual DB assignment only. |
 | 6.1b | Platform admin auth guard (`require_platform_admin`) | Claude | **DONE** | Dependency checks flag, returns 403 for non-admins. |
@@ -171,7 +171,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 2 — Role Change + CSV Export (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 6.3 | `PATCH /tenants/me/members/{id}` — change member role | Claude | **DONE** | Owner-only. Cannot change own role. Cannot demote last owner. 409 on same role. Writes `role_change` audit event. |
 | 6.4 | CSV export endpoints (orders/donations/pledges) | Claude | **DONE** | `GET /tenants/me/{entity}/export` with optional date range. Admin+ role. UTF-8 BOM for Excel. Defense-in-depth tenant_id filter. |
@@ -180,7 +180,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 3 — Admin Tenant List Usage Summary (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 6.1e | Platform admin SELECT RLS policies on orders/donations/pledges | Claude | **DONE** | Migration adds SELECT-only policies (same pattern as tenant_members). Production-correct under app_user. |
 | 6.1f | Extend `GET /admin/tenants` with usage summary | Claude | **DONE** | order_count, donation_count, pledge_count, last_activity_at. Correlated subqueries, bounded by LIMIT 50. |
@@ -188,14 +188,14 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 4 — Super Admin Tenant List UI (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 6.5a | Super admin tenant list page (`/dashboard/admin/tenants`) | Claude | **DONE** | Table with name, slug, status badge, member/order/donation/pledge counts, last activity, created date. Suspend/reactivate buttons with confirm dialog. Inline success/error messages. |
 | 6.5b | Dashboard home "Platform Admin" link card | Claude | **DONE** | Always-visible card linking to admin tenants page. Backend 403 is the real guard. |
 
 ### Packet 5+ — Remaining (not started)
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 6.5c | Super admin UI refinements (search, pagination, detail view) | Claude | Search by name/slug, pagination controls, tenant detail page |
 | 6.6 | Build tenant admin UI (Next.js) | Claude | Team management, storefront config, export buttons |
@@ -206,7 +206,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 1 — Notification Preferences Foundation (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 7.1a | Create `notification_preferences` table + migration | Claude | **DONE** | Table per `data-model.md`: `UNIQUE(tenant_id)`, `email_enabled`, `telegram_enabled`, `telegram_chat_id`, `telegram_bot_token_ref` (Secrets Manager key, nullable). Reversible migration. |
 | 7.1b | `NotificationPreference` ORM model + RLS policies | Claude | **DONE** | Model extends `TenantScopedBase`. RLS: tenant-scoped SELECT + INSERT + UPDATE + DELETE. Cross-tenant isolation test. |
@@ -216,7 +216,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 2 — Notification Services + Celery Tasks (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 7.3 | Implement email notification service + Celery task | Claude | **DONE** | SES client (boto3) with dev-mode log fallback. Plain text templates. Skips safely when recipient email missing. |
 | 7.4 | Implement Telegram notification service + Celery task | Claude | **DONE** | HTTP POST to Telegram Bot API via httpx. Skips safely when chat_id missing or bot_token empty. |
@@ -227,7 +227,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 3 — Dispatch Wiring (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 7.5a | Wire notification dispatch on order creation | Claude | **DONE** | Explicit `await db.commit()` in public order endpoint, then `send_order_notification.delay()`. Fire-and-forget, wrapped in try/except so dispatch failure never breaks the API response. |
 | 7.5b | Wire notification dispatch on donation creation | Claude | **DONE** | Same pattern for donation endpoint (explicit commit, then .delay()). |
@@ -235,14 +235,14 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ### Packet 4 — Donation Receipt Email (shipped)
 
-| # | Task | Owner | Status | DoD |
+| # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
 | 7.5c | Donation receipt email to donor | Claude | **DONE** | `format_donation_receipt()` template, `_process_donation_receipt()` task logic, `send_donation_receipt` Celery task. Dispatched when `receipt_requested=true` and `donor_email` present. Independent of tenant notification_preferences. Fire-and-forget with try/except. |
 | 7.7d | Donation receipt integration tests | Claude | **DONE** | 7 tests: template (1), task logic — sent/skipped-not-requested/skipped-no-email (3), dispatch — called/not-called-false/not-called-no-email/resilience (4). |
 
 ### Packet 5+ — Remaining (not started)
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 7.5d | Pledge due-soon periodic reminder | Claude | Celery Beat task: query pledges with `target_date` within 7 days + open status. Telegram to tenant. Redis dedup (once per pledge per day). |
 | 7.5e | AI soft-limit notification | Claude | Wire into AI quota check (ADR-0004). Celery task on soft-limit breach. Dedup once per billing period. |
@@ -253,7 +253,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M8 — Infrastructure & DevOps
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 8.1 | Create Docker Compose for local dev (Postgres, Redis) | Claude | `docker compose up -d` starts all deps, health checks pass |
 | 8.2 | Create Dockerfile for backend (multi-stage, slim) | Claude | Builds successfully, runs backend and worker via different entrypoints |
@@ -273,7 +273,7 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M9 — Hardening & Launch Prep
 
-| # | Task | Owner | DoD |
+| # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
 | 9.1 | Implement rate limiting middleware (Redis-based) | Claude | Per-IP, per-tenant, per-auth, per-AI session limits per `security.md §6`. Returns 429 + Retry-After. |
 | 9.2 | OWASP top-10 spot check | Both | SQL injection, XSS, CORS, auth bypass — all tested and passing |
