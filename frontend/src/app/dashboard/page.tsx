@@ -202,6 +202,19 @@ function DashboardContent() {
             </Link>
           </div>
         </div>
+        <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Platform Admin
+          </h2>
+          <div className="flex gap-4">
+            <Link
+              href="/dashboard/admin/tenants"
+              className="rounded bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900"
+            >
+              Manage Tenants
+            </Link>
+          </div>
+        </div>
       </main>
     </div>
   );

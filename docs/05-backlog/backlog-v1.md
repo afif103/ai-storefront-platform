@@ -186,11 +186,18 @@ Ordered epics M1–M9. Each task has a suggested owner:
 | 6.1f | Extend `GET /admin/tenants` with usage summary | Claude | **DONE** | order_count, donation_count, pledge_count, last_activity_at. Correlated subqueries, bounded by LIMIT 50. |
 | 6.7c | Usage summary integration tests (superuser + RLS) | Claude | **DONE** | 3 tests: with-data counts, empty-tenant zeros, RLS-validated counts under app_user. |
 
-### Packet 4+ — Remaining (not started)
+### Packet 4 — Super Admin Tenant List UI (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 6.5a | Super admin tenant list page (`/dashboard/admin/tenants`) | Claude | **DONE** | Table with name, slug, status badge, member/order/donation/pledge counts, last activity, created date. Suspend/reactivate buttons with confirm dialog. Inline success/error messages. |
+| 6.5b | Dashboard home "Platform Admin" link card | Claude | **DONE** | Always-visible card linking to admin tenants page. Backend 403 is the real guard. |
+
+### Packet 5+ — Remaining (not started)
 
 | # | Task | Owner | DoD |
 |---|------|-------|-----|
-| 6.5 | Build super admin UI (Next.js) | Claude | Tenant list, usage overview, suspend/reactivate actions |
+| 6.5c | Super admin UI refinements (search, pagination, detail view) | Claude | Search by name/slug, pagination controls, tenant detail page |
 | 6.6 | Build tenant admin UI (Next.js) | Claude | Team management, storefront config, export buttons |
 
 ---

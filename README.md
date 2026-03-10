@@ -95,7 +95,8 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 | M6 Admin Panel (P1) | Complete (platform admin + suspension) |
 | M6 Admin Panel (P2) | Complete (role change + CSV export) |
 | M6 Admin Panel (P3) | Complete (usage summary + RLS policies) |
-| M6 P4+ (UI), M7–M9 | Not started |
+| M6 Admin Panel (P4) | Complete (super admin tenant list UI) |
+| M6 P5+ (tenant admin UI), M7–M9 | Not started |
 
 **M2**: Categories, products, storefront config, media assets, presigned S3 uploads, UTM visit tracking, public storefront with branding. Full dashboard CRUD + anonymous storefront browsing.
 

@@ -197,8 +197,9 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | Platform admin SELECT RLS policies on orders/donations/pledges (production-correct) | P3 | **DONE** |
 | Admin tenant list includes usage summary (order/donation/pledge counts, last_activity_at) | P3 | **DONE** |
 | 3 integration tests (superuser with-data + empty, RLS-validated) all pass | P3 | **DONE** |
-| Super admin UI (Next.js): tenant list, suspend/reactivate | P4+ | |
-| Tenant admin UI (Next.js): team management, export buttons | P4+ | |
+| Super admin tenant list page with usage summary, suspend/reactivate actions | P4 | **DONE** |
+| Dashboard home link card to admin tenants page | P4 | **DONE** |
+| Tenant admin UI (Next.js): team management, export buttons | P5+ | |
 
 ---
 
