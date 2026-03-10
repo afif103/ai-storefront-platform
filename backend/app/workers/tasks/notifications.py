@@ -2,12 +2,13 @@
 
 import asyncio
 import logging
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
-from app.db.session import async_session_factory
 from app.models.donation import Donation
 from app.models.notification_preference import NotificationPreference
 from app.models.order import Order
@@ -22,6 +23,25 @@ from app.services.notifications.templates import (
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def _worker_session() -> AsyncIterator[AsyncSession]:
+    """Create a disposable engine + session for a single Celery task.
+
+    Each ``asyncio.run()`` call gets its own event loop.  asyncpg connections
+    are pinned to the loop that created them, so we must NOT reuse the
+    module-level engine (which lives on uvicorn's loop).  Instead we spin up
+    a fresh engine per task and dispose it afterwards — guaranteeing no
+    cross-loop connection leaks.
+    """
+    engine = create_async_engine(settings.DATABASE_URL)
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            yield session
+    finally:
+        await engine.dispose()
 
 
 async def _process_order_notification(
@@ -171,7 +191,7 @@ def send_order_notification(tenant_id: str, order_id: str) -> None:
     """Notify tenant about a new order (email + Telegram if enabled)."""
 
     async def _run() -> None:
-        async with async_session_factory() as session:
+        async with _worker_session() as session:
             await _process_order_notification(session, tenant_id, order_id)
 
     asyncio.run(_run())
@@ -182,7 +202,7 @@ def send_donation_notification(tenant_id: str, donation_id: str) -> None:
     """Notify tenant about a new donation (email + Telegram if enabled)."""
 
     async def _run() -> None:
-        async with async_session_factory() as session:
+        async with _worker_session() as session:
             await _process_donation_notification(session, tenant_id, donation_id)
 
     asyncio.run(_run())
@@ -242,7 +262,7 @@ def send_donation_receipt(tenant_id: str, donation_id: str) -> None:
     """Send donation receipt email to the donor."""
 
     async def _run() -> None:
-        async with async_session_factory() as session:
+        async with _worker_session() as session:
             await _process_donation_receipt(session, tenant_id, donation_id)
 
     asyncio.run(_run())
