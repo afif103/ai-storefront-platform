@@ -208,15 +208,26 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 **Target**: 1 week
 **Dependencies**: M3 (needs orders/donations to notify about)
 
-| Acceptance Criteria |
-|---------------------|
-| Order created → email sent to tenant (if email_enabled) |
-| Order created → Telegram message sent (if telegram_enabled) |
-| Donation receipt requested → email sent to donor |
-| Pledge due soon → Telegram reminder to tenant |
-| Notification preferences configurable per tenant |
-| Telegram bot token stored in Secrets Manager (not DB) |
-| All notifications dispatched async via Celery |
+| Acceptance Criteria | Packet | Status |
+|---------------------|--------|--------|
+| `notification_preferences` table with RLS (tenant-scoped, per data-model.md) | P1 | |
+| `GET /tenants/me/notification-preferences` returns preferences (auto-creates default row) | P1 | |
+| `PUT /tenants/me/notification-preferences` updates email/telegram toggles + chat ID (admin/owner only) | P1 | |
+| Member can GET but cannot PUT preferences (role guard) | P1 | |
+| Cross-tenant isolation test passes on notification_preferences | P1 | |
+| Integration tests for preferences CRUD + RLS + role guard | P1 | |
+| Email notification service (SES + dev-mode log fallback) | P2 | |
+| Telegram notification service (Bot API HTTP + SM token fetch) | P2 | |
+| Celery tasks for order + donation email/Telegram notifications | P2 | |
+| Integration tests for notification services (mocked providers) | P2 | |
+| Order creation dispatches notification Celery task (fire-and-forget after commit) | P3 | |
+| Donation creation dispatches notification Celery task | P3 | |
+| Dispatch integration tests (verify task enqueued) | P3 | |
+| Donation receipt email to donor (when receipt_requested=true) | P4+ | |
+| Pledge due-soon periodic Telegram reminder (Celery Beat) | P4+ | |
+| AI soft-limit notification wiring (ADR-0004) | P4+ | |
+| Frontend notification preferences UI | P4+ | |
+| SES sending identity + DKIM configured (Kimi) | P4+ | |
 
 ---
 

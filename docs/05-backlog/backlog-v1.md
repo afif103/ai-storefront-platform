@@ -204,15 +204,42 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M7 — Notifications
 
+### Packet 1 — Notification Preferences Foundation (not started)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 7.1a | Create `notification_preferences` table + migration | Claude | | Table per `data-model.md`: `UNIQUE(tenant_id)`, `email_enabled`, `telegram_enabled`, `telegram_chat_id`, `telegram_bot_token_ref` (Secrets Manager key, nullable). Reversible migration. |
+| 7.1b | `NotificationPreference` ORM model + RLS policies | Claude | | Model extends `TenantScopedBase`. RLS: tenant-scoped SELECT + INSERT + UPDATE. Cross-tenant isolation test. |
+| 7.2a | `GET /api/v1/tenants/me/notification-preferences` | Claude | | Returns current preferences. Auto-creates default row (both disabled) on first read. All authenticated roles can read. |
+| 7.2b | `PUT /api/v1/tenants/me/notification-preferences` | Claude | | Admin/owner only. Updates `email_enabled`, `telegram_enabled`, `telegram_chat_id`. `telegram_bot_token_ref` not exposed in PUT (set separately in future). |
+| 7.7a | Notification preferences integration tests | Claude | | CRUD (auto-create, update, re-read), RLS isolation, role guard (member cannot PUT, admin/owner can), idempotent auto-create. |
+
+### Packet 2 — Notification Services + Celery Tasks (not started)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 7.3 | Implement email notification service + Celery task | Claude | | SES client (boto3) with dev-mode log fallback. `send_order_email`, `send_donation_email` tasks. Simple text/HTML templates with tenant name. |
+| 7.4 | Implement Telegram notification service + Celery task | Claude | | HTTP POST to Telegram Bot API. `send_order_telegram`, `send_donation_telegram` tasks. Bot token fetched from Secrets Manager (env-var fallback for dev). |
+| 7.4b | Secrets Manager utility for Telegram bot token | Claude | | Fetch from SM with TTL cache (5 min). Falls back to env var `TELEGRAM_BOT_TOKEN` for local dev. |
+| 7.7b | Notification services integration tests | Claude | | Mock SES + Telegram HTTP. Email sent when enabled, Telegram sent when enabled, nothing when disabled, graceful error handling on provider failure. |
+
+### Packet 3 — Dispatch Wiring (not started)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 7.5a | Wire notification dispatch on order creation | Claude | | After `session.commit()` in public order endpoint → `send_order_notification.delay()`. Fire-and-forget. |
+| 7.5b | Wire notification dispatch on donation creation | Claude | | Same pattern for donation endpoint. |
+| 7.7c | Dispatch wiring integration tests | Claude | | Create order → verify task enqueued (mock `.delay()`). Create donation → same. |
+
+### Packet 4+ — Remaining (not started)
+
 | # | Task | Owner | DoD |
 |---|------|-------|-----|
-| 7.1 | Create `notification_preferences` table + RLS + migration | Claude | `UNIQUE(tenant_id)`, `telegram_bot_token_ref` column (Secrets Manager key) |
-| 7.2 | Implement notification preferences API (GET/PUT) | Claude | Admin can enable/disable email + Telegram. Bot token stored in Secrets Manager, not DB. |
-| 7.3 | Implement email notification Celery tasks | Claude | Order confirmation, donation receipt, invite email via SES. Templated, tenant-branded. |
-| 7.4 | Implement Telegram notification Celery tasks | Claude | Order received, donation received, pledge due soon. Bot token retrieved from Secrets Manager. |
-| 7.5 | Implement notification dispatch on order/donation/pledge creation | Claude | After record created → dispatch Celery task if tenant has notifications enabled |
+| 7.5c | Donation receipt email to donor | Claude | Email to `donor_email` (external recipient, not tenant admin). Sent when `receipt_requested=true`. |
+| 7.5d | Pledge due-soon periodic reminder | Claude | Celery Beat task: query pledges with `target_date` within 7 days + open status. Telegram to tenant. Redis dedup (once per pledge per day). |
+| 7.5e | AI soft-limit notification | Claude | Wire into AI quota check (ADR-0004). Celery task on soft-limit breach. Dedup once per billing period. |
 | 7.6 | Configure SES sending identity + DKIM | Kimi | Domain verified, DKIM configured, test email sends successfully |
-| 7.7 | Write notification integration tests | Claude | Email sent when enabled, Telegram sent when enabled, nothing sent when disabled, async dispatch verified |
+| 7.8 | Frontend notification preferences UI | Claude | Dashboard settings page with toggles for email/Telegram, chat ID input, save button. |
 
 ---
 
