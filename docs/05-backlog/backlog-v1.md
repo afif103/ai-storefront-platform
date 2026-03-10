@@ -258,16 +258,16 @@ Ordered epics M1–M9. Each task has a primary implementor:
 | 8.1 | Create Docker Compose for local dev (Postgres, Redis) **DONE** | Claude | `docker compose up -d` starts all deps, health checks pass |
 | 8.2 | Create Dockerfile for backend (multi-stage, slim) **DONE** | Claude | Builds successfully, runs backend and worker via different entrypoints |
 | 8.3 | Set up GitHub Actions CI (test + lint + build) | Claude | PR checks: pytest, ruff, black. Main branch: build + push ECR. |
-| 8.4 | Provision VPC, subnets, security groups in `me-south-1` | Kimi | Per `aws-deployment.md` networking section |
-| 8.5 | Provision RDS PostgreSQL (Multi-AZ, encryption, `require_ssl`) | Kimi | DB accessible from ECS tasks only, `app_user` + `app_migrator` roles created |
-| 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Kimi | Redis accessible from ECS tasks only |
-| 8.7 | Provision S3 bucket (Block Public Access, versioning) | Kimi | Bucket exists with correct policy, lifecycle rules |
-| 8.8 | Create ECR repository + ECS cluster + task definitions | Kimi | Backend + worker services running with correct task roles |
-| 8.9 | Set up ALB + CloudFront + WAF | Kimi | HTTPS, health checks, WAF rules per `security.md §8` |
-| 8.10 | Set up Vercel project with wildcard subdomain | Kimi | Frontend deploys on push, `*.yourdomain.com` resolves |
+| 8.4 | Provision VPC, subnets, security groups in `me-south-1` | Claude | Per `aws-deployment.md` networking section |
+| 8.5 | Provision RDS PostgreSQL (Multi-AZ, encryption, `require_ssl`) | Claude | DB accessible from ECS tasks only, `app_user` + `app_migrator` roles created |
+| 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Claude | Redis accessible from ECS tasks only |
+| 8.7 | Provision S3 bucket (Block Public Access, versioning) | Claude | Bucket exists with correct policy, lifecycle rules |
+| 8.8 | Create ECR repository + ECS cluster + task definitions | Claude | Backend + worker services running with correct task roles |
+| 8.9 | Set up ALB + CloudFront + WAF | Claude | HTTPS, health checks, WAF rules per `security.md §8` |
+| 8.10 | Set up Vercel project with wildcard subdomain | Claude | Frontend deploys on push, `*.yourdomain.com` resolves |
 | 8.11 | Set up GitHub Actions CD (deploy to staging + production) | Claude | Staging auto-deploy on main. Production via manual workflow dispatch. |
-| 8.12 | Set up CloudWatch log groups + alarms | Kimi | Log groups for backend/worker/audit. Alarms: CPU, connections, 5xx. |
-| 8.13 | Populate Secrets Manager with all secrets | Kimi | All secrets per `security.md §3` table |
+| 8.12 | Set up CloudWatch log groups + alarms | Claude | Log groups for backend/worker/audit. Alarms: CPU, connections, 5xx. |
+| 8.13 | Populate Secrets Manager with all secrets | Claude | All secrets per `security.md §3` table |
 
 ---
 
