@@ -1,0 +1,30 @@
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+multi_tenant_saas_backend.egg-info
+.benchmarks
+
+# Dev/test tooling
+tests/
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov/
+
+# Environment files (secrets must be injected at runtime)
+.env
+.env.*
+
+# IDE
+.vscode
+.idea
+
+# OS
+Thumbs.db
+.DS_Store
