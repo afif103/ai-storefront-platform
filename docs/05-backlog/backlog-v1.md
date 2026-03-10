@@ -204,24 +204,26 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M7 — Notifications
 
-### Packet 1 — Notification Preferences Foundation (not started)
+### Packet 1 — Notification Preferences Foundation (shipped)
 
 | # | Task | Owner | Status | DoD |
 |---|------|-------|--------|-----|
-| 7.1a | Create `notification_preferences` table + migration | Claude | | Table per `data-model.md`: `UNIQUE(tenant_id)`, `email_enabled`, `telegram_enabled`, `telegram_chat_id`, `telegram_bot_token_ref` (Secrets Manager key, nullable). Reversible migration. |
-| 7.1b | `NotificationPreference` ORM model + RLS policies | Claude | | Model extends `TenantScopedBase`. RLS: tenant-scoped SELECT + INSERT + UPDATE. Cross-tenant isolation test. |
-| 7.2a | `GET /api/v1/tenants/me/notification-preferences` | Claude | | Returns current preferences. Auto-creates default row (both disabled) on first read. All authenticated roles can read. |
-| 7.2b | `PUT /api/v1/tenants/me/notification-preferences` | Claude | | Admin/owner only. Updates `email_enabled`, `telegram_enabled`, `telegram_chat_id`. `telegram_bot_token_ref` not exposed in PUT (set separately in future). |
-| 7.7a | Notification preferences integration tests | Claude | | CRUD (auto-create, update, re-read), RLS isolation, role guard (member cannot PUT, admin/owner can), idempotent auto-create. |
+| 7.1a | Create `notification_preferences` table + migration | Claude | **DONE** | Table per `data-model.md`: `UNIQUE(tenant_id)`, `email_enabled`, `telegram_enabled`, `telegram_chat_id`, `telegram_bot_token_ref` (Secrets Manager key, nullable). Reversible migration. |
+| 7.1b | `NotificationPreference` ORM model + RLS policies | Claude | **DONE** | Model extends `TenantScopedBase`. RLS: tenant-scoped SELECT + INSERT + UPDATE + DELETE. Cross-tenant isolation test. |
+| 7.2a | `GET /api/v1/tenants/me/notification-preferences` | Claude | **DONE** | Returns current preferences. Auto-creates default row (both disabled) on first read. All authenticated roles can read. |
+| 7.2b | `PUT /api/v1/tenants/me/notification-preferences` | Claude | **DONE** | Admin/owner only. Updates `email_enabled`, `telegram_enabled`, `telegram_chat_id`. `telegram_bot_token_ref` not exposed in PUT. Validates telegram_chat_id required when enabling Telegram. |
+| 7.7a | Notification preferences integration tests | Claude | **DONE** | 9 tests: CRUD (auto-create, idempotent re-read, partial update), RLS isolation, role guard (member GET ok, member PUT 403, admin PUT ok), validation (telegram without chat_id 422). |
 
-### Packet 2 — Notification Services + Celery Tasks (not started)
+### Packet 2 — Notification Services + Celery Tasks (shipped)
 
 | # | Task | Owner | Status | DoD |
 |---|------|-------|--------|-----|
-| 7.3 | Implement email notification service + Celery task | Claude | | SES client (boto3) with dev-mode log fallback. `send_order_email`, `send_donation_email` tasks. Simple text/HTML templates with tenant name. |
-| 7.4 | Implement Telegram notification service + Celery task | Claude | | HTTP POST to Telegram Bot API. `send_order_telegram`, `send_donation_telegram` tasks. Bot token fetched from Secrets Manager (env-var fallback for dev). |
-| 7.4b | Secrets Manager utility for Telegram bot token | Claude | | Fetch from SM with TTL cache (5 min). Falls back to env var `TELEGRAM_BOT_TOKEN` for local dev. |
-| 7.7b | Notification services integration tests | Claude | | Mock SES + Telegram HTTP. Email sent when enabled, Telegram sent when enabled, nothing when disabled, graceful error handling on provider failure. |
+| 7.3 | Implement email notification service + Celery task | Claude | **DONE** | SES client (boto3) with dev-mode log fallback. Plain text templates. Skips safely when recipient email missing. |
+| 7.4 | Implement Telegram notification service + Celery task | Claude | **DONE** | HTTP POST to Telegram Bot API via httpx. Skips safely when chat_id missing or bot_token empty. |
+| 7.4b | Celery task wrappers (`send_order_notification`, `send_donation_notification`) | Claude | **DONE** | Sync entry points call `asyncio.run()` with async helper reusing existing async DB session. Core logic in testable `_process_*` functions accepting a session. |
+| 7.7b | Notification services integration tests | Claude | **DONE** | 14 tests: templates (2), email sender dev/prod (2), telegram sender success/error/empty (4), task logic — both enabled, both disabled, email-only, telegram-no-chat-id, no-customer-email, no-donor-email (6). |
+
+**Deferred from P2:** Secrets Manager fetch (env-var only for now), pledge notifications (periodic/Celery Beat), donor receipt email.
 
 ### Packet 3 — Dispatch Wiring (not started)
 

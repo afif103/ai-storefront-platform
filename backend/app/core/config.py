@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Privacy
     IP_HASH_SALT: str = "change-me-in-production"
 
+    # Notifications
+    SES_SENDER_EMAIL: str = "noreply@example.com"
+    SES_REGION: str = "me-south-1"
+    TELEGRAM_BOT_TOKEN: str = ""
+
     # App
     ENVIRONMENT: str = "development"
     DEBUG: bool = False

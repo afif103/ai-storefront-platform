@@ -210,16 +210,16 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 
 | Acceptance Criteria | Packet | Status |
 |---------------------|--------|--------|
-| `notification_preferences` table with RLS (tenant-scoped, per data-model.md) | P1 | |
-| `GET /tenants/me/notification-preferences` returns preferences (auto-creates default row) | P1 | |
-| `PUT /tenants/me/notification-preferences` updates email/telegram toggles + chat ID (admin/owner only) | P1 | |
-| Member can GET but cannot PUT preferences (role guard) | P1 | |
-| Cross-tenant isolation test passes on notification_preferences | P1 | |
-| Integration tests for preferences CRUD + RLS + role guard | P1 | |
-| Email notification service (SES + dev-mode log fallback) | P2 | |
-| Telegram notification service (Bot API HTTP + SM token fetch) | P2 | |
-| Celery tasks for order + donation email/Telegram notifications | P2 | |
-| Integration tests for notification services (mocked providers) | P2 | |
+| `notification_preferences` table with RLS (tenant-scoped, per data-model.md) | P1 | **DONE** |
+| `GET /tenants/me/notification-preferences` returns preferences (auto-creates default row) | P1 | **DONE** |
+| `PUT /tenants/me/notification-preferences` updates email/telegram toggles + chat ID (admin/owner only) | P1 | **DONE** |
+| Member can GET but cannot PUT preferences (role guard) | P1 | **DONE** |
+| Cross-tenant isolation test passes on notification_preferences | P1 | **DONE** |
+| Integration tests for preferences CRUD + RLS + role guard | P1 | **DONE** |
+| Email notification service (SES + dev-mode log fallback) | P2 | **DONE** |
+| Telegram notification service (Bot API HTTP + env-var token) | P2 | **DONE** |
+| Celery tasks for order + donation email/Telegram notifications | P2 | **DONE** |
+| Integration tests for notification services (mocked providers) | P2 | **DONE** |
 | Order creation dispatches notification Celery task (fire-and-forget after commit) | P3 | |
 | Donation creation dispatches notification Celery task | P3 | |
 | Dispatch integration tests (verify task enqueued) | P3 | |
