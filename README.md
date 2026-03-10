@@ -92,7 +92,8 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 | M5 Attribution & Dashboard | Complete |
 | M5b Inventory / Stock v1 | Complete |
 | M5c Inventory Movements & Stock Ops | Complete (P1–P4) |
-| M6–M9 | Not started |
+| M6 Admin Panel (P1) | Complete (platform admin + suspension) |
+| M6 P2+, M7–M9 | Not started |
 
 **M2**: Categories, products, storefront config, media assets, presigned S3 uploads, UTM visit tracking, public storefront with branding. Full dashboard CRUD + anonymous storefront browsing.
 

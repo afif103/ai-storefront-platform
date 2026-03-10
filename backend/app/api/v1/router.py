@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.admin_lists import router as admin_lists_router
+from app.api.v1.platform_admin import router as platform_admin_router
 from app.api.v1.ai_chat import router as ai_chat_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.categories import router as categories_router
@@ -37,5 +38,8 @@ api_v1_router.include_router(admin_lists_router, prefix="/tenants/me", tags=["ad
 api_v1_router.include_router(ai_chat_router, prefix="/tenants/me", tags=["ai-chat"])
 api_v1_router.include_router(
     dashboard_analytics_router, prefix="/tenants/me", tags=["dashboard-analytics"]
+)
+api_v1_router.include_router(
+    platform_admin_router, prefix="/admin", tags=["platform-admin"]
 )
 api_v1_router.include_router(public_storefront_router, prefix="/storefront", tags=["storefront"])

@@ -19,8 +19,10 @@ Shared database, shared schema. All tenant-scoped tables carry `tenant_id UUID N
 │ plan_id FK ──│───────│──────────────│──────▶│ price_amount    │ NUMERIC(12,3)
 │ is_active    │       │ full_name    │       │ currency        │ default 'KWD'
 │ created_at   │       │ is_active    │       │ max_members     │
-│ updated_at   │       │ created_at   │       └─────────────────┘
-└──────┬───────┘       │ updated_at   │
+│ updated_at   │       │is_platform_  │       └─────────────────┘
+└──────┬───────┘       │  admin BOOL  │ default false
+                       │ created_at   │
+                       │ updated_at   │
        │               └──────┬───────┘
        │                      │
        ▼                      ▼

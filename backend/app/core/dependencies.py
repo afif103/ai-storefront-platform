@@ -86,8 +86,9 @@ async def get_db_with_tenant(
 
     1. SET LOCAL app.current_user_id (for RLS membership lookup)
     2. Query tenant_members for active membership
-    3. SET LOCAL app.current_tenant
-    4. Return (session, tenant_id)
+    3. Check tenant is not suspended
+    4. SET LOCAL app.current_tenant
+    5. Return (session, tenant_id)
     """
     # Step 1: set user context so RLS allows membership lookup by user_id
     # Note: SET LOCAL does not support parameterised placeholders in asyncpg.
@@ -131,13 +132,28 @@ async def get_db_with_tenant(
 
     tenant_id = membership.tenant_id
 
-    # Step 3: set tenant context for all subsequent queries in this transaction
+    # Step 3: check tenant is not suspended
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_result.scalar_one_or_none()
+    if tenant is None or not tenant.is_active:
+        raise HTTPException(status_code=403, detail="Tenant is suspended")
+
+    # Step 4: set tenant context for all subsequent queries in this transaction
     await db.execute(
         text("SELECT set_config('app.current_tenant', :tid, true)"),
         {"tid": str(tenant_id)},
     )
 
     return db, tenant_id
+
+
+async def require_platform_admin(
+    user: User = Depends(get_current_user),
+) -> User:
+    """Require the current user to be a platform admin. Returns the user if OK."""
+    if not user.is_platform_admin:
+        raise HTTPException(status_code=403, detail="Platform admin access required")
+    return user
 
 
 async def get_db_with_slug(

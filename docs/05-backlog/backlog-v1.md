@@ -157,15 +157,28 @@ Ordered epics M1–M9. Each task has a suggested owner:
 
 ## M6 — Admin Panel
 
+### Packet 1 — Platform Admin Foundation + Tenant Suspension (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 6.1a | Add `is_platform_admin` to users table + migration | Claude | **DONE** | Boolean, non-null, default false. Manual DB assignment only. |
+| 6.1b | Platform admin auth guard (`require_platform_admin`) | Claude | **DONE** | Dependency checks flag, returns 403 for non-admins. |
+| 6.1c | Platform admin RLS policy on `tenant_members` | Claude | **DONE** | SELECT-only policy allows cross-tenant member counts when `app.current_user_id` is a platform admin. |
+| 6.1d | `GET /api/v1/admin/tenants` — list all tenants | Claude | **DONE** | Returns id, name, slug, is_active, created_at, member_count. Limit/offset pagination. |
+| 6.2 | `POST /admin/tenants/{id}/suspend` + `/reactivate` | Claude | **DONE** | Toggles `is_active`. Writes `tenant.suspended` / `tenant.reactivated` audit events. 409 on idempotent re-call. |
+| 6.2b | Enforce suspended tenant 403 on authenticated API | Claude | **DONE** | `get_db_with_tenant` checks `tenant.is_active`; returns 403 "Tenant is suspended". Public storefront already checks `is_active` via `get_db_with_slug`. |
+| 6.7a | Platform admin + suspension integration tests | Claude | **DONE** | 13 tests: 10 superuser + 3 RLS (app_user). Covers list, suspend, reactivate, audit events, 403 enforcement, idempotency, non-admin rejection. |
+
+### Packet 2+ — Remaining (not started)
+
 | # | Task | Owner | DoD |
 |---|------|-------|-----|
-| 6.1 | Implement super admin tenant list endpoint | Claude | Lists all tenants with member count + usage summary. Limit/offset pagination. |
-| 6.2 | Implement tenant suspend/reactivate endpoint | Claude | Sets `is_active` flag. Suspended tenant: storefront unavailable, API returns 403. Audit event. |
-| 6.3 | Implement tenant team management endpoints | Claude | List members, change role (owner only), remove member (admin+). Cannot remove last owner. |
-| 6.4 | Implement CSV export endpoint | Claude | Export orders/donations as CSV. RLS ensures tenant isolation. Streamed response for large datasets. |
+| 6.1e | Add usage summary to admin tenant list | Claude | Extend `GET /admin/tenants` with order count, AI usage, etc. |
+| 6.3 | Implement tenant team management endpoints | Claude | Change role (owner only). Cannot demote last owner. |
+| 6.4 | Implement CSV export endpoint | Claude | Export orders/donations/pledges as CSV. RLS ensures tenant isolation. Streamed response for large datasets. |
 | 6.5 | Build super admin UI (Next.js) | Claude | Tenant list, usage overview, suspend/reactivate actions |
 | 6.6 | Build tenant admin UI (Next.js) | Claude | Team management, storefront config, export buttons |
-| 6.7 | Write admin panel integration tests | Claude | Super admin CRUD, tenant admin CRUD, role enforcement, suspended tenant behaviour |
+| 6.7b | Write remaining admin panel integration tests | Claude | Tenant admin CRUD, role enforcement, CSV export |
 
 ---
 

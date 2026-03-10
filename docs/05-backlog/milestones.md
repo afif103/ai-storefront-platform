@@ -180,14 +180,21 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 **Target**: 1.5 weeks
 **Dependencies**: M5
 
-| Acceptance Criteria |
-|---------------------|
-| Super admin can list all tenants with usage summary |
-| Super admin can suspend/reactivate a tenant |
-| Suspended tenant: storefront shows "unavailable", API returns 403 |
-| Tenant admin can manage team (invite, change role, remove) |
-| Tenant admin can export orders/donations as CSV |
-| Export contains only current tenant's data (RLS verified) |
+| Acceptance Criteria | Packet | Status |
+|---------------------|--------|--------|
+| `is_platform_admin` flag on users table (manual DB assignment) | P1 | **DONE** |
+| `require_platform_admin` auth guard returns 403 for non-admins | P1 | **DONE** |
+| Platform admin can list all tenants with member count | P1 | **DONE** |
+| Platform admin can suspend/reactivate a tenant (audit events written) | P1 | **DONE** |
+| Suspended tenant: API returns 403 on all tenant-scoped routes | P1 | **DONE** |
+| Suspended tenant: storefront returns 404 (existing `get_db_with_slug` behavior) | P1 | **DONE** |
+| Platform admin RLS policy on tenant_members (SELECT-only, production-safe) | P1 | **DONE** |
+| 13 integration tests (10 superuser + 3 RLS) all pass | P1 | **DONE** |
+| Super admin tenant list includes usage summary (order count, AI usage) | P2+ | |
+| Tenant admin can change member roles (owner only, last-owner protected) | P2+ | |
+| Tenant admin can export orders/donations/pledges as CSV (streamed, RLS-isolated) | P2+ | |
+| Super admin UI (Next.js): tenant list, suspend/reactivate | P2+ | |
+| Tenant admin UI (Next.js): team management, export buttons | P2+ | |
 
 ---
 
