@@ -11,6 +11,7 @@ from app.api.v1.dashboard_analytics import router as dashboard_analytics_router
 from app.api.v1.health import router as health_router
 from app.api.v1.media import router as media_router
 from app.api.v1.members import router as members_router
+from app.api.v1.notification_preferences import router as notification_prefs_router
 from app.api.v1.products import router as products_router
 from app.api.v1.public_storefront import router as public_storefront_router
 from app.api.v1.status_transitions import router as status_transitions_router
@@ -38,6 +39,11 @@ api_v1_router.include_router(admin_lists_router, prefix="/tenants/me", tags=["ad
 api_v1_router.include_router(ai_chat_router, prefix="/tenants/me", tags=["ai-chat"])
 api_v1_router.include_router(
     dashboard_analytics_router, prefix="/tenants/me", tags=["dashboard-analytics"]
+)
+api_v1_router.include_router(
+    notification_prefs_router,
+    prefix="/tenants/me/notification-preferences",
+    tags=["notification-preferences"],
 )
 api_v1_router.include_router(
     platform_admin_router, prefix="/admin", tags=["platform-admin"]

@@ -7,6 +7,7 @@ from app.models.audit_event import AuditEvent
 from app.models.category import Category
 from app.models.donation import Donation
 from app.models.media_asset import MediaAsset
+from app.models.notification_preference import NotificationPreference
 from app.models.order import Order
 from app.models.plan import Plan
 from app.models.pledge import Pledge
@@ -31,6 +32,7 @@ __all__ = [
     "Category",
     "Donation",
     "MediaAsset",
+    "NotificationPreference",
     "Order",
     "Plan",
     "Pledge",
