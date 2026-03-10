@@ -16,6 +16,7 @@ from app.services.notifications.email_sender import send_email
 from app.services.notifications.telegram_sender import send_telegram
 from app.services.notifications.templates import (
     format_donation_notification,
+    format_donation_receipt,
     format_order_notification,
 )
 from app.workers.celery_app import celery_app
@@ -183,5 +184,65 @@ def send_donation_notification(tenant_id: str, donation_id: str) -> None:
     async def _run() -> None:
         async with async_session_factory() as session:
             await _process_donation_notification(session, tenant_id, donation_id)
+
+    asyncio.run(_run())
+
+
+# ---------------------------------------------------------------------------
+# Donation receipt (sent to donor, independent of tenant notification prefs)
+# ---------------------------------------------------------------------------
+
+
+async def _process_donation_receipt(
+    session: AsyncSession, tenant_id: str, donation_id: str
+) -> None:
+    """Send a receipt email to the donor. No tenant prefs check — triggered
+    only when ``receipt_requested=True`` and ``donor_email`` is present."""
+    await session.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
+        {"tid": tenant_id},
+    )
+
+    # Fetch donation
+    result = await session.execute(
+        select(Donation).where(Donation.id == donation_id)
+    )
+    donation = result.scalar_one_or_none()
+    if donation is None:
+        logger.warning("Donation %s not found for receipt", donation_id)
+        return
+
+    if not donation.receipt_requested:
+        logger.info("Donation %s receipt_requested=False, skipping receipt", donation_id)
+        return
+
+    if not donation.donor_email:
+        logger.info("Donation %s has no donor_email, skipping receipt", donation_id)
+        return
+
+    # Fetch tenant name
+    result = await session.execute(
+        select(Tenant.name).where(Tenant.id == tenant_id)
+    )
+    tenant_name = result.scalar_one()
+
+    subject, body = format_donation_receipt(
+        tenant_name=tenant_name,
+        donation_number=donation.donation_number,
+        amount=str(donation.amount),
+        currency=donation.currency,
+        donor_name=donation.donor_name,
+    )
+
+    send_email(to=donation.donor_email, subject=subject, body=body)
+
+
+@celery_app.task(name="send_donation_receipt", ignore_result=True)
+def send_donation_receipt(tenant_id: str, donation_id: str) -> None:
+    """Send donation receipt email to the donor."""
+
+    async def _run() -> None:
+        async with async_session_factory() as session:
+            await _process_donation_receipt(session, tenant_id, donation_id)
 
     asyncio.run(_run())

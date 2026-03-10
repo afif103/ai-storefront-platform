@@ -233,11 +233,17 @@ Ordered epics M1–M9. Each task has a suggested owner:
 | 7.5b | Wire notification dispatch on donation creation | Claude | **DONE** | Same pattern for donation endpoint (explicit commit, then .delay()). |
 | 7.7c | Dispatch wiring integration tests | Claude | **DONE** | 4 tests: order dispatches .delay() with correct args, donation dispatches .delay() with correct args, order still 201 when .delay() raises, donation still 201 when .delay() raises. |
 
-### Packet 4+ — Remaining (not started)
+### Packet 4 — Donation Receipt Email (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 7.5c | Donation receipt email to donor | Claude | **DONE** | `format_donation_receipt()` template, `_process_donation_receipt()` task logic, `send_donation_receipt` Celery task. Dispatched when `receipt_requested=true` and `donor_email` present. Independent of tenant notification_preferences. Fire-and-forget with try/except. |
+| 7.7d | Donation receipt integration tests | Claude | **DONE** | 7 tests: template (1), task logic — sent/skipped-not-requested/skipped-no-email (3), dispatch — called/not-called-false/not-called-no-email/resilience (4). |
+
+### Packet 5+ — Remaining (not started)
 
 | # | Task | Owner | DoD |
 |---|------|-------|-----|
-| 7.5c | Donation receipt email to donor | Claude | Email to `donor_email` (external recipient, not tenant admin). Sent when `receipt_requested=true`. |
 | 7.5d | Pledge due-soon periodic reminder | Claude | Celery Beat task: query pledges with `target_date` within 7 days + open status. Telegram to tenant. Redis dedup (once per pledge per day). |
 | 7.5e | AI soft-limit notification | Claude | Wire into AI quota check (ADR-0004). Celery task on soft-limit breach. Dedup once per billing period. |
 | 7.6 | Configure SES sending identity + DKIM | Kimi | Domain verified, DKIM configured, test email sends successfully |

@@ -18,10 +18,12 @@ from app.services.notifications.email_sender import send_email
 from app.services.notifications.telegram_sender import send_telegram
 from app.services.notifications.templates import (
     format_donation_notification,
+    format_donation_receipt,
     format_order_notification,
 )
 from app.workers.tasks.notifications import (
     _process_donation_notification,
+    _process_donation_receipt,
     _process_order_notification,
 )
 
@@ -327,3 +329,74 @@ async def test_donation_notification_no_donor_email(
 
     mock_email.assert_not_called()
     mock_tg.assert_called_once()
+
+
+# ---- Donation receipt template tests ----
+
+
+def test_format_donation_receipt():
+    subject, body = format_donation_receipt(
+        tenant_name="My Charity",
+        donation_number="DON-00042",
+        amount="25.000",
+        currency="KWD",
+        donor_name="Alice",
+    )
+    assert "My Charity" in subject
+    assert "DON-00042" in subject
+    assert "Alice" in body
+    assert "25.000 KWD" in body
+    assert "Thank you" in body
+    assert "receipt" in subject.lower()
+
+
+# ---- Donation receipt task tests ----
+
+
+@patch("app.workers.tasks.notifications.send_email")
+async def test_donation_receipt_sent_when_requested(
+    mock_email: MagicMock, db: AsyncSession
+):
+    """Receipt email sent when receipt_requested=True and donor_email present."""
+    mock_email.return_value = True
+
+    tenant, _ = await _seed_tenant_with_prefs(db)
+    donation = await _seed_donation(db, tenant, donor_email="alice@test.com")
+    donation.receipt_requested = True
+    await db.flush()
+
+    await _process_donation_receipt(db, str(tenant.id), str(donation.id))
+
+    mock_email.assert_called_once()
+    assert mock_email.call_args[1]["to"] == "alice@test.com"
+    assert "receipt" in mock_email.call_args[1]["subject"].lower()
+
+
+@patch("app.workers.tasks.notifications.send_email")
+async def test_donation_receipt_skipped_when_not_requested(
+    mock_email: MagicMock, db: AsyncSession
+):
+    """Receipt email NOT sent when receipt_requested=False."""
+    tenant, _ = await _seed_tenant_with_prefs(db)
+    donation = await _seed_donation(db, tenant, donor_email="bob@test.com")
+    donation.receipt_requested = False
+    await db.flush()
+
+    await _process_donation_receipt(db, str(tenant.id), str(donation.id))
+
+    mock_email.assert_not_called()
+
+
+@patch("app.workers.tasks.notifications.send_email")
+async def test_donation_receipt_skipped_when_no_email(
+    mock_email: MagicMock, db: AsyncSession
+):
+    """Receipt email NOT sent when donor_email is None."""
+    tenant, _ = await _seed_tenant_with_prefs(db)
+    donation = await _seed_donation(db, tenant, donor_email=None)
+    donation.receipt_requested = True
+    await db.flush()
+
+    await _process_donation_receipt(db, str(tenant.id), str(donation.id))
+
+    mock_email.assert_not_called()

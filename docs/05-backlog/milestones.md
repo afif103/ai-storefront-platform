@@ -223,11 +223,12 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | Order creation dispatches notification Celery task (fire-and-forget after commit) | P3 | **DONE** |
 | Donation creation dispatches notification Celery task | P3 | **DONE** |
 | Dispatch integration tests (verify task enqueued) | P3 | **DONE** |
-| Donation receipt email to donor (when receipt_requested=true) | P4+ | |
-| Pledge due-soon periodic Telegram reminder (Celery Beat) | P4+ | |
-| AI soft-limit notification wiring (ADR-0004) | P4+ | |
-| Frontend notification preferences UI | P4+ | |
-| SES sending identity + DKIM configured (Kimi) | P4+ | |
+| Donation receipt email to donor (when receipt_requested=true) | P4 | **DONE** |
+| Donation receipt integration tests (template + task + dispatch + resilience) | P4 | **DONE** |
+| Pledge due-soon periodic Telegram reminder (Celery Beat) | P5+ | |
+| AI soft-limit notification wiring (ADR-0004) | P5+ | |
+| Frontend notification preferences UI | P5+ | |
+| SES sending identity + DKIM configured (Kimi) | P5+ | |
 
 ---
 

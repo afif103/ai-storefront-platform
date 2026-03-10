@@ -48,6 +48,7 @@ from app.services.numbering import (
 from app.services.storage import presign_get
 from app.workers.tasks.notifications import (
     send_donation_notification,
+    send_donation_receipt,
     send_order_notification,
 )
 
@@ -487,6 +488,13 @@ async def submit_donation(
         send_donation_notification.delay(str(tenant.id), str(donation.id))
     except Exception:
         logger.exception("Failed to enqueue donation notification for donation=%s", donation.id)
+
+    # Dispatch receipt email to donor (independent of tenant notification prefs)
+    if body.receipt_requested and body.donor_email:
+        try:
+            send_donation_receipt.delay(str(tenant.id), str(donation.id))
+        except Exception:
+            logger.exception("Failed to enqueue donation receipt for donation=%s", donation.id)
 
     return DonationCreateResponse.model_validate(donation)
 

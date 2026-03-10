@@ -1,4 +1,4 @@
-"""M7 P3 — Notification dispatch wiring integration tests."""
+"""M7 P3/P4 — Notification dispatch wiring integration tests."""
 
 import uuid
 from unittest.mock import patch, MagicMock
@@ -132,6 +132,104 @@ async def test_donation_creation_succeeds_when_delay_raises(
             "donor_name": "Dave",
             "amount": "5.000",
             "currency": "KWD",
+        },
+    )
+    assert r.status_code == 201
+    assert r.json()["donation_number"] is not None
+
+
+# ---- Donation receipt dispatch ----
+
+
+@patch("app.api.v1.public_storefront.send_donation_notification")
+@patch("app.api.v1.public_storefront.send_donation_receipt")
+async def test_receipt_dispatched_when_requested(
+    mock_receipt: MagicMock, mock_notif: MagicMock, client: AsyncClient
+):
+    """send_donation_receipt.delay called when receipt_requested=True and donor_email present."""
+    headers, slug, _ = await _setup_tenant_with_product(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/donations",
+        json={
+            "donor_name": "Eve",
+            "donor_email": "eve@test.com",
+            "amount": "15.000",
+            "currency": "KWD",
+            "receipt_requested": True,
+        },
+    )
+    assert r.status_code == 201
+    donation_id = r.json()["id"]
+
+    mock_receipt.delay.assert_called_once()
+    call_args = mock_receipt.delay.call_args[0]
+    assert call_args[1] == donation_id
+
+
+@patch("app.api.v1.public_storefront.send_donation_notification")
+@patch("app.api.v1.public_storefront.send_donation_receipt")
+async def test_receipt_not_dispatched_when_not_requested(
+    mock_receipt: MagicMock, mock_notif: MagicMock, client: AsyncClient
+):
+    """send_donation_receipt.delay NOT called when receipt_requested=False."""
+    headers, slug, _ = await _setup_tenant_with_product(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/donations",
+        json={
+            "donor_name": "Frank",
+            "donor_email": "frank@test.com",
+            "amount": "5.000",
+            "currency": "KWD",
+            "receipt_requested": False,
+        },
+    )
+    assert r.status_code == 201
+
+    mock_receipt.delay.assert_not_called()
+
+
+@patch("app.api.v1.public_storefront.send_donation_notification")
+@patch("app.api.v1.public_storefront.send_donation_receipt")
+async def test_receipt_not_dispatched_when_no_email(
+    mock_receipt: MagicMock, mock_notif: MagicMock, client: AsyncClient
+):
+    """send_donation_receipt.delay NOT called when donor_email is missing."""
+    headers, slug, _ = await _setup_tenant_with_product(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/donations",
+        json={
+            "donor_name": "Grace",
+            "amount": "5.000",
+            "currency": "KWD",
+            "receipt_requested": True,
+        },
+    )
+    assert r.status_code == 201
+
+    mock_receipt.delay.assert_not_called()
+
+
+@patch("app.api.v1.public_storefront.send_donation_notification")
+@patch("app.api.v1.public_storefront.send_donation_receipt")
+async def test_donation_succeeds_when_receipt_delay_raises(
+    mock_receipt: MagicMock, mock_notif: MagicMock, client: AsyncClient
+):
+    """If send_donation_receipt.delay() raises, donation still returns 201."""
+    mock_receipt.delay.side_effect = RuntimeError("Redis down")
+
+    headers, slug, _ = await _setup_tenant_with_product(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/donations",
+        json={
+            "donor_name": "Hank",
+            "donor_email": "hank@test.com",
+            "amount": "7.000",
+            "currency": "KWD",
+            "receipt_requested": True,
         },
     )
     assert r.status_code == 201
