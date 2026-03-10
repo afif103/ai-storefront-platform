@@ -169,16 +169,22 @@ Ordered epics M1–M9. Each task has a suggested owner:
 | 6.2b | Enforce suspended tenant 403 on authenticated API | Claude | **DONE** | `get_db_with_tenant` checks `tenant.is_active`; returns 403 "Tenant is suspended". Public storefront already checks `is_active` via `get_db_with_slug`. |
 | 6.7a | Platform admin + suspension integration tests | Claude | **DONE** | 13 tests: 10 superuser + 3 RLS (app_user). Covers list, suspend, reactivate, audit events, 403 enforcement, idempotency, non-admin rejection. |
 
-### Packet 2+ — Remaining (not started)
+### Packet 2 — Role Change + CSV Export (shipped)
+
+| # | Task | Owner | Status | DoD |
+|---|------|-------|--------|-----|
+| 6.3 | `PATCH /tenants/me/members/{id}` — change member role | Claude | **DONE** | Owner-only. Cannot change own role. Cannot demote last owner. 409 on same role. Writes `role_change` audit event. |
+| 6.4 | CSV export endpoints (orders/donations/pledges) | Claude | **DONE** | `GET /tenants/me/{entity}/export` with optional date range. Admin+ role. UTF-8 BOM for Excel. Defense-in-depth tenant_id filter. |
+| 6.4b | List endpoints add explicit tenant_id filter | Claude | **DONE** | Defense-in-depth: all list + export queries filter by tenant_id in addition to RLS. |
+| 6.7b | Role change + CSV export integration tests | Claude | **DONE** | 13 tests: 7 role change (promote, demote, non-owner 403, self-change 400, last-owner 400, audit event, same-role 409) + 6 CSV export (orders/donations/pledges, empty, RLS isolation, member 403). |
+
+### Packet 3+ — Remaining (not started)
 
 | # | Task | Owner | DoD |
 |---|------|-------|-----|
 | 6.1e | Add usage summary to admin tenant list | Claude | Extend `GET /admin/tenants` with order count, AI usage, etc. |
-| 6.3 | Implement tenant team management endpoints | Claude | Change role (owner only). Cannot demote last owner. |
-| 6.4 | Implement CSV export endpoint | Claude | Export orders/donations/pledges as CSV. RLS ensures tenant isolation. Streamed response for large datasets. |
 | 6.5 | Build super admin UI (Next.js) | Claude | Tenant list, usage overview, suspend/reactivate actions |
 | 6.6 | Build tenant admin UI (Next.js) | Claude | Team management, storefront config, export buttons |
-| 6.7b | Write remaining admin panel integration tests | Claude | Tenant admin CRUD, role enforcement, CSV export |
 
 ---
 

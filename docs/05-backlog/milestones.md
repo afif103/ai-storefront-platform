@@ -190,11 +190,13 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | Suspended tenant: storefront returns 404 (existing `get_db_with_slug` behavior) | P1 | **DONE** |
 | Platform admin RLS policy on tenant_members (SELECT-only, production-safe) | P1 | **DONE** |
 | 13 integration tests (10 superuser + 3 RLS) all pass | P1 | **DONE** |
-| Super admin tenant list includes usage summary (order count, AI usage) | P2+ | |
-| Tenant admin can change member roles (owner only, last-owner protected) | P2+ | |
-| Tenant admin can export orders/donations/pledges as CSV (streamed, RLS-isolated) | P2+ | |
-| Super admin UI (Next.js): tenant list, suspend/reactivate | P2+ | |
-| Tenant admin UI (Next.js): team management, export buttons | P2+ | |
+| Tenant admin can change member roles (owner only, last-owner protected, audit event) | P2 | **DONE** |
+| Tenant admin can export orders/donations/pledges as CSV (date-filtered, RLS-isolated) | P2 | **DONE** |
+| List + export queries use defense-in-depth tenant_id filter | P2 | **DONE** |
+| 13 integration tests (7 role change + 6 CSV export) all pass | P2 | **DONE** |
+| Super admin tenant list includes usage summary (order count, AI usage) | P3+ | |
+| Super admin UI (Next.js): tenant list, suspend/reactivate | P3+ | |
+| Tenant admin UI (Next.js): team management, export buttons | P3+ | |
 
 ---
 

@@ -6,14 +6,17 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.dependencies import (
     get_current_user,
     get_db_with_tenant,
     require_role,
 )
+from app.models.audit_event import AuditEvent
 from app.models.tenant_member import TenantMember
 from app.models.user import User
-from app.schemas.member import MemberInvite, MemberResponse
+from app.schemas.member import MemberInvite, MemberResponse, MemberUpdate
 
 router = APIRouter()
 
@@ -157,3 +160,93 @@ async def remove_member(
 
     member.status = "removed"
     await db.flush()
+
+
+@router.patch("/{member_id}", response_model=MemberResponse)
+async def update_member_role(
+    member_id: uuid.UUID,
+    body: MemberUpdate,
+    tenant_data: tuple = Depends(get_db_with_tenant),
+    user: User = Depends(get_current_user),
+):
+    """Change a member's role. Owner-only.
+
+    Guards:
+    - Cannot change own role (prevents accidental self-demotion).
+    - Cannot demote the last owner to a non-owner role.
+    """
+    db, tenant_id = tenant_data
+    await require_role("owner", db, tenant_id, user)
+
+    if body.role is None:
+        raise HTTPException(status_code=422, detail="role is required")
+
+    result = await db.execute(
+        select(TenantMember).where(
+            TenantMember.id == member_id,
+            TenantMember.tenant_id == tenant_id,
+            TenantMember.status == "active",
+        )
+    )
+    member = result.scalar_one_or_none()
+    if member is None:
+        raise HTTPException(status_code=404, detail="Active member not found")
+
+    # Cannot change own role
+    if member.user_id == user.id:
+        raise HTTPException(status_code=400, detail="Cannot change your own role")
+
+    old_role = member.role
+    new_role = body.role
+
+    if old_role == new_role:
+        raise HTTPException(status_code=409, detail="Member already has this role")
+
+    # Protect last owner
+    if old_role == "owner" and new_role != "owner":
+        owner_count_result = await db.execute(
+            select(func.count()).where(
+                TenantMember.tenant_id == tenant_id,
+                TenantMember.role == "owner",
+                TenantMember.status == "active",
+            )
+        )
+        if owner_count_result.scalar() <= 1:
+            raise HTTPException(status_code=400, detail="Cannot demote the last owner")
+
+    member.role = new_role
+    await db.flush()
+
+    # Audit event
+    audit = AuditEvent(
+        tenant_id=tenant_id,
+        actor_user_id=user.id,
+        entity_type="tenant_member",
+        entity_id=member.id,
+        action="role_change",
+        from_status=old_role,
+        to_status=new_role,
+    )
+    db.add(audit)
+    await db.flush()
+
+    # Build response with user info
+    email = None
+    full_name = None
+    if member.user_id:
+        user_result = await db.execute(select(User).where(User.id == member.user_id))
+        member_user = user_result.scalar_one_or_none()
+        if member_user:
+            email = member_user.email
+            full_name = member_user.full_name
+
+    return MemberResponse(
+        id=member.id,
+        user_id=member.user_id,
+        email=email or member.invited_email,
+        full_name=full_name,
+        role=member.role,
+        status=member.status,
+        invited_at=member.invited_at,
+        joined_at=member.joined_at,
+    )
