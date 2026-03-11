@@ -68,7 +68,7 @@ const FUNNEL_LABELS: Record<string, string> = {
 // CSV export
 // ---------------------------------------------------------------------------
 
-function buildCsv(data: SummaryData, preset: RangePreset): string {
+function buildCsv(data: SummaryData): string {
   const rows: string[] = [];
 
   // Section 1: KPI Summary
@@ -103,7 +103,7 @@ function buildCsv(data: SummaryData, preset: RangePreset): string {
 }
 
 function downloadCsv(data: SummaryData, preset: RangePreset): void {
-  const csv = buildCsv(data, preset);
+  const csv = buildCsv(data);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const today = new Date().toISOString().split("T")[0];

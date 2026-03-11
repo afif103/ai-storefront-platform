@@ -58,7 +58,19 @@ function AdminTenantsContent() {
   }
 
   useEffect(() => {
-    loadTenants();
+    let cancelled = false;
+    async function fetchInitial() {
+      const result = await apiFetch<AdminTenant[]>("/api/v1/admin/tenants");
+      if (cancelled) return;
+      if (result.ok) {
+        setTenants(result.data);
+      } else {
+        setError(result.detail);
+      }
+      setLoading(false);
+    }
+    fetchInitial();
+    return () => { cancelled = true; };
   }, []);
 
   async function handleSuspend(id: string, name: string) {
