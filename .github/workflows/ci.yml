@@ -25,6 +25,12 @@ jobs:
       - name: Install dependencies
         run: pip install ".[dev]"
 
+      - name: Print tool versions
+        run: |
+          python --version
+          black --version
+          ruff --version
+
       - name: Ruff check
         run: ruff check .
 
