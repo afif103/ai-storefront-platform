@@ -257,7 +257,7 @@ Ordered epics M1–M9. Each task has a primary implementor:
 |---|------|-------|-----|
 | 8.1 | Create Docker Compose for local dev (Postgres, Redis) **DONE** | Claude | `docker compose up -d` starts all deps, health checks pass |
 | 8.2 | Create Dockerfile for backend (multi-stage, slim) **DONE** | Claude | Builds successfully, runs backend and worker via different entrypoints |
-| 8.3 | Set up GitHub Actions CI (test + lint + build) | Claude | PR checks: pytest, ruff, black. Main branch: build + push ECR. |
+| 8.3 | Set up GitHub Actions CI (test + lint + build) **DONE** | Claude | PR checks: pytest, ruff, black. Main branch: build + push ECR. |
 | 8.4 | Provision VPC, subnets, security groups in `me-south-1` | Claude | Per `aws-deployment.md` networking section |
 | 8.5 | Provision RDS PostgreSQL (Multi-AZ, encryption, `require_ssl`) | Claude | DB accessible from ECS tasks only, `app_user` + `app_migrator` roles created |
 | 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Claude | Redis accessible from ECS tasks only |
