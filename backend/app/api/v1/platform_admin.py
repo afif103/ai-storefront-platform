@@ -103,9 +103,9 @@ async def list_tenants(
         .correlate(Tenant)
         .scalar_subquery()
     )
-    last_activity_sub = func.greatest(
-        last_order, last_donation, last_pledge
-    ).label("last_activity_at")
+    last_activity_sub = func.greatest(last_order, last_donation, last_pledge).label(
+        "last_activity_at"
+    )
 
     stmt = (
         select(

@@ -6,15 +6,16 @@ Create Date: 2026-02-28
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "c4d5e6f7a8b9"
-down_revision: Union[str, None] = "b3c4d5e6f7a8"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "b3c4d5e6f7a8"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 # Safe cast expression (NULLIF guard against empty-string GUC)
 _TENANT = "NULLIF(current_setting('app.current_tenant', true), '')::uuid"
@@ -27,43 +28,45 @@ def _enable_rls_and_grant(table: str) -> None:
     op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
     op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
 
-    op.execute(f"""
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_select ON {table}
         FOR SELECT
         USING (tenant_id = {_TENANT})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_insert ON {table}
         FOR INSERT
         WITH CHECK (tenant_id = {_TENANT})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_update ON {table}
         FOR UPDATE
         USING (tenant_id = {_TENANT})
         WITH CHECK (tenant_id = {_TENANT})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_delete ON {table}
         FOR DELETE
         USING (tenant_id = {_TENANT})
-    """)
-
-    op.execute(
-        f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user"
+    """
     )
+
+    op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO app_user")
 
 
 def _drop_rls_and_revoke(table: str) -> None:
     """Drop RLS policies, disable RLS, revoke grants."""
     for action in ("select", "insert", "update", "delete"):
-        op.execute(
-            f"DROP POLICY IF EXISTS tenant_isolation_{action} ON {table}"
-        )
+        op.execute(f"DROP POLICY IF EXISTS tenant_isolation_{action} ON {table}")
     op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
-    op.execute(
-        f"REVOKE SELECT, INSERT, UPDATE, DELETE ON {table} FROM app_user"
-    )
+    op.execute(f"REVOKE SELECT, INSERT, UPDATE, DELETE ON {table} FROM app_user")
 
 
 def upgrade() -> None:
@@ -126,14 +129,10 @@ def upgrade() -> None:
             "status IN ('pending', 'confirmed', 'fulfilled', 'cancelled')",
             name="ck_orders_status",
         ),
-        sa.UniqueConstraint(
-            "tenant_id", "order_number", name="uq_orders_tenant_order_number"
-        ),
+        sa.UniqueConstraint("tenant_id", "order_number", name="uq_orders_tenant_order_number"),
     )
 
-    op.execute(
-        "CREATE INDEX ix_orders_tenant_created ON orders (tenant_id, created_at DESC)"
-    )
+    op.execute("CREATE INDEX ix_orders_tenant_created ON orders (tenant_id, created_at DESC)")
     op.create_index(
         "ix_orders_tenant_status",
         "orders",

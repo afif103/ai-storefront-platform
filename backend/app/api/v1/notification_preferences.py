@@ -32,9 +32,7 @@ async def get_notification_preferences(
     await require_role("member", db, tenant_id, user)
 
     result = await db.execute(
-        select(NotificationPreference).where(
-            NotificationPreference.tenant_id == tenant_id
-        )
+        select(NotificationPreference).where(NotificationPreference.tenant_id == tenant_id)
     )
     prefs = result.scalar_one_or_none()
 
@@ -61,9 +59,7 @@ async def update_notification_preferences(
     await require_role("admin", db, tenant_id, user)
 
     result = await db.execute(
-        select(NotificationPreference).where(
-            NotificationPreference.tenant_id == tenant_id
-        )
+        select(NotificationPreference).where(NotificationPreference.tenant_id == tenant_id)
     )
     prefs = result.scalar_one_or_none()
 

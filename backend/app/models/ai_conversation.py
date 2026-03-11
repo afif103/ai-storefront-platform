@@ -22,12 +22,8 @@ class AIConversation(TenantScopedBase):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
-    messages: Mapped[list] = mapped_column(
-        JSON, nullable=False, server_default="[]"
-    )
+    messages: Mapped[list] = mapped_column(JSON, nullable=False, server_default="[]")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

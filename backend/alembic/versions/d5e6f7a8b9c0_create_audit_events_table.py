@@ -5,7 +5,6 @@ Revises: c4d5e6f7a8b9
 Create Date: 2026-03-02
 """
 
-
 import sqlalchemy as sa
 
 from alembic import op
@@ -82,9 +81,7 @@ def upgrade() -> None:
         "WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid)"
     )
 
-    op.execute(
-        "GRANT SELECT, INSERT ON audit_events TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT ON audit_events TO app_user")
 
 
 def downgrade() -> None:

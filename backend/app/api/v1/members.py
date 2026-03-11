@@ -6,8 +6,6 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.dependencies import (
     get_current_user,
     get_db_with_tenant,

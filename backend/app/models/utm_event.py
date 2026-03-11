@@ -22,9 +22,7 @@ class UtmEvent(TenantScopedBase):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, server_default=func.gen_random_uuid()
-    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     # tenant_id inherited from TenantScopedBase
     visit_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("visits.id", ondelete="CASCADE"), nullable=False

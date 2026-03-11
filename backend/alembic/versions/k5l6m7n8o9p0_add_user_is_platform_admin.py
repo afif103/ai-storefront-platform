@@ -5,8 +5,9 @@ Revises: j4k5l6m7n8o9
 Create Date: 2026-03-10
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "k5l6m7n8o9p0"
 down_revision = "j4k5l6m7n8o9"
@@ -44,7 +45,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "DROP POLICY IF EXISTS tenant_members_platform_admin_select ON tenant_members"
-    )
+    op.execute("DROP POLICY IF EXISTS tenant_members_platform_admin_select ON tenant_members")
     op.drop_column("users", "is_platform_admin")

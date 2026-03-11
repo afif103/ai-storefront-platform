@@ -20,18 +20,14 @@ from app.db.base import TenantScopedBase
 class Order(TenantScopedBase):
     __tablename__ = "orders"
     __table_args__ = (
-        UniqueConstraint(
-            "tenant_id", "order_number", name="uq_orders_tenant_order_number"
-        ),
+        UniqueConstraint("tenant_id", "order_number", name="uq_orders_tenant_order_number"),
         CheckConstraint(
             "status IN ('pending', 'confirmed', 'fulfilled', 'cancelled')",
             name="ck_orders_status",
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, server_default=func.gen_random_uuid()
-    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     # tenant_id inherited from TenantScopedBase
     order_number: Mapped[str] = mapped_column(Text, nullable=False)
     product_id: Mapped[uuid.UUID | None] = mapped_column(

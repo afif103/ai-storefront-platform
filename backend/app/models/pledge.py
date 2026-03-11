@@ -31,9 +31,7 @@ class Pledge(TenantScopedBase):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, server_default=func.gen_random_uuid()
-    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     # tenant_id inherited from TenantScopedBase
     pledge_number: Mapped[str] = mapped_column(Text, nullable=False)
     product_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -8,7 +8,6 @@ from httpx import AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.notification_preference import NotificationPreference
 from app.models.tenant_member import TenantMember
 from app.models.user import User
 from tests.conftest import auth_headers
@@ -215,9 +214,7 @@ async def test_admin_can_put(client: AsyncClient, db: AsyncSession):
 # ---- RLS isolation ----
 
 
-async def test_rls_cross_tenant_isolation(
-    rls_client: AsyncClient, db: AsyncSession
-):
+async def test_rls_cross_tenant_isolation(rls_client: AsyncClient, db: AsyncSession):
     """Tenant A cannot read Tenant B's notification preferences."""
     uid_a = _uid()
     uid_b = _uid()

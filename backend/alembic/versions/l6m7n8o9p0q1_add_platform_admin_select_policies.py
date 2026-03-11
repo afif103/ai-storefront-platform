@@ -37,6 +37,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     for table in _TABLES:
-        op.execute(
-            f"DROP POLICY IF EXISTS {table}_platform_admin_select ON {table}"
-        )
+        op.execute(f"DROP POLICY IF EXISTS {table}_platform_admin_select ON {table}")

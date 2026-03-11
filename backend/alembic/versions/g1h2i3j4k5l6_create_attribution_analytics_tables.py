@@ -65,9 +65,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.func.now(),
         ),
-        sa.UniqueConstraint(
-            "tenant_id", "visitor_id", name="uq_attr_visitors_tenant_visitor"
-        ),
+        sa.UniqueConstraint("tenant_id", "visitor_id", name="uq_attr_visitors_tenant_visitor"),
     )
 
     op.create_index("ix_attr_visitors_tenant", "attribution_visitors", ["tenant_id"])
@@ -91,9 +89,7 @@ def upgrade() -> None:
         f"CREATE POLICY attr_visitors_update ON attribution_visitors "
         f"FOR UPDATE USING ({_WRITE_USING}) WITH CHECK ({_WRITE_USING})"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE ON attribution_visitors TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE ON attribution_visitors TO app_user")
 
     # ---- attribution_sessions ----
     op.create_table(
@@ -133,9 +129,7 @@ def upgrade() -> None:
         sa.Column("utm_content", sa.Text(), nullable=True),
         sa.Column("utm_term", sa.Text(), nullable=True),
         sa.Column("referrer", sa.Text(), nullable=True),
-        sa.UniqueConstraint(
-            "tenant_id", "session_id", name="uq_attr_sessions_tenant_session"
-        ),
+        sa.UniqueConstraint("tenant_id", "session_id", name="uq_attr_sessions_tenant_session"),
         sa.ForeignKeyConstraint(
             ["tenant_id", "visitor_id"],
             ["attribution_visitors.tenant_id", "attribution_visitors.visitor_id"],
@@ -164,16 +158,10 @@ def upgrade() -> None:
         f"CREATE POLICY attr_sessions_update ON attribution_sessions "
         f"FOR UPDATE USING ({_WRITE_USING}) WITH CHECK ({_WRITE_USING})"
     )
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE ON attribution_sessions TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE ON attribution_sessions TO app_user")
 
     # ---- attribution_events ----
-    check_expr = (
-        "event_name IN ("
-        + ", ".join(f"'{n}'" for n in _ALLOWED_EVENT_NAMES)
-        + ")"
-    )
+    check_expr = "event_name IN (" + ", ".join(f"'{n}'" for n in _ALLOWED_EVENT_NAMES) + ")"
 
     op.create_table(
         "attribution_events",
@@ -220,10 +208,7 @@ def upgrade() -> None:
         "ON attribution_events (tenant_id, event_name, occurred_at)"
     )
     # Session-scoped lookup
-    op.execute(
-        "CREATE INDEX ix_attr_events_session "
-        "ON attribution_events (session_id)"
-    )
+    op.execute("CREATE INDEX ix_attr_events_session " "ON attribution_events (session_id)")
     # Dedupe index for storefront_view within 10-min window
     op.execute(
         "CREATE INDEX ix_attr_events_dedupe "
@@ -252,31 +237,15 @@ def downgrade() -> None:
     op.drop_table("attribution_events")
 
     # ---- attribution_sessions ----
-    op.execute(
-        "REVOKE SELECT, INSERT, UPDATE ON attribution_sessions FROM app_user"
-    )
-    op.execute(
-        "DROP POLICY IF EXISTS attr_sessions_select ON attribution_sessions"
-    )
-    op.execute(
-        "DROP POLICY IF EXISTS attr_sessions_insert ON attribution_sessions"
-    )
-    op.execute(
-        "DROP POLICY IF EXISTS attr_sessions_update ON attribution_sessions"
-    )
+    op.execute("REVOKE SELECT, INSERT, UPDATE ON attribution_sessions FROM app_user")
+    op.execute("DROP POLICY IF EXISTS attr_sessions_select ON attribution_sessions")
+    op.execute("DROP POLICY IF EXISTS attr_sessions_insert ON attribution_sessions")
+    op.execute("DROP POLICY IF EXISTS attr_sessions_update ON attribution_sessions")
     op.drop_table("attribution_sessions")
 
     # ---- attribution_visitors ----
-    op.execute(
-        "REVOKE SELECT, INSERT, UPDATE ON attribution_visitors FROM app_user"
-    )
-    op.execute(
-        "DROP POLICY IF EXISTS attr_visitors_select ON attribution_visitors"
-    )
-    op.execute(
-        "DROP POLICY IF EXISTS attr_visitors_insert ON attribution_visitors"
-    )
-    op.execute(
-        "DROP POLICY IF EXISTS attr_visitors_update ON attribution_visitors"
-    )
+    op.execute("REVOKE SELECT, INSERT, UPDATE ON attribution_visitors FROM app_user")
+    op.execute("DROP POLICY IF EXISTS attr_visitors_select ON attribution_visitors")
+    op.execute("DROP POLICY IF EXISTS attr_visitors_insert ON attribution_visitors")
+    op.execute("DROP POLICY IF EXISTS attr_visitors_update ON attribution_visitors")
     op.drop_table("attribution_visitors")

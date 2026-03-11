@@ -6,15 +6,16 @@ Create Date: 2026-02-22
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "9513201a399e"
-down_revision: Union[str, None] = "15e696ca6d7d"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "15e696ca6d7d"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -43,9 +44,7 @@ def upgrade() -> None:
         sa.Column("s3_key", sa.Text(), nullable=False),
         sa.Column("file_name", sa.Text(), nullable=True),
         sa.Column("content_type", sa.Text(), nullable=True),
-        sa.Column(
-            "sort_order", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -70,32 +69,38 @@ def upgrade() -> None:
     op.execute("ALTER TABLE media_assets ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE media_assets FORCE ROW LEVEL SECURITY")
 
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_select ON media_assets
         FOR SELECT
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_insert ON media_assets
         FOR INSERT
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_update ON media_assets
         FOR UPDATE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_delete ON media_assets
         FOR DELETE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
+    """
+    )
 
     # --- Grant permissions to app_user ---
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON media_assets TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON media_assets TO app_user")
 
 
 def downgrade() -> None:
@@ -104,7 +109,5 @@ def downgrade() -> None:
     op.execute("DROP POLICY IF EXISTS tenant_isolation_update ON media_assets")
     op.execute("DROP POLICY IF EXISTS tenant_isolation_delete ON media_assets")
     op.execute("ALTER TABLE media_assets DISABLE ROW LEVEL SECURITY")
-    op.execute(
-        "REVOKE SELECT, INSERT, UPDATE, DELETE ON media_assets FROM app_user"
-    )
+    op.execute("REVOKE SELECT, INSERT, UPDATE, DELETE ON media_assets FROM app_user")
     op.drop_table("media_assets")

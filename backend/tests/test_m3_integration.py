@@ -42,16 +42,19 @@ async def _setup_tenant_product_visit(
     # Create product
     r = await client.post(
         "/api/v1/tenants/me/products",
-        json={"name": f"Widget-{uid}", "price_amount": "5.250", "is_active": True, "stock_qty": 100},
+        json={
+            "name": f"Widget-{uid}",
+            "price_amount": "5.250",
+            "is_active": True,
+            "stock_qty": 100,
+        },
         headers=headers,
     )
     assert r.status_code == 201
     product_id = r.json()["id"]
 
     # Create visit
-    r = await client.post(
-        f"/api/v1/storefront/{slug}/visit", json={"session_id": f"sess-{uid}"}
-    )
+    r = await client.post(f"/api/v1/storefront/{slug}/visit", json={"session_id": f"sess-{uid}"})
     assert r.status_code == 201
     visit_id = r.json()["visit_id"]
 
@@ -236,9 +239,7 @@ async def test_utm_events_created(client: AsyncClient, db: AsyncSession):
         {"tid": tenant_id},
     )
     # Use superuser db — RLS bypassed. Filter by visit_id directly.
-    result = await db.execute(
-        select(UtmEvent).where(UtmEvent.visit_id == uuid.UUID(visit_id))
-    )
+    result = await db.execute(select(UtmEvent).where(UtmEvent.visit_id == uuid.UUID(visit_id)))
     events = list(result.scalars().all())
 
     assert len(events) == 3

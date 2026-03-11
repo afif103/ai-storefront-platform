@@ -295,9 +295,7 @@ async def test_admin_list_includes_usage_summary(client: AsyncClient, db: AsyncS
     product_id = r.json()["id"]
 
     # Create a visit for linking
-    r = await client.post(
-        f"/api/v1/storefront/{slug}/visit", json={"session_id": "summ-sess"}
-    )
+    r = await client.post(f"/api/v1/storefront/{slug}/visit", json={"session_id": "summ-sess"})
     assert r.status_code == 201
     visit_id = r.json()["visit_id"]
 

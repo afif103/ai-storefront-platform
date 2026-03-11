@@ -1,7 +1,7 @@
 """M7 P3/P4 — Notification dispatch wiring integration tests."""
 
 import uuid
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -33,7 +33,12 @@ async def _setup_tenant_with_product(client: AsyncClient) -> tuple[dict, str, st
 
     r = await client.post(
         "/api/v1/tenants/me/products",
-        json={"name": f"Widget-{uid}", "price_amount": "5.000", "is_active": True, "track_inventory": False},
+        json={
+            "name": f"Widget-{uid}",
+            "price_amount": "5.000",
+            "is_active": True,
+            "track_inventory": False,
+        },
         headers=headers,
     )
     assert r.status_code == 201
@@ -46,9 +51,7 @@ async def _setup_tenant_with_product(client: AsyncClient) -> tuple[dict, str, st
 
 
 @patch("app.api.v1.public_storefront.send_order_notification")
-async def test_order_creation_dispatches_notification(
-    mock_task: MagicMock, client: AsyncClient
-):
+async def test_order_creation_dispatches_notification(mock_task: MagicMock, client: AsyncClient):
     """Order creation calls send_order_notification.delay with correct args."""
     headers, slug, product_id = await _setup_tenant_with_product(client)
 

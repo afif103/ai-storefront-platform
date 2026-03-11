@@ -77,9 +77,7 @@ class OpenAIProvider:
     """OpenAI-compatible provider. Works with OpenAI, Groq, and other
     services that expose the OpenAI chat completions API."""
 
-    def __init__(
-        self, api_key: str, model: str, base_url: str | None = None
-    ) -> None:
+    def __init__(self, api_key: str, model: str, base_url: str | None = None) -> None:
         import openai
 
         self._client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url)

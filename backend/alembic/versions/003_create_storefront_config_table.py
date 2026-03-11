@@ -6,15 +6,16 @@ Create Date: 2026-02-22
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "003"
-down_revision: Union[str, None] = "002"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "002"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -50,32 +51,38 @@ def upgrade() -> None:
     op.execute("ALTER TABLE storefront_config ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE storefront_config FORCE ROW LEVEL SECURITY")
 
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_select ON storefront_config
         FOR SELECT
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_insert ON storefront_config
         FOR INSERT
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_update ON storefront_config
         FOR UPDATE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_delete ON storefront_config
         FOR DELETE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
+    """
+    )
 
     # --- Grant permissions to app_user ---
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON storefront_config TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON storefront_config TO app_user")
 
 
 def downgrade() -> None:
@@ -84,7 +91,5 @@ def downgrade() -> None:
     op.execute("DROP POLICY IF EXISTS tenant_isolation_update ON storefront_config")
     op.execute("DROP POLICY IF EXISTS tenant_isolation_delete ON storefront_config")
     op.execute("ALTER TABLE storefront_config DISABLE ROW LEVEL SECURITY")
-    op.execute(
-        "REVOKE SELECT, INSERT, UPDATE, DELETE ON storefront_config FROM app_user"
-    )
+    op.execute("REVOKE SELECT, INSERT, UPDATE, DELETE ON storefront_config FROM app_user")
     op.drop_table("storefront_config")

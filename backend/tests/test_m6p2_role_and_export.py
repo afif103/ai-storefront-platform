@@ -46,9 +46,7 @@ async def _setup_tenant_with_two_members(
     tenant_id = r.json()["id"]
 
     # Look up owner's membership ID
-    owner_user_result = await db.execute(
-        select(User).where(User.cognito_sub == owner_sub)
-    )
+    owner_user_result = await db.execute(select(User).where(User.cognito_sub == owner_sub))
     owner_user = owner_user_result.scalar_one()
     owner_mem_result = await db.execute(
         select(TenantMember).where(
@@ -92,8 +90,12 @@ async def _setup_tenant_with_two_members(
     await db.commit()
 
     return (
-        owner_headers, member_headers, slug, tenant_id,
-        str(owner_membership.id), str(member_row.id),
+        owner_headers,
+        member_headers,
+        slug,
+        tenant_id,
+        str(owner_membership.id),
+        str(member_row.id),
     )
 
 
@@ -246,9 +248,7 @@ async def _setup_with_data(client: AsyncClient) -> tuple[dict, str]:
     product_id = r.json()["id"]
 
     # Visit for linking
-    r = await client.post(
-        f"/api/v1/storefront/{slug}/visit", json={"session_id": f"sess-{uid}"}
-    )
+    r = await client.post(f"/api/v1/storefront/{slug}/visit", json={"session_id": f"sess-{uid}"})
     assert r.status_code == 201
     visit_id = r.json()["visit_id"]
 

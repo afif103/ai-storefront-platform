@@ -6,15 +6,16 @@ Create Date: 2026-02-19
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "002"
-down_revision: Union[str, None] = "001"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "001"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -28,11 +29,13 @@ def upgrade() -> None:
             server_default="KWD",
         ),
     )
-    op.execute("""
+    op.execute(
+        """
         ALTER TABLE tenants
         ADD CONSTRAINT ck_tenants_currency
         CHECK (default_currency ~ '^[A-Z]{3}$')
-    """)
+    """
+    )
 
     # --- categories (tenant-scoped, RLS) ---
     op.create_table(
@@ -120,53 +123,69 @@ def upgrade() -> None:
     op.execute("ALTER TABLE categories ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE categories FORCE ROW LEVEL SECURITY")
 
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_select ON categories
         FOR SELECT
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_insert ON categories
         FOR INSERT
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_update ON categories
         FOR UPDATE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_delete ON categories
         FOR DELETE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
+    """
+    )
 
     # --- RLS on products ---
     op.execute("ALTER TABLE products ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE products FORCE ROW LEVEL SECURITY")
 
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_select ON products
         FOR SELECT
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_insert ON products
         FOR INSERT
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_update ON products
         FOR UPDATE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_delete ON products
         FOR DELETE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
+    """
+    )
 
     # --- Grant permissions to app_user ---
     op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON categories TO app_user")

@@ -6,15 +6,16 @@ Create Date: 2026-02-18
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "001"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -116,9 +117,7 @@ def upgrade() -> None:
         sa.Column("invited_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("joined_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("tenant_id", "user_id", name="uq_tenant_members_tenant_user"),
-        sa.CheckConstraint(
-            "role IN ('owner', 'admin', 'member')", name="ck_tenant_members_role"
-        ),
+        sa.CheckConstraint("role IN ('owner', 'admin', 'member')", name="ck_tenant_members_role"),
         sa.CheckConstraint(
             "status IN ('active', 'invited', 'removed')", name="ck_tenant_members_status"
         ),
@@ -132,53 +131,61 @@ def upgrade() -> None:
 
     # SELECT policy: allow by tenant_id OR user_id (for middleware resolution)
     # current_setting(..., true) returns NULL instead of erroring when unset
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_select ON tenant_members
         FOR SELECT
         USING (
             tenant_id = current_setting('app.current_tenant', true)::uuid
             OR user_id = current_setting('app.current_user_id', true)::uuid
         )
-    """)
+    """
+    )
 
     # INSERT policy: strict tenant_id check
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_insert ON tenant_members
         FOR INSERT
         WITH CHECK (
             tenant_id = current_setting('app.current_tenant')::uuid
         )
-    """)
+    """
+    )
 
     # UPDATE policy: strict tenant_id check
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_update ON tenant_members
         FOR UPDATE
         USING (
             tenant_id = current_setting('app.current_tenant')::uuid
         )
-    """)
+    """
+    )
 
     # DELETE policy: strict tenant_id check
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_delete ON tenant_members
         FOR DELETE
         USING (
             tenant_id = current_setting('app.current_tenant')::uuid
         )
-    """)
+    """
+    )
 
     # --- Grant permissions to app_user ---
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user")
     op.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user")
 
     # --- Seed default Free plan ---
-    op.execute("""
+    op.execute(
+        """
         INSERT INTO plans (name, ai_token_quota, price_amount, currency, max_members)
         VALUES ('Free', 10000, 0.000, 'KWD', 3)
-    """)
+    """
+    )
 
 
 def downgrade() -> None:

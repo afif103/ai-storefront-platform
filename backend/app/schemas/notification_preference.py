@@ -15,9 +15,7 @@ class NotificationPreferencesUpdate(BaseModel):
     @model_validator(mode="after")
     def _telegram_chat_id_required_when_enabled(self) -> "NotificationPreferencesUpdate":
         if self.telegram_enabled is True and not self.telegram_chat_id:
-            raise ValueError(
-                "telegram_chat_id is required when enabling Telegram notifications"
-            )
+            raise ValueError("telegram_chat_id is required when enabling Telegram notifications")
         return self
 
 

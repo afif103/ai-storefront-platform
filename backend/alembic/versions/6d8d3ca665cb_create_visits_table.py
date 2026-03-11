@@ -6,15 +6,16 @@ Create Date: 2026-02-22
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "6d8d3ca665cb"
-down_revision: Union[str, None] = "9513201a399e"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "9513201a399e"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -57,27 +58,35 @@ def upgrade() -> None:
     op.execute("ALTER TABLE visits ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE visits FORCE ROW LEVEL SECURITY")
 
-    op.execute("""
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_select ON visits
         FOR SELECT
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_insert ON visits
         FOR INSERT
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_update ON visits
         FOR UPDATE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
         WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         CREATE POLICY tenant_isolation_delete ON visits
         FOR DELETE
         USING (tenant_id = current_setting('app.current_tenant', true)::uuid)
-    """)
+    """
+    )
 
     # --- Grant permissions to app_user ---
     op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON visits TO app_user")

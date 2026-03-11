@@ -14,14 +14,14 @@ Create Date: 2026-02-23
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
 revision: str = "b3c4d5e6f7a8"
-down_revision: Union[str, None] = "a1b2c3d4e5f6"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "a1b2c3d4e5f6"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 # Helper: safe cast expression
 _TENANT = "NULLIF(current_setting('app.current_tenant', true), '')::uuid"
@@ -42,52 +42,68 @@ def _drop_standard_policies(table: str) -> None:
 
 
 def _create_standard_policies_fixed(table: str) -> None:
-    op.execute(f"""
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_select ON {table}
         FOR SELECT
         USING (tenant_id = {_TENANT})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_insert ON {table}
         FOR INSERT
         WITH CHECK (tenant_id = {_TENANT})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_update ON {table}
         FOR UPDATE
         USING (tenant_id = {_TENANT})
         WITH CHECK (tenant_id = {_TENANT})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_delete ON {table}
         FOR DELETE
         USING (tenant_id = {_TENANT})
-    """)
+    """
+    )
 
 
 def _create_standard_policies_old(table: str) -> None:
     """Restore original policies (downgrade)."""
-    op.execute(f"""
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_select ON {table}
         FOR SELECT
         USING (tenant_id = {_OLD_TENANT_TRUE})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_insert ON {table}
         FOR INSERT
         WITH CHECK (tenant_id = {_OLD_TENANT_TRUE})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_update ON {table}
         FOR UPDATE
         USING (tenant_id = {_OLD_TENANT_TRUE})
         WITH CHECK (tenant_id = {_OLD_TENANT_TRUE})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_delete ON {table}
         FOR DELETE
         USING (tenant_id = {_OLD_TENANT_TRUE})
-    """)
+    """
+    )
 
 
 def upgrade() -> None:
@@ -99,34 +115,40 @@ def upgrade() -> None:
     # ---- tenant_members (special: SELECT has dual condition + INSERT/UPDATE/DELETE
     #       were missing the `true` missing_ok flag) ----
     for action in ("select", "insert", "update", "delete"):
-        op.execute(
-            f"DROP POLICY IF EXISTS tenant_isolation_{action} ON tenant_members"
-        )
+        op.execute(f"DROP POLICY IF EXISTS tenant_isolation_{action} ON tenant_members")
 
-    op.execute(f"""
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_select ON tenant_members
         FOR SELECT
         USING (
             tenant_id = {_TENANT}
             OR user_id = {_USER}
         )
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_insert ON tenant_members
         FOR INSERT
         WITH CHECK (tenant_id = {_TENANT})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_update ON tenant_members
         FOR UPDATE
         USING (tenant_id = {_TENANT})
         WITH CHECK (tenant_id = {_TENANT})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_delete ON tenant_members
         FOR DELETE
         USING (tenant_id = {_TENANT})
-    """)
+    """
+    )
 
 
 def downgrade() -> None:
@@ -137,31 +159,37 @@ def downgrade() -> None:
 
     # ---- tenant_members — restore original (with bare current_setting for IUD) ----
     for action in ("select", "insert", "update", "delete"):
-        op.execute(
-            f"DROP POLICY IF EXISTS tenant_isolation_{action} ON tenant_members"
-        )
+        op.execute(f"DROP POLICY IF EXISTS tenant_isolation_{action} ON tenant_members")
 
-    op.execute(f"""
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_select ON tenant_members
         FOR SELECT
         USING (
             tenant_id = {_OLD_TENANT_TRUE}
             OR user_id = {_OLD_USER}
         )
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_insert ON tenant_members
         FOR INSERT
         WITH CHECK (tenant_id = {_OLD_TENANT_BARE})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_update ON tenant_members
         FOR UPDATE
         USING (tenant_id = {_OLD_TENANT_BARE})
         WITH CHECK (tenant_id = {_OLD_TENANT_BARE})
-    """)
-    op.execute(f"""
+    """
+    )
+    op.execute(
+        f"""
         CREATE POLICY tenant_isolation_delete ON tenant_members
         FOR DELETE
         USING (tenant_id = {_OLD_TENANT_BARE})
-    """)
+    """
+    )

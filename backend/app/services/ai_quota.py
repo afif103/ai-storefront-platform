@@ -70,9 +70,7 @@ async def check_session_rate_limit(tenant_id: str, session_id: str) -> bool:
 _ANALYTICS_RATE_LIMIT_MESSAGES = 60  # per session+ip per 5-min window
 
 
-async def check_analytics_rate_limit(
-    tenant_id: str, session_id: str, ip_hash: str
-) -> bool:
+async def check_analytics_rate_limit(tenant_id: str, session_id: str, ip_hash: str) -> bool:
     """Return True if an analytics ingest session is within rate limit."""
     r = await _get_redis()
     try:

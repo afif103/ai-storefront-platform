@@ -64,7 +64,11 @@ async def list_donations(
     db, tenant_id = db_tenant
     await require_role("member", db, tenant_id, user)
 
-    stmt = select(Donation).where(Donation.tenant_id == tenant_id).order_by(Donation.created_at.desc())
+    stmt = (
+        select(Donation)
+        .where(Donation.tenant_id == tenant_id)
+        .order_by(Donation.created_at.desc())
+    )
     if status:
         stmt = stmt.where(Donation.status == status.strip().lower())
     stmt = stmt.offset(offset).limit(limit)
@@ -140,15 +144,29 @@ async def export_orders(
     orders = result.scalars().all()
 
     headers = [
-        "order_number", "status", "customer_name", "customer_phone",
-        "customer_email", "items", "total_amount", "currency", "notes",
+        "order_number",
+        "status",
+        "customer_name",
+        "customer_phone",
+        "customer_email",
+        "items",
+        "total_amount",
+        "currency",
+        "notes",
         "created_at",
     ]
     rows = [
         (
-            o.order_number, o.status, o.customer_name, o.customer_phone,
-            o.customer_email, _items_summary(o.items if isinstance(o.items, list) else []),
-            o.total_amount, o.currency, o.notes, o.created_at,
+            o.order_number,
+            o.status,
+            o.customer_name,
+            o.customer_phone,
+            o.customer_email,
+            _items_summary(o.items if isinstance(o.items, list) else []),
+            o.total_amount,
+            o.currency,
+            o.notes,
+            o.created_at,
         )
         for o in orders
     ]
@@ -166,7 +184,11 @@ async def export_donations(
     db, tenant_id = db_tenant
     await require_role("admin", db, tenant_id, user)
 
-    stmt = select(Donation).where(Donation.tenant_id == tenant_id).order_by(Donation.created_at.desc())
+    stmt = (
+        select(Donation)
+        .where(Donation.tenant_id == tenant_id)
+        .order_by(Donation.created_at.desc())
+    )
     if start_date:
         stmt = stmt.where(Donation.created_at >= start_date)
     if end_date:
@@ -177,15 +199,31 @@ async def export_donations(
     donations = result.scalars().all()
 
     headers = [
-        "donation_number", "status", "donor_name", "donor_phone",
-        "donor_email", "amount", "currency", "campaign",
-        "receipt_requested", "notes", "created_at",
+        "donation_number",
+        "status",
+        "donor_name",
+        "donor_phone",
+        "donor_email",
+        "amount",
+        "currency",
+        "campaign",
+        "receipt_requested",
+        "notes",
+        "created_at",
     ]
     rows = [
         (
-            d.donation_number, d.status, d.donor_name, d.donor_phone,
-            d.donor_email, d.amount, d.currency, d.campaign,
-            d.receipt_requested, d.notes, d.created_at,
+            d.donation_number,
+            d.status,
+            d.donor_name,
+            d.donor_phone,
+            d.donor_email,
+            d.amount,
+            d.currency,
+            d.campaign,
+            d.receipt_requested,
+            d.notes,
+            d.created_at,
         )
         for d in donations
     ]
@@ -214,15 +252,31 @@ async def export_pledges(
     pledges = result.scalars().all()
 
     headers = [
-        "pledge_number", "status", "pledgor_name", "pledgor_phone",
-        "pledgor_email", "amount", "currency", "target_date",
-        "fulfilled_amount", "notes", "created_at",
+        "pledge_number",
+        "status",
+        "pledgor_name",
+        "pledgor_phone",
+        "pledgor_email",
+        "amount",
+        "currency",
+        "target_date",
+        "fulfilled_amount",
+        "notes",
+        "created_at",
     ]
     rows = [
         (
-            p.pledge_number, p.status, p.pledgor_name, p.pledgor_phone,
-            p.pledgor_email, p.amount, p.currency, p.target_date,
-            p.fulfilled_amount, p.notes, p.created_at,
+            p.pledge_number,
+            p.status,
+            p.pledgor_name,
+            p.pledgor_phone,
+            p.pledgor_email,
+            p.amount,
+            p.currency,
+            p.target_date,
+            p.fulfilled_amount,
+            p.notes,
+            p.created_at,
         )
         for p in pledges
     ]

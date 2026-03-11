@@ -80,7 +80,9 @@ async def test_rls_admin_list_tenants(rls_client: AsyncClient, db: AsyncSession)
     matching = [t for t in data if t["slug"] == slug]
     actual_count = matching[0]["member_count"]
     print(f"RLS member_count for {slug}: {actual_count}")
-    assert actual_count == 1, f"Expected member_count=1, got {actual_count} (RLS may block subquery)"
+    assert (
+        actual_count == 1
+    ), f"Expected member_count=1, got {actual_count} (RLS may block subquery)"
 
 
 async def test_rls_admin_list_usage_summary(rls_client: AsyncClient, db: AsyncSession):
@@ -103,9 +105,7 @@ async def test_rls_admin_list_usage_summary(rls_client: AsyncClient, db: AsyncSe
     product_id = r.json()["id"]
 
     # Visit
-    r = await rls_client.post(
-        f"/api/v1/storefront/{slug}/visit", json={"session_id": "rls-sess"}
-    )
+    r = await rls_client.post(f"/api/v1/storefront/{slug}/visit", json={"session_id": "rls-sess"})
     assert r.status_code == 201
     visit_id = r.json()["visit_id"]
 

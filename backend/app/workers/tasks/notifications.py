@@ -2,8 +2,8 @@
 
 import asyncio
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -55,9 +55,7 @@ async def _process_order_notification(
 
     # Fetch preferences
     result = await session.execute(
-        select(NotificationPreference).where(
-            NotificationPreference.tenant_id == tenant_id
-        )
+        select(NotificationPreference).where(NotificationPreference.tenant_id == tenant_id)
     )
     prefs = result.scalar_one_or_none()
     if prefs is None or (not prefs.email_enabled and not prefs.telegram_enabled):
@@ -76,9 +74,7 @@ async def _process_order_notification(
         return
 
     # Fetch tenant name
-    result = await session.execute(
-        select(Tenant.name).where(Tenant.id == tenant_id)
-    )
+    result = await session.execute(select(Tenant.name).where(Tenant.id == tenant_id))
     tenant_name = result.scalar_one()
 
     # Format message
@@ -109,9 +105,7 @@ async def _process_order_notification(
             )
         else:
             bot_token = settings.TELEGRAM_BOT_TOKEN
-            send_telegram(
-                bot_token=bot_token, chat_id=prefs.telegram_chat_id, text=body
-            )
+            send_telegram(bot_token=bot_token, chat_id=prefs.telegram_chat_id, text=body)
 
 
 async def _process_donation_notification(
@@ -125,9 +119,7 @@ async def _process_donation_notification(
 
     # Fetch preferences
     result = await session.execute(
-        select(NotificationPreference).where(
-            NotificationPreference.tenant_id == tenant_id
-        )
+        select(NotificationPreference).where(NotificationPreference.tenant_id == tenant_id)
     )
     prefs = result.scalar_one_or_none()
     if prefs is None or (not prefs.email_enabled and not prefs.telegram_enabled):
@@ -139,18 +131,14 @@ async def _process_donation_notification(
         return
 
     # Fetch donation
-    result = await session.execute(
-        select(Donation).where(Donation.id == donation_id)
-    )
+    result = await session.execute(select(Donation).where(Donation.id == donation_id))
     donation = result.scalar_one_or_none()
     if donation is None:
         logger.warning("Donation %s not found for notification", donation_id)
         return
 
     # Fetch tenant name
-    result = await session.execute(
-        select(Tenant.name).where(Tenant.id == tenant_id)
-    )
+    result = await session.execute(select(Tenant.name).where(Tenant.id == tenant_id))
     tenant_name = result.scalar_one()
 
     # Format message
@@ -181,9 +169,7 @@ async def _process_donation_notification(
             )
         else:
             bot_token = settings.TELEGRAM_BOT_TOKEN
-            send_telegram(
-                bot_token=bot_token, chat_id=prefs.telegram_chat_id, text=body
-            )
+            send_telegram(bot_token=bot_token, chat_id=prefs.telegram_chat_id, text=body)
 
 
 @celery_app.task(name="send_order_notification", ignore_result=True)
@@ -224,9 +210,7 @@ async def _process_donation_receipt(
     )
 
     # Fetch donation
-    result = await session.execute(
-        select(Donation).where(Donation.id == donation_id)
-    )
+    result = await session.execute(select(Donation).where(Donation.id == donation_id))
     donation = result.scalar_one_or_none()
     if donation is None:
         logger.warning("Donation %s not found for receipt", donation_id)
@@ -241,9 +225,7 @@ async def _process_donation_receipt(
         return
 
     # Fetch tenant name
-    result = await session.execute(
-        select(Tenant.name).where(Tenant.id == tenant_id)
-    )
+    result = await session.execute(select(Tenant.name).where(Tenant.id == tenant_id))
     tenant_name = result.scalar_one()
 
     subject, body = format_donation_receipt(

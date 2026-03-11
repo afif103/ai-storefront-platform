@@ -84,9 +84,7 @@ async def test_ai_chat_success(client: AsyncClient, db: AsyncSession):
         {"tid": tenant_id},
     )
     conv_result = await db.execute(
-        select(AIConversation).where(
-            AIConversation.tenant_id == uuid.UUID(tenant_id)
-        )
+        select(AIConversation).where(AIConversation.tenant_id == uuid.UUID(tenant_id))
     )
     conv = conv_result.scalar_one()
     assert len(conv.messages) == 2  # user + assistant
@@ -94,9 +92,7 @@ async def test_ai_chat_success(client: AsyncClient, db: AsyncSession):
     assert conv.messages[1]["role"] == "assistant"
 
     # Verify DB: usage log exists
-    log_result = await db.execute(
-        select(AIUsageLog).where(AIUsageLog.conversation_id == conv.id)
-    )
+    log_result = await db.execute(select(AIUsageLog).where(AIUsageLog.conversation_id == conv.id))
     log = log_result.scalar_one()
     assert log.tokens_in == 50
     assert log.tokens_out == 30
@@ -129,9 +125,7 @@ async def test_ai_chat_continues_conversation(client: AsyncClient):
     assert conv_id_1 == conv_id_2
 
 
-async def test_ai_chat_provider_failure_no_db_writes(
-    client: AsyncClient, db: AsyncSession
-):
+async def test_ai_chat_provider_failure_no_db_writes(client: AsyncClient, db: AsyncSession):
     """Provider failure: no conversation update, no usage log, quota rolled back."""
     headers, tenant_id = await _setup_tenant(client)
     mock_provider = _mock_provider_failure()

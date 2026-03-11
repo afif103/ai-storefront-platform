@@ -60,9 +60,9 @@ class AIGatewayError(Exception):
 
 def _compute_cost(model: str, tokens_in: int, tokens_out: int) -> Decimal:
     pricing = _PRICING.get(model, {"input_per_1k": 0.003, "output_per_1k": 0.015})
-    cost = (tokens_in / 1000) * pricing["input_per_1k"] + (
-        tokens_out / 1000
-    ) * pricing["output_per_1k"]
+    cost = (tokens_in / 1000) * pricing["input_per_1k"] + (tokens_out / 1000) * pricing[
+        "output_per_1k"
+    ]
     return Decimal(str(round(cost, 6)))
 
 

@@ -13,7 +13,6 @@ from app.models.notification_preference import NotificationPreference
 from app.models.order import Order
 from app.models.plan import Plan
 from app.models.tenant import Tenant
-from app.models.tenant_member import TenantMember
 from app.services.notifications.email_sender import send_email
 from app.services.notifications.telegram_sender import send_telegram
 from app.services.notifications.templates import (
@@ -354,9 +353,7 @@ def test_format_donation_receipt():
 
 
 @patch("app.workers.tasks.notifications.send_email")
-async def test_donation_receipt_sent_when_requested(
-    mock_email: MagicMock, db: AsyncSession
-):
+async def test_donation_receipt_sent_when_requested(mock_email: MagicMock, db: AsyncSession):
     """Receipt email sent when receipt_requested=True and donor_email present."""
     mock_email.return_value = True
 
@@ -388,9 +385,7 @@ async def test_donation_receipt_skipped_when_not_requested(
 
 
 @patch("app.workers.tasks.notifications.send_email")
-async def test_donation_receipt_skipped_when_no_email(
-    mock_email: MagicMock, db: AsyncSession
-):
+async def test_donation_receipt_skipped_when_no_email(mock_email: MagicMock, db: AsyncSession):
     """Receipt email NOT sent when donor_email is None."""
     tenant, _ = await _seed_tenant_with_prefs(db)
     donation = await _seed_donation(db, tenant, donor_email=None)
