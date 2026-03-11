@@ -24,6 +24,10 @@ os.environ.setdefault(
     "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_db"
 )
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("S3_BUCKET", "test-bucket")
+os.environ.setdefault("S3_ENDPOINT_URL", "http://localhost:9000")
+os.environ.setdefault("AWS_ACCESS_KEY_ID", "testing")
+os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "testing")
 
 import app.core.dependencies as deps_mod  # noqa: E402
 from app.core.config import settings  # noqa: E402
