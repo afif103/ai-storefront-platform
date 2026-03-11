@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Ruff check
+        run: ruff check .
+
+      - name: Black check
+        run: black --check .
+
+  backend-test:
+    name: Backend Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: saas_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Provision app_user role
+        run: psql -f scripts/init-db.sql
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: saas_db
+
+      - name: Run migrations
+        run: alembic upgrade head
+
+      - name: Run tests
+        run: pytest
+
+  frontend-check:
+    name: Frontend Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Build
+        run: npm run build
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t saas-backend backend/
