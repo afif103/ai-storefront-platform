@@ -262,7 +262,8 @@ Ordered epics M1–M9. Each task has a primary implementor:
 | 8.5 | Provision RDS PostgreSQL (Multi-AZ, encryption, `require_ssl`) | Claude | DB accessible from ECS tasks only, `app_user` + `app_migrator` roles created |
 | 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Claude | Redis accessible from ECS tasks only |
 | 8.7 | Provision S3 bucket (Block Public Access, versioning) | Claude | Bucket exists with correct policy, lifecycle rules |
-| 8.8 | Create ECR repository + ECS cluster + task definitions | Claude | Backend + worker services running with correct task roles |
+| 8.8a | Create ECR repository + OIDC + CI image push | Claude | ECR repo exists in me-south-1, GitHub OIDC role created, CI pushes image on main merge |
+| 8.8b | Create ECS cluster + task definitions + deploy services | Claude | Backend + worker services running with correct task roles |
 | 8.9 | Set up ALB + CloudFront + WAF | Claude | HTTPS, health checks, WAF rules per `security.md §8` |
 | 8.10 | Set up Vercel project with wildcard subdomain | Claude | Frontend deploys on push, `*.yourdomain.com` resolves |
 | 8.11 | Set up GitHub Actions CD (deploy to staging + production) | Claude | Staging auto-deploy on main. Production via manual workflow dispatch. |
