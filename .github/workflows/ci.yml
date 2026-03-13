@@ -125,3 +125,33 @@ jobs:
 
       - name: Build backend image
         run: docker build -t saas-backend backend/
+
+  image-push:
+    name: Push to ECR
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend-lint, backend-test, frontend-check, docker-build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: ap-southeast-1
+      ECR_REPO: saas-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - name: Build and push
+        run: |
+          IMAGE="${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}"
+          SHA_TAG="${GITHUB_SHA::7}"
+          docker build -t "$IMAGE:latest" -t "$IMAGE:$SHA_TAG" backend/
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:$SHA_TAG"
