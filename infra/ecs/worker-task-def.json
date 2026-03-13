@@ -1,0 +1,52 @@
+{
+  "family": "saas-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "{{EXECUTION_ROLE_ARN}}",
+  "taskRoleArn": "{{TASK_ROLE_ARN}}",
+  "containerDefinitions": [
+    {
+      "name": "worker",
+      "image": "{{ECR_IMAGE}}",
+      "essential": true,
+      "command": [
+        "celery", "-A", "app.workers.celery_app",
+        "worker", "--loglevel=info", "--concurrency=2"
+      ],
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "production" },
+        { "name": "DEBUG", "value": "false" },
+        { "name": "COGNITO_MOCK", "value": "false" },
+        { "name": "AWS_REGION", "value": "ap-southeast-1" },
+        { "name": "COGNITO_REGION", "value": "ap-southeast-1" },
+        { "name": "SES_REGION", "value": "ap-southeast-1" },
+        { "name": "S3_BUCKET", "value": "{{S3_BUCKET}}" },
+        { "name": "COGNITO_USER_POOL_ID", "value": "{{COGNITO_USER_POOL_ID}}" },
+        { "name": "COGNITO_CLIENT_ID", "value": "{{COGNITO_CLIENT_ID}}" },
+        { "name": "SES_SENDER_EMAIL", "value": "{{SES_SENDER_EMAIL}}" },
+        { "name": "ALLOWED_ORIGINS", "value": "{{ALLOWED_ORIGINS}}" },
+        { "name": "AI_PROVIDER", "value": "openai" },
+        { "name": "AI_MODEL", "value": "gpt-4o" },
+        { "name": "AI_MAX_INPUT_CHARS", "value": "2000" },
+        { "name": "AI_MAX_OUTPUT_TOKENS", "value": "1024" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_URL", "valueFrom": "{{SECRET_ARN_DATABASE_URL}}" },
+        { "name": "REDIS_URL", "valueFrom": "{{SECRET_ARN_REDIS_URL}}" },
+        { "name": "SECRET_KEY", "valueFrom": "{{SECRET_ARN_SECRET_KEY}}" },
+        { "name": "AI_API_KEY", "valueFrom": "{{SECRET_ARN_AI_API_KEY}}" },
+        { "name": "IP_HASH_SALT", "valueFrom": "{{SECRET_ARN_IP_HASH_SALT}}" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/saas-worker",
+          "awslogs-region": "ap-southeast-1",
+          "awslogs-stream-prefix": "worker"
+        }
+      }
+    }
+  ]
+}
