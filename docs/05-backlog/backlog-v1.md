@@ -260,7 +260,7 @@ Ordered epics M1–M9. All implementation is through Claude Code.
 | 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Claude | Not started | Redis accessible from ECS tasks only |
 | 8.7 | Provision S3 bucket (Block Public Access, versioning) | Claude | Not started | Bucket exists with correct policy, lifecycle rules |
 | 8.8a | Create ECR repository + OIDC + CI image push | Claude | **DONE** | ECR repo exists in ap-southeast-1, GitHub OIDC role created, CI pushes image on push to main |
-| 8.8b | Create ECS cluster + task definitions + deploy services | Claude | Not started | Backend + worker services running with correct task roles |
+| 8.8b | Create ECS cluster + task definitions + deploy services | Claude | In progress | P1 repo contract and P2 cluster/roles/secrets/logs complete. Service deploy blocked by 8.4/8.5/8.6. |
 | 8.9 | Set up ALB + CloudFront + WAF | Claude | Not started | HTTPS, health checks, WAF rules per `security.md §8` |
 | 8.10 | Set up Vercel project with wildcard subdomain | Claude | Not started | Frontend deploys on push, `*.yourdomain.com` resolves |
 | 8.11 | Set up GitHub Actions CD (deploy to staging + production) | Claude | Not started | Staging auto-deploy on main. Production via manual workflow dispatch. |
