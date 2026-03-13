@@ -16,6 +16,9 @@
 
 set -euo pipefail
 
+# Prevent MSYS/Git Bash from converting /prod/... paths to Windows paths
+export MSYS_NO_PATHCONV=1
+
 REGION="ap-southeast-1"
 CLUSTER_NAME="saas-cluster"
 LOG_GROUP_BACKEND="/ecs/saas-backend"
