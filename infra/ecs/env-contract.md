@@ -48,7 +48,15 @@ All three boto3 clients in the codebase use the default credential chain:
 - **`email_sender.py`** (`ses`): no explicit credentials — uses default chain.
 - **`auth_service.py`** (`cognito-idp`): no explicit credentials — uses default chain.
 
-## IAM Role Responsibilities
+## IAM Role Separation
+
+Three IAM roles serve distinct purposes. They must not be conflated.
+
+| Role | Used by | Purpose | Provisioned in |
+|------|---------|---------|----------------|
+| `github-actions-ci` | GitHub Actions CI | OIDC assume-role for ECR image push | 8.8a (exists, not touched by ECS work) |
+| `saas-ecs-execution-role` | ECS agent | Bootstrap tasks: ECR pull, CloudWatch logs, inject Secrets Manager values | 8.8b P2 (fully provisioned) |
+| `saas-backend-task-role` | Running app code | Runtime AWS access: S3, SES, Cognito via boto3 default credential chain | 8.8b P2 (trust policy only); runtime permissions added after S3/SES/Cognito exist |
 
 ### Execution Role (`saas-ecs-execution-role`)
 
@@ -64,7 +72,7 @@ All three boto3 clients in the codebase use the default credential chain:
 | `secretsmanager:GetSecretValue` on specific ARNs | Inject secrets into container env at start |
 
 Attach `AmazonECSTaskExecutionRolePolicy` (managed) + inline policy for Secrets Manager
-scoped to the specific secret ARNs listed above.
+scoped to the specific secret ARNs created in `provision-ecs-prereqs.sh`.
 
 ### Task Role (`saas-backend-task-role`)
 
@@ -72,12 +80,15 @@ scoped to the specific secret ARNs listed above.
 
 **Purpose:** Used by the running application code at runtime.
 
-| Permission | Resource | Reason |
-|------------|----------|--------|
-| `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` | `arn:aws:s3:::{{S3_BUCKET}}/*` | Presigned URL generation + delete |
-| `s3:ListBucket` | `arn:aws:s3:::{{S3_BUCKET}}` | Bucket-level operations if needed |
-| `ses:SendEmail`, `ses:SendRawEmail` | `*` (or scoped to verified identity) | Email notifications |
-| `cognito-idp:InitiateAuth` | User pool ARN | Token refresh flow |
+**Current state:** Trust policy only. Runtime permissions are deferred until the
+target resources exist. The following permissions must be added before services start:
 
-**Not needed on task role:** Secrets Manager (that is the execution role's job),
+| Permission | Resource | Reason | Added after |
+|------------|----------|--------|-------------|
+| `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` | Bucket object ARN | Presigned URL generation + delete | 8.7 (S3 bucket) |
+| `s3:ListBucket` | Bucket ARN | Bucket-level operations if needed | 8.7 (S3 bucket) |
+| `ses:SendEmail`, `ses:SendRawEmail` | `*` (or scoped to verified identity) | Email notifications | 7.6 (SES identity) |
+| `cognito-idp:InitiateAuth` | User pool ARN | Token refresh flow | 1.1 (Cognito pool) |
+
+**Not needed on task role:** Secrets Manager (execution role's job),
 ECR (execution role), CloudWatch Logs (execution role).
