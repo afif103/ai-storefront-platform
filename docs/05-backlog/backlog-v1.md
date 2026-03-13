@@ -255,7 +255,7 @@ Ordered epics M1–M9. All implementation is through Claude Code.
 | 8.1 | Create Docker Compose for local dev (Postgres, Redis) | Claude | **DONE** | `docker compose up -d` starts all deps, health checks pass |
 | 8.2 | Create Dockerfile for backend (multi-stage, slim) | Claude | **DONE** | Builds successfully, runs backend and worker via different entrypoints |
 | 8.3 | Set up GitHub Actions CI (test + lint + build) | Claude | **DONE** | PR and push to main: backend lint (ruff, black), backend test (pytest with Postgres + Redis), frontend check (eslint, build), Docker build validation. ECR push deferred to CD packet. |
-| 8.4 | Provision VPC, subnets, security groups in `ap-southeast-1` | Claude | Not started | Per `aws-deployment.md` networking section |
+| 8.4 | Provision VPC, subnets, security groups in `ap-southeast-1` | Claude | **DONE** | P1 script+template 80d4e04, P2 executed, fix a841cfa |
 | 8.5 | Provision RDS PostgreSQL (Multi-AZ, encryption, `require_ssl`) | Claude | Not started | DB accessible from ECS tasks only, `app_user` + `app_migrator` roles created |
 | 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Claude | Not started | Redis accessible from ECS tasks only |
 | 8.7 | Provision S3 bucket (Block Public Access, versioning) | Claude | Not started | Bucket exists with correct policy, lifecycle rules |
