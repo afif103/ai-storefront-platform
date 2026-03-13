@@ -1,9 +1,6 @@
 # Backlog v1
 
-Ordered epics M1–M9. Each task has a primary implementor:
-- **Claude**: AI-assisted implementation (code generation, migrations, boilerplate, tests).
-- **Kimi**: manual work (design decisions, config, cloud provisioning, manual testing, copy).
-- **Both**: collaborative tasks requiring human review of AI output.
+Ordered epics M1–M9. All implementation is through Claude Code.
 
 ---
 
@@ -11,7 +8,7 @@ Ordered epics M1–M9. Each task has a primary implementor:
 
 | # | Task | Primary Implementor | DoD |
 |---|------|-------|-----|
-| 1.1 | Create Cognito User Pool in `me-south-1` (password policy, MFA, app client) | Kimi | Pool exists, app client secret in Secrets Manager |
+| 1.1 | Create Cognito User Pool (password policy, MFA, app client) | Claude | Pool exists, app client secret in Secrets Manager |
 | 1.2 | Build custom Next.js auth pages (signup, login, forgot password, MFA setup) | Claude | Pages render, forms submit to Cognito, error handling works |
 | 1.3 | Implement JWT verification middleware in FastAPI | Claude | Middleware verifies signature against JWKS, extracts `cognito_sub`, returns 401 on invalid/expired token |
 | 1.4 | Create `users` and `tenants` tables + Alembic migration | Claude | Tables exist, indexes + constraints per `data-model.md` |
@@ -21,7 +18,7 @@ Ordered epics M1–M9. Each task has a primary implementor:
 | 1.8 | Implement team invite flow (invite by email, accept invite) | Claude | Invite creates `tenant_members` row with status `invited`, accept flips to `active` |
 | 1.9 | Implement token refresh endpoint (`POST /auth/refresh`) with hardening | Claude | Origin validation, Content-Type check, POST-only, httpOnly cookie handling per `security.md §1` |
 | 1.10 | Write cross-tenant isolation integration tests | Claude | Tests prove Tenant A cannot read/write Tenant B's `tenant_members` data |
-| 1.11 | Configure Cognito email verification + SES integration | Kimi | Signup → verification email arrives, user can verify and log in |
+| 1.11 | Configure Cognito email verification + SES integration | Claude | Signup → verification email arrives, user can verify and log in |
 
 ---
 
@@ -37,7 +34,7 @@ Ordered epics M1–M9. Each task has a primary implementor:
 | 2.6 | Implement presigned URL upload/download endpoints | Claude | PUT URL for upload (max 10 MB, content-type check), GET URL for download (15-min expiry), tenant prefix validated |
 | 2.7 | Build public storefront page (Next.js) | Claude | Renders at `https://{slug}.yourdomain.com` with tenant branding + catalog |
 | 2.8 | Implement UTM capture on storefront visit | Claude | `POST /storefront/{slug}/visit` stores UTM params, returns `visit_id` |
-| 2.9 | Configure Vercel wildcard subdomain routing | Kimi | `*.yourdomain.com` resolves to Vercel, slug extracted in Next.js middleware |
+| 2.9 | Configure Vercel wildcard subdomain routing | Claude | `*.yourdomain.com` resolves to Vercel, slug extracted in Next.js middleware |
 | 2.10 | Write catalog + storefront integration tests | Claude | CRUD works, presigned URLs valid, cross-tenant isolation holds |
 
 ---
@@ -71,7 +68,7 @@ Ordered epics M1–M9. Each task has a primary implementor:
 | 4.6 | Implement tenant system prompt builder | Claude | **DONE** | Builds prompt with tenant name + catalog summary. Dashboard: tenant-scoped ops summary. Storefront: product catalog (up to 50 items). |
 | 4.7 | Build AI chat widget (Next.js storefront component) | Claude | **DONE** (M4.2) | Floating chat bubble on storefront pages. Session-based (`localStorage` key `session_id`, shared with `useVisit`). Rate limited: 10 msgs / 5 min per session. Read-only — no actions. |
 | 4.8 | Implement conversation context management | Claude | **DONE** | Dashboard: last 10 turns from `ai_conversations.messages` JSONB. Storefront: last 6 turns from `storefront_ai_conversations.messages` JSONB. |
-| 4.9 | Set up AI pricing config in SSM | Kimi | | `/{env}/ai/pricing` populated with provider pricing. `/{env}/ai/provider` set. |
+| 4.9 | Set up AI pricing config in SSM | Claude | | `/{env}/ai/pricing` populated with provider pricing. `/{env}/ai/provider` set. |
 | 4.10 | Write AI gateway integration tests | Claude | **DONE** | Quota enforcement, rollback on failure, usage logging, rate limiting. 10 tests (5 dashboard + 5 storefront). |
 
 ---
@@ -195,10 +192,10 @@ Ordered epics M1–M9. Each task has a primary implementor:
 
 ### Packet 5+ — Remaining (not started)
 
-| # | Task | Primary Implementor | DoD |
-|---|------|-------|-----|
-| 6.5c | Super admin UI refinements (search, pagination, detail view) | Claude | Search by name/slug, pagination controls, tenant detail page |
-| 6.6 | Build tenant admin UI (Next.js) | Claude | Team management, storefront config, export buttons |
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 6.5c | Super admin UI refinements (search, pagination, detail view) | Claude | Not started | Search by name/slug, pagination controls, tenant detail page |
+| 6.6 | Build tenant admin UI (Next.js) | Claude | Not started | Team management, storefront config, export buttons |
 
 ---
 
@@ -242,65 +239,65 @@ Ordered epics M1–M9. Each task has a primary implementor:
 
 ### Packet 5+ — Remaining (not started)
 
-| # | Task | Primary Implementor | DoD |
-|---|------|-------|-----|
-| 7.5d | Pledge due-soon periodic reminder | Claude | Celery Beat task: query pledges with `target_date` within 7 days + open status. Telegram to tenant. Redis dedup (once per pledge per day). |
-| 7.5e | AI soft-limit notification | Claude | Wire into AI quota check (ADR-0004). Celery task on soft-limit breach. Dedup once per billing period. |
-| 7.6 | Configure SES sending identity + DKIM | Kimi | Domain verified, DKIM configured, test email sends successfully |
-| 7.8 | Frontend notification preferences UI | Claude | Dashboard settings page with toggles for email/Telegram, chat ID input, save button. |
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 7.5d | Pledge due-soon periodic reminder | Claude | Not started | Celery Beat task: query pledges with `target_date` within 7 days + open status. Telegram to tenant. Redis dedup (once per pledge per day). |
+| 7.5e | AI soft-limit notification | Claude | Not started | Wire into AI quota check (ADR-0004). Celery task on soft-limit breach. Dedup once per billing period. |
+| 7.6 | Configure SES sending identity + DKIM | Claude | Not started | Domain verified, DKIM configured, test email sends successfully |
+| 7.8 | Frontend notification preferences UI | Claude | Not started | Dashboard settings page with toggles for email/Telegram, chat ID input, save button. |
 
 ---
 
 ## M8 — Infrastructure & DevOps
 
-| # | Task | Primary Implementor | DoD |
-|---|------|-------|-----|
-| 8.1 | Create Docker Compose for local dev (Postgres, Redis) **DONE** | Claude | `docker compose up -d` starts all deps, health checks pass |
-| 8.2 | Create Dockerfile for backend (multi-stage, slim) **DONE** | Claude | Builds successfully, runs backend and worker via different entrypoints |
-| 8.3 | Set up GitHub Actions CI (test + lint + build) **DONE** | Claude | PR and push to main: backend lint (ruff, black), backend test (pytest with Postgres + Redis), frontend check (eslint, build), Docker build validation. ECR push deferred to CD packet. |
-| 8.4 | Provision VPC, subnets, security groups in `me-south-1` | Claude | Per `aws-deployment.md` networking section |
-| 8.5 | Provision RDS PostgreSQL (Multi-AZ, encryption, `require_ssl`) | Claude | DB accessible from ECS tasks only, `app_user` + `app_migrator` roles created |
-| 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Claude | Redis accessible from ECS tasks only |
-| 8.7 | Provision S3 bucket (Block Public Access, versioning) | Claude | Bucket exists with correct policy, lifecycle rules |
-| 8.8a | ~~Create ECR repository + OIDC + CI image push~~ | Claude | **DONE** — ECR repo exists in ap-southeast-1, GitHub OIDC role created, CI pushes image on push to main |
-| 8.8b | Create ECS cluster + task definitions + deploy services | Claude | Backend + worker services running with correct task roles |
-| 8.9 | Set up ALB + CloudFront + WAF | Claude | HTTPS, health checks, WAF rules per `security.md §8` |
-| 8.10 | Set up Vercel project with wildcard subdomain | Claude | Frontend deploys on push, `*.yourdomain.com` resolves |
-| 8.11 | Set up GitHub Actions CD (deploy to staging + production) | Claude | Staging auto-deploy on main. Production via manual workflow dispatch. |
-| 8.12 | Set up CloudWatch log groups + alarms | Claude | Log groups for backend/worker/audit. Alarms: CPU, connections, 5xx. |
-| 8.13 | Populate Secrets Manager with all secrets | Claude | All secrets per `security.md §3` table |
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 8.1 | Create Docker Compose for local dev (Postgres, Redis) | Claude | **DONE** | `docker compose up -d` starts all deps, health checks pass |
+| 8.2 | Create Dockerfile for backend (multi-stage, slim) | Claude | **DONE** | Builds successfully, runs backend and worker via different entrypoints |
+| 8.3 | Set up GitHub Actions CI (test + lint + build) | Claude | **DONE** | PR and push to main: backend lint (ruff, black), backend test (pytest with Postgres + Redis), frontend check (eslint, build), Docker build validation. ECR push deferred to CD packet. |
+| 8.4 | Provision VPC, subnets, security groups in `ap-southeast-1` | Claude | Not started | Per `aws-deployment.md` networking section |
+| 8.5 | Provision RDS PostgreSQL (Multi-AZ, encryption, `require_ssl`) | Claude | Not started | DB accessible from ECS tasks only, `app_user` + `app_migrator` roles created |
+| 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Claude | Not started | Redis accessible from ECS tasks only |
+| 8.7 | Provision S3 bucket (Block Public Access, versioning) | Claude | Not started | Bucket exists with correct policy, lifecycle rules |
+| 8.8a | Create ECR repository + OIDC + CI image push | Claude | **DONE** | ECR repo exists in ap-southeast-1, GitHub OIDC role created, CI pushes image on push to main |
+| 8.8b | Create ECS cluster + task definitions + deploy services | Claude | Not started | Backend + worker services running with correct task roles |
+| 8.9 | Set up ALB + CloudFront + WAF | Claude | Not started | HTTPS, health checks, WAF rules per `security.md §8` |
+| 8.10 | Set up Vercel project with wildcard subdomain | Claude | Not started | Frontend deploys on push, `*.yourdomain.com` resolves |
+| 8.11 | Set up GitHub Actions CD (deploy to staging + production) | Claude | Not started | Staging auto-deploy on main. Production via manual workflow dispatch. |
+| 8.12 | Set up CloudWatch log groups + alarms | Claude | Not started | Log groups for backend/worker/audit. Alarms: CPU, connections, 5xx. |
+| 8.13 | Populate Secrets Manager with all secrets | Claude | Not started | All secrets per `security.md §3` table |
 
 ---
 
 ## M9 — Hardening & Launch Prep
 
-| # | Task | Primary Implementor | DoD |
-|---|------|-------|-----|
-| 9.1 | Implement rate limiting middleware (Redis-based) | Claude | Per-IP, per-tenant, per-auth, per-AI session limits per `security.md §6`. Returns 429 + Retry-After. |
-| 9.2 | OWASP top-10 spot check | Both | SQL injection, XSS, CORS, auth bypass — all tested and passing |
-| 9.3 | Verify structured JSON logging in CloudWatch | Claude | All logs are JSON with `request_id`, `tenant_id`, `user_id`. No PII in logs. |
-| 9.4 | Implement health check endpoint with DB + Redis checks | Claude | `GET /health` returns `{"status": "ok", "db": "ok", "redis": "ok"}` |
-| 9.5 | Create seed data script for demo | Claude | Creates demo tenants, users, catalog, orders, donations. Idempotent. |
-| 9.6 | Create smoke test suite | Claude | End-to-end: signup → create tenant → add catalog → place order → check dashboard. Runs in CI against staging. |
-| 9.7 | Run full QA checklist on staging | Kimi | All items in `qa-checklist.md` pass |
-| 9.8 | Review and finalise runbook + incident response docs | Both | Docs are accurate, commands work, team has reviewed |
-| 9.9 | Performance baseline test | Both | P95 API latency < 300ms, storefront LCP < 2s, AI response < 5s |
-| 9.10 | Security review: grep for secrets, tokens, PII in logs | Claude | Zero occurrences of plaintext secrets or PII in logs/code |
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 9.1 | Implement rate limiting middleware (Redis-based) | Claude | Not started | Per-IP, per-tenant, per-auth, per-AI session limits per `security.md §6`. Returns 429 + Retry-After. |
+| 9.2 | OWASP top-10 spot check | Claude | Not started | SQL injection, XSS, CORS, auth bypass — all tested and passing |
+| 9.3 | Verify structured JSON logging in CloudWatch | Claude | Not started | All logs are JSON with `request_id`, `tenant_id`, `user_id`. No PII in logs. |
+| 9.4 | Implement health check endpoint with DB + Redis checks | Claude | Not started | `GET /health` returns `{"status": "ok", "db": "ok", "redis": "ok"}` |
+| 9.5 | Create seed data script for demo | Claude | Not started | Creates demo tenants, users, catalog, orders, donations. Idempotent. |
+| 9.6 | Create smoke test suite | Claude | Not started | End-to-end: signup → create tenant → add catalog → place order → check dashboard. Runs in CI against staging. |
+| 9.7 | Run full QA checklist on staging | Claude | Not started | All items in `qa-checklist.md` pass |
+| 9.8 | Review and finalise runbook + incident response docs | Claude | Not started | Docs are accurate, commands work, team has reviewed |
+| 9.9 | Performance baseline test | Claude | Not started | P95 API latency < 300ms, storefront LCP < 2s, AI response < 5s |
+| 9.10 | Security review: grep for secrets, tokens, PII in logs | Claude | Not started | Zero occurrences of plaintext secrets or PII in logs/code |
 
 ---
 
 ## Summary
 
-| Milestone | Tasks | Claude | Kimi | Both |
-|-----------|-------|--------|------|------|
-| M1 Auth & Tenancy | 11 | 9 | 2 | 0 |
-| M2 Storefront | 10 | 8 | 2 | 0 |
-| M3 Structured Capture | 10 | 10 | 0 | 0 |
-| M4 AI Assistant | 10 | 9 | 1 | 0 |
-| M5 Attribution & Dashboard | 9 | 9 | 0 | 0 |
-| M5b Inventory / Stock v1 | 6 | 6 | 0 | 0 |
-| M6 Admin Panel | 7 | 7 | 0 | 0 |
-| M7 Notifications | 7 | 6 | 1 | 0 |
-| M8 Infra & DevOps | 13 | 4 | 9 | 0 |
-| M9 Hardening | 10 | 6 | 1 | 3 |
-| **Total** | **93** | **74** | **16** | **3** |
+| Milestone | Tasks | Claude |
+|-----------|-------|--------|
+| M1 Auth & Tenancy | 11 | 11 |
+| M2 Storefront | 10 | 10 |
+| M3 Structured Capture | 10 | 10 |
+| M4 AI Assistant | 10 | 10 |
+| M5 Attribution & Dashboard | 9 | 9 |
+| M5b Inventory / Stock v1 | 6 | 6 |
+| M6 Admin Panel | 7 | 7 |
+| M7 Notifications | 7 | 7 |
+| M8 Infra & DevOps | 14 | 14 |
+| M9 Hardening | 10 | 10 |
+| **Total** | **94** | **94** |
