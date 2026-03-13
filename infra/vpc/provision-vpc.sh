@@ -155,7 +155,7 @@ create_sg() {
     aws ec2 revoke-security-group-egress \
       --group-id "$sg_id" \
       --ip-permissions '[{"IpProtocol":"-1","FromPort":-1,"ToPort":-1,"IpRanges":[{"CidrIp":"0.0.0.0/0"}]}]' \
-      --region "$REGION" 2>/dev/null || true
+      --region "$REGION" > /dev/null 2>&1 || true
     echo "  SKIP $name (already exists: $sg_id) — default egress enforced" >&2
     echo "$sg_id"
     return
@@ -170,7 +170,7 @@ create_sg() {
   aws ec2 revoke-security-group-egress \
     --group-id "$sg_id" \
     --ip-permissions '[{"IpProtocol":"-1","FromPort":-1,"ToPort":-1,"IpRanges":[{"CidrIp":"0.0.0.0/0"}]}]' \
-    --region "$REGION" 2>/dev/null || true
+    --region "$REGION" > /dev/null 2>&1 || true
   echo "  CREATED $name ($sg_id) — default egress revoked" >&2
   echo "$sg_id"
 }
