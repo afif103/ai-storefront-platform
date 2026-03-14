@@ -15,7 +15,7 @@
         { "name": "ENVIRONMENT", "value": "production" }
       ],
       "secrets": [
-        { "name": "DATABASE_URL", "valueFrom": "{{SECRET_ARN_DATABASE_URL}}" }
+        { "name": "DATABASE_URL", "valueFrom": "{{SECRET_ARN_DATABASE_URL_MIGRATOR}}" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",

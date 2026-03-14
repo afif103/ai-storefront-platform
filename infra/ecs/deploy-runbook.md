@@ -8,7 +8,7 @@ in `ap-southeast-1`.
 Before any ECS work, confirm these exist:
 
 - [ ] **VPC + subnets** (task 8.4) — private subnets for ECS tasks, NAT gateway for outbound
-- [ ] **RDS PostgreSQL** (task 8.5) — accessible from ECS private subnets, `app_user` role created via `scripts/init-db.sql`
+- [ ] **RDS PostgreSQL** (task 8.5) — accessible from ECS private subnets, `app_user` + `app_migrator` roles created via `scripts/init-db.sql`
 - [ ] **ElastiCache Redis** (task 8.6) — accessible from ECS private subnets
 - [ ] **S3 bucket** (task 8.7) — Block Public Access enabled
 - [ ] **ECR image** (task 8.8a) — `saas-backend` repo with at least one tagged image
@@ -25,6 +25,8 @@ aws secretsmanager create-secret \
   --name /prod/database-url \
   --secret-string "postgresql+asyncpg://app_user:PASSWORD@RDS_HOST:5432/saas_db" \
   --region ap-southeast-1
+
+# /prod/database-url-migrator is created later in section 7, after DB bootstrap.
 
 aws secretsmanager create-secret \
   --name /prod/redis-url \
@@ -46,6 +48,14 @@ aws secretsmanager create-secret \
   --secret-string "RANDOM_32_CHAR_STRING" \
   --region ap-southeast-1
 ```
+
+**Secret / role mapping:**
+
+| Secret | DB Role | Used By |
+|--------|---------|---------|
+| `/prod/rds-master-password` | RDS master/admin (configured at create time) | Bootstrap only (`init-db.sql`) — never used at runtime |
+| `/prod/database-url-migrator` | `app_migrator` (DDL + DML) | Migration ECS task (`alembic upgrade head`) |
+| `/prod/database-url` | `app_user` (DML only, RLS-enforced) | Backend + worker ECS services |
 
 Note the ARNs — these replace the `{{SECRET_ARN_*}}` placeholders in task definitions.
 
@@ -81,6 +91,7 @@ Attach:
       "Action": "secretsmanager:GetSecretValue",
       "Resource": [
         "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/database-url-*",
+        "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/database-url-migrator-*",
         "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/redis-url-*",
         "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/secret-key-*",
         "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/ai-api-key-*",
@@ -179,9 +190,25 @@ aws ecs register-task-definition \
   --region ap-southeast-1
 ```
 
-## 7. Run Database Migration
+## 7. Bootstrap Database Roles
 
-Run as a one-off task (not a service):
+Run as a one-off ECS task in the VPC private subnets with the ECS security group.
+Connects as the RDS master/admin user and creates `app_user` + `app_migrator` roles.
+
+```bash
+# Bootstrap task uses /prod/rds-master-password to connect as master/admin.
+# See scripts/init-db.sql for role definitions.
+# After bootstrap, create /prod/database-url-migrator:
+aws secretsmanager create-secret \
+  --name /prod/database-url-migrator \
+  --secret-string "postgresql+asyncpg://app_migrator:PASSWORD@RDS_HOST:5432/saas_db" \
+  --region ap-southeast-1
+```
+
+## 8. Run Database Migration
+
+Run as a one-off task (not a service). Uses `/prod/database-url-migrator`
+(`app_migrator` role with DDL + DML privileges):
 
 ```bash
 aws ecs run-task \
@@ -206,7 +233,7 @@ aws ecs describe-tasks \
 Expected: `status=STOPPED`, `exitCode=0`. If `exitCode != 0`, check CloudWatch logs
 at `/ecs/saas-backend` with stream prefix `migration`.
 
-## 8. Create Backend Service
+## 9. Create Backend Service
 
 ```bash
 aws ecs create-service \
@@ -222,7 +249,7 @@ aws ecs create-service \
 
 No `--load-balancers` — ALB is added in task 8.9.
 
-## 9. Create Worker Service
+## 10. Create Worker Service
 
 ```bash
 aws ecs create-service \
@@ -235,7 +262,7 @@ aws ecs create-service \
   --region ap-southeast-1
 ```
 
-## 10. Verify Deployment
+## 11. Verify Deployment
 
 ### Check service stability
 
@@ -290,7 +317,7 @@ If deeper debugging is needed, ECS Exec can be enabled on the service to get a s
 inside a running container. This requires additional IAM permissions and is not part
 of the standard verification flow.
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
@@ -299,10 +326,10 @@ of the standard verification flow.
 | Task fails with `ResourceNotFoundException` | Secrets Manager ARN wrong or secret does not exist | Verify secret names and ARNs match task definition |
 | Container exits immediately (exit code 1) | App startup error — likely bad DATABASE_URL or REDIS_URL | Check CloudWatch logs for the traceback |
 | Health check `UNHEALTHY` | DB or Redis unreachable from ECS subnet | Check security group rules: ECS SG → RDS SG on 5432, ECS SG → Redis SG on 6379 |
-| Migration exit code 1 | DB connection failed or migration conflict | Check migration logs; verify `app_user` role exists (run `init-db.sql` first) |
+| Migration exit code 1 | DB connection failed or migration conflict | Check migration logs; verify `app_migrator` role exists (run `init-db.sql` bootstrap first) |
 | Worker logs show `ConnectionRefusedError` | Redis not reachable | Same as health check — verify SG and Redis endpoint |
 
-## 12. Day-2 Operations
+## 13. Day-2 Operations
 
 ### Update to new image
 
