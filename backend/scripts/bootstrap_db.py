@@ -68,7 +68,7 @@ async def main() -> None:
         database=db_name,
         user=master_user,
         password=master_password,
-        ssl=True,
+        ssl="require",
     )
 
     # quote_ident is used for the database identifier in GRANT statements
