@@ -18,12 +18,17 @@ Environment variables (plain, from task definition):
   RDS_DB_NAME             Database name (default: saas_db)
 """
 
+import asyncio
 import os
 import sys
 from urllib.parse import urlparse
 
-import psycopg2
-from psycopg2 import sql
+import asyncpg
+
+
+def quote_ident(identifier: str) -> str:
+    """Quote a PostgreSQL identifier (matches PG quote_ident behaviour)."""
+    return '"' + identifier.replace('"', '""') + '"'
 
 
 def parse_password(database_url: str) -> str:
@@ -44,7 +49,7 @@ def parse_host_port(database_url: str) -> tuple[str, int]:
     return host, port
 
 
-def main() -> None:
+async def main() -> None:
     master_password = os.environ["MASTER_PASSWORD"]
     migrator_url = os.environ["MIGRATOR_DATABASE_URL"]
     app_user_url = os.environ["APP_USER_DATABASE_URL"]
@@ -57,50 +62,45 @@ def main() -> None:
 
     print(f"Connecting to {host}:{port}/{db_name} as {master_user}")
 
-    conn = psycopg2.connect(
+    conn = await asyncpg.connect(
         host=host,
         port=port,
-        dbname=db_name,
+        database=db_name,
         user=master_user,
         password=master_password,
-        sslmode="require",
+        ssl=True,
     )
-    conn.autocommit = True
 
-    db_id = sql.Identifier(db_name)
+    # quote_ident is used for the database identifier in GRANT statements
+    # because asyncpg $1 parameters only work for values, not identifiers.
+    db_ident = quote_ident(db_name)
 
-    with conn.cursor() as cur:
+    try:
         # -- app_migrator (DDL + DML, used by alembic migrations) ----------
         print("Creating/updating app_migrator role...")
-        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = 'app_migrator'")
-        if cur.fetchone() is None:
-            cur.execute(
-                "CREATE ROLE app_migrator LOGIN PASSWORD %s",
-                (migrator_password,),
-            )
+        row = await conn.fetchrow("SELECT 1 FROM pg_roles WHERE rolname = 'app_migrator'")
+        if row is None:
+            await conn.execute("CREATE ROLE app_migrator LOGIN PASSWORD $1", migrator_password)
             print("  Created role")
         else:
-            cur.execute(
-                "ALTER ROLE app_migrator WITH PASSWORD %s",
-                (migrator_password,),
-            )
+            await conn.execute("ALTER ROLE app_migrator WITH PASSWORD $1", migrator_password)
             print("  Updated password")
 
-        cur.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO app_migrator").format(db_id))
-        cur.execute("GRANT USAGE, CREATE ON SCHEMA public TO app_migrator")
-        cur.execute(
+        await conn.execute(f"GRANT CONNECT ON DATABASE {db_ident} TO app_migrator")
+        await conn.execute("GRANT USAGE, CREATE ON SCHEMA public TO app_migrator")
+        await conn.execute(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
             "GRANT ALL PRIVILEGES ON TABLES TO app_migrator"
         )
-        cur.execute(
+        await conn.execute(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
             "GRANT ALL PRIVILEGES ON SEQUENCES TO app_migrator"
         )
-        cur.execute(
+        await conn.execute(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
             "GRANT ALL PRIVILEGES ON FUNCTIONS TO app_migrator"
         )
-        cur.execute(
+        await conn.execute(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
             "GRANT ALL PRIVILEGES ON TYPES TO app_migrator"
         )
@@ -108,27 +108,21 @@ def main() -> None:
 
         # -- app_user (DML only, RLS-enforced, used at runtime) ------------
         print("Creating/updating app_user role...")
-        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = 'app_user'")
-        if cur.fetchone() is None:
-            cur.execute(
-                "CREATE ROLE app_user LOGIN PASSWORD %s",
-                (app_user_password,),
-            )
+        row = await conn.fetchrow("SELECT 1 FROM pg_roles WHERE rolname = 'app_user'")
+        if row is None:
+            await conn.execute("CREATE ROLE app_user LOGIN PASSWORD $1", app_user_password)
             print("  Created role")
         else:
-            cur.execute(
-                "ALTER ROLE app_user WITH PASSWORD %s",
-                (app_user_password,),
-            )
+            await conn.execute("ALTER ROLE app_user WITH PASSWORD $1", app_user_password)
             print("  Updated password")
 
-        cur.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO app_user").format(db_id))
-        cur.execute("GRANT USAGE ON SCHEMA public TO app_user")
-        cur.execute(
+        await conn.execute(f"GRANT CONNECT ON DATABASE {db_ident} TO app_user")
+        await conn.execute("GRANT USAGE ON SCHEMA public TO app_user")
+        await conn.execute(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
             "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user"
         )
-        cur.execute(
+        await conn.execute(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
             "GRANT USAGE, SELECT ON SEQUENCES TO app_user"
         )
@@ -137,30 +131,32 @@ def main() -> None:
         # by the admin user. ALTER DEFAULT PRIVILEGES without FOR ROLE only
         # covers objects the current user creates. This FOR ROLE clause
         # ensures app_user can access objects created by app_migrator.
-        cur.execute(
+        await conn.execute(
             "ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public "
             "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user"
         )
-        cur.execute(
+        await conn.execute(
             "ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public "
             "GRANT USAGE, SELECT ON SEQUENCES TO app_user"
         )
 
         # Grant on existing objects so reruns are safe if migrations
         # have already created tables before bootstrap runs.
-        cur.execute(
-            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES " "IN SCHEMA public TO app_user"
+        await conn.execute(
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user"
         )
-        cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES " "IN SCHEMA public TO app_user")
+        await conn.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user")
         print("  Grants applied (including FOR ROLE app_migrator defaults)")
 
-    conn.close()
+    finally:
+        await conn.close()
+
     print("Bootstrap complete.")
 
 
 if __name__ == "__main__":
     try:
-        main()
+        asyncio.run(main())
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
