@@ -1,17 +1,17 @@
 # RDS Outputs
 
-Resource IDs produced by `provision-rds.sh`. Fill in after running the script.
+Resource IDs produced by `provision-rds.sh`.
 
 ## Instance
 
 | Resource | Value | Notes |
 |----------|-------|-------|
-| Instance ID | `{{DB_INSTANCE_ID}}` | `saas-db` |
-| ARN | `{{RDS_ARN}}` | |
-| Endpoint | `{{RDS_ENDPOINT}}` | DNS hostname |
-| Port | `{{RDS_PORT}}` | 5432 |
+| Instance ID | `saas-db` | |
+| ARN | `arn:aws:rds:ap-southeast-1:701893741240:db:saas-db` | |
+| Endpoint | `saas-db.c5c8amqish3n.ap-southeast-1.rds.amazonaws.com` | DNS hostname |
+| Port | `5432` | |
 | Engine | PostgreSQL 16 | Latest minor |
-| Instance class | `{{INSTANCE_CLASS}}` | `db.t4g.micro` (MVP) |
+| Instance class | `db.t4g.micro` | MVP |
 | Multi-AZ | No | MVP Single-AZ; upgrade later |
 
 ## Storage & Encryption
@@ -28,17 +28,17 @@ Resource IDs produced by `provision-rds.sh`. Fill in after running the script.
 
 | Resource | Value |
 |----------|-------|
-| DB subnet group | `{{SUBNET_GROUP_NAME}}` |
-| Security group | `{{SG_RDS}}` |
-| Subnet 1 | `{{PRIV_DATA_SUBNET_1}}` (AZ1) |
-| Subnet 2 | `{{PRIV_DATA_SUBNET_2}}` (AZ2) |
+| DB subnet group | `saas-db-subnet-group` |
+| Security group | `sg-0b0457847c1bffdf5` |
+| Subnet 1 | `subnet-0ace4111d2f0c0e34` (ap-southeast-1a) |
+| Subnet 2 | `subnet-023b7e29ee06b21ae` (ap-southeast-1b) |
 | Public access | No |
 
 ## Parameter Group
 
 | Resource | Value |
 |----------|-------|
-| Parameter group | `{{PARAM_GROUP_NAME}}` |
+| Parameter group | `saas-pg16-params` |
 | Family | postgres16 |
 | `rds.force_ssl` | 1 |
 
