@@ -90,6 +90,7 @@ Attach:
       "Effect": "Allow",
       "Action": "secretsmanager:GetSecretValue",
       "Resource": [
+        "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/rds-master-password-*",
         "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/database-url-*",
         "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/database-url-migrator-*",
         "arn:aws:secretsmanager:ap-southeast-1:{{ACCOUNT_ID}}:secret:/prod/redis-url-*",
@@ -178,32 +179,80 @@ Replace all `{{PLACEHOLDER}}` values in the JSON files, then register:
 
 ```bash
 aws ecs register-task-definition \
+  --cli-input-json file://infra/ecs/bootstrap-task-def.json \
+  --region ap-southeast-1
+
+aws ecs register-task-definition \
+  --cli-input-json file://infra/ecs/migration-task-def.json \
+  --region ap-southeast-1
+
+aws ecs register-task-definition \
   --cli-input-json file://infra/ecs/backend-task-def.json \
   --region ap-southeast-1
 
 aws ecs register-task-definition \
   --cli-input-json file://infra/ecs/worker-task-def.json \
   --region ap-southeast-1
-
-aws ecs register-task-definition \
-  --cli-input-json file://infra/ecs/migration-task-def.json \
-  --region ap-southeast-1
 ```
 
 ## 7. Bootstrap Database Roles
 
-Run as a one-off ECS task in the VPC private subnets with the ECS security group.
-Connects as the RDS master/admin user and creates `app_user` + `app_migrator` roles.
+One-off setup for task 8.5 — not a live cutover. No runtime services consume
+`/prod/database-url` at this point, so it is safe to create/update secrets
+before the roles exist in the database.
+
+The bootstrap ECS task (`saas-bootstrap`) runs `scripts/bootstrap_db.py`, which
+connects as the RDS master/admin user and creates `app_migrator` + `app_user`
+roles. Credentials are delivered via ECS task-definition secret injection
+(execution role reads from Secrets Manager).
+
+**Step 1 — Generate URL-safe passwords:**
 
 ```bash
-# Bootstrap task uses /prod/rds-master-password to connect as master/admin.
-# See scripts/init-db.sql for role definitions.
-# After bootstrap, create /prod/database-url-migrator:
+MIGRATOR_PASS=$(openssl rand -base64 24 | tr -d '/+=')
+APP_USER_PASS=$(openssl rand -base64 24 | tr -d '/+=')
+```
+
+**Step 2 — Create/update secrets with real credentials:**
+
+```bash
 aws secretsmanager create-secret \
   --name /prod/database-url-migrator \
-  --secret-string "postgresql+asyncpg://app_migrator:PASSWORD@RDS_HOST:5432/saas_db" \
+  --secret-string "postgresql+asyncpg://app_migrator:${MIGRATOR_PASS}@{{RDS_ENDPOINT}}:5432/saas_db" \
+  --region ap-southeast-1
+
+aws secretsmanager update-secret \
+  --secret-id /prod/database-url \
+  --secret-string "postgresql+asyncpg://app_user:${APP_USER_PASS}@{{RDS_ENDPOINT}}:5432/saas_db" \
   --region ap-southeast-1
 ```
+
+**Step 3 — Update execution role SecretsReadPolicy** to include all 7 secret ARNs
+(add `/prod/rds-master-password` and `/prod/database-url-migrator`; see section 3).
+
+**Step 4 — Register and run bootstrap task:**
+
+```bash
+aws ecs run-task \
+  --cluster saas-cluster \
+  --task-definition saas-bootstrap \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[{{PRIV_APP_SUBNET_1}},{{PRIV_APP_SUBNET_2}}],securityGroups=[{{ECS_SG}}],assignPublicIp=DISABLED}" \
+  --region ap-southeast-1
+```
+
+**Step 5 — Verify:**
+
+```bash
+aws ecs describe-tasks \
+  --cluster saas-cluster \
+  --tasks {{TASK_ARN}} \
+  --region ap-southeast-1 \
+  --query "tasks[0].{status:lastStatus,exitCode:containers[0].exitCode,reason:stoppedReason}"
+```
+
+Expected: `status=STOPPED`, `exitCode=0`. If `exitCode != 0`, check CloudWatch logs
+at `/ecs/saas-backend` with stream prefix `bootstrap`.
 
 ## 8. Run Database Migration
 

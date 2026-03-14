@@ -1,0 +1,33 @@
+{
+  "family": "saas-bootstrap",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "{{EXECUTION_ROLE_ARN}}",
+  "containerDefinitions": [
+    {
+      "name": "bootstrap",
+      "image": "{{ECR_IMAGE}}",
+      "essential": true,
+      "command": ["python", "scripts/bootstrap_db.py"],
+      "environment": [
+        { "name": "RDS_MASTER_USER", "value": "saas_admin" },
+        { "name": "RDS_DB_NAME", "value": "saas_db" }
+      ],
+      "secrets": [
+        { "name": "MASTER_PASSWORD", "valueFrom": "{{SECRET_ARN_RDS_MASTER_PASSWORD}}" },
+        { "name": "MIGRATOR_DATABASE_URL", "valueFrom": "{{SECRET_ARN_DATABASE_URL_MIGRATOR}}" },
+        { "name": "APP_USER_DATABASE_URL", "valueFrom": "{{SECRET_ARN_DATABASE_URL}}" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/saas-backend",
+          "awslogs-region": "ap-southeast-1",
+          "awslogs-stream-prefix": "bootstrap"
+        }
+      }
+    }
+  ]
+}
