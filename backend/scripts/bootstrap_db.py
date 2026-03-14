@@ -30,9 +30,7 @@ def parse_password(database_url: str) -> str:
     """Extract password from a database connection URL."""
     parsed = urlparse(database_url)
     if not parsed.password:
-        raise ValueError(
-            f"No password in URL (scheme={parsed.scheme}, user={parsed.username})"
-        )
+        raise ValueError(f"No password in URL (scheme={parsed.scheme}, user={parsed.username})")
     return parsed.password
 
 
@@ -88,9 +86,7 @@ def main() -> None:
             )
             print("  Updated password")
 
-        cur.execute(
-            sql.SQL("GRANT CONNECT ON DATABASE {} TO app_migrator").format(db_id)
-        )
+        cur.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO app_migrator").format(db_id))
         cur.execute("GRANT USAGE, CREATE ON SCHEMA public TO app_migrator")
         cur.execute(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
@@ -126,9 +122,7 @@ def main() -> None:
             )
             print("  Updated password")
 
-        cur.execute(
-            sql.SQL("GRANT CONNECT ON DATABASE {} TO app_user").format(db_id)
-        )
+        cur.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO app_user").format(db_id))
         cur.execute("GRANT USAGE ON SCHEMA public TO app_user")
         cur.execute(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
@@ -155,13 +149,9 @@ def main() -> None:
         # Grant on existing objects so reruns are safe if migrations
         # have already created tables before bootstrap runs.
         cur.execute(
-            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES "
-            "IN SCHEMA public TO app_user"
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES " "IN SCHEMA public TO app_user"
         )
-        cur.execute(
-            "GRANT USAGE, SELECT ON ALL SEQUENCES "
-            "IN SCHEMA public TO app_user"
-        )
+        cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES " "IN SCHEMA public TO app_user")
         print("  Grants applied (including FOR ROLE app_migrator defaults)")
 
     conn.close()
