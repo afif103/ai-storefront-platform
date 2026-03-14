@@ -102,13 +102,18 @@
 | Setting | Value |
 |---------|-------|
 | Engine | PostgreSQL 16 |
-| Instance class | `db.t4g.medium` (MVP; 2 vCPU, 4 GB RAM) |
-| Multi-AZ | Yes |
+| Instance class | `db.t4g.micro` (MVP; 2 vCPU, 1 GB RAM) |
+| Multi-AZ | No (MVP) — upgrade to Multi-AZ `db.t4g.medium` when budget/usage justifies |
 | Storage | 20 GB gp3, auto-scaling to 100 GB |
 | Encryption | At rest (AWS managed key) + in transit (`require_ssl`) |
 | Backup | Automated, 7-day retention |
 | Parameter group | `rds.force_ssl = 1` |
 | Security group | Inbound 5432 from ECS tasks SG only |
+
+> **MVP cost override:** Single-AZ `db.t4g.micro` chosen for low-traffic sample/MVP use.
+> Free-tier eligible if account qualifies. Production target: Multi-AZ `db.t4g.medium`.
+> Trade-offs: no automatic failover, 1 GB RAM vs 4 GB. Instance class and Multi-AZ
+> are changeable with a brief outage.
 
 ### Database Roles (created in initial migration)
 - `app_user`: used by FastAPI/Celery. RLS enforced.
@@ -255,7 +260,7 @@ staging → production (manual promotion via GitHub Actions workflow dispatch)
 |---------|------|-----------|
 | ECS Fargate (backend, 2 tasks) | 0.5 vCPU / 1 GB × 2 × 730h | ~$35 |
 | ECS Fargate (worker, 1 task) | 0.5 vCPU / 1 GB × 1 × 730h | ~$18 |
-| RDS PostgreSQL | db.t4g.medium, Multi-AZ, 20 GB | ~$70 |
+| RDS PostgreSQL | db.t4g.micro, Single-AZ, 20 GB | ~$13 |
 | ElastiCache Redis | cache.t4g.micro, Multi-AZ | ~$25 |
 | S3 | < 10 GB, low request volume | ~$1 |
 | CloudFront + WAF | Low traffic MVP | ~$10 |
@@ -264,7 +269,7 @@ staging → production (manual promotion via GitHub Actions workflow dispatch)
 | Secrets Manager | < 20 secrets | ~$8 |
 | NAT Gateway | 1 AZ (MVP; 2 for prod) | ~$35 |
 | Vercel (frontend) | Pro plan | ~$20 |
-| **Total** | | **~$223/mo** |
+| **Total** | | **~$166/mo** |
 
 ---
 
@@ -273,7 +278,7 @@ staging → production (manual promotion via GitHub Actions workflow dispatch)
 - [ ] VPC created with public, private-app, private-data subnets in 2 AZs.
 - [ ] Security groups configured per table above.
 - [ ] VPC endpoints for S3, ECR, Secrets Manager, CloudWatch Logs.
-- [ ] RDS PostgreSQL provisioned with Multi-AZ, encryption, `require_ssl`.
+- [ ] RDS PostgreSQL provisioned with encryption, `require_ssl` (Single-AZ for MVP).
 - [ ] ElastiCache Redis provisioned with Multi-AZ, in-transit encryption.
 - [ ] S3 bucket with Block Public Access, versioning, lifecycle rule.
 - [ ] ECR repository created; Docker image builds and pushes successfully.

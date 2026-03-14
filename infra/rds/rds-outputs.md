@@ -11,8 +11,8 @@ Resource IDs produced by `provision-rds.sh`. Fill in after running the script.
 | Endpoint | `{{RDS_ENDPOINT}}` | DNS hostname |
 | Port | `{{RDS_PORT}}` | 5432 |
 | Engine | PostgreSQL 16 | Latest minor |
-| Instance class | `{{INSTANCE_CLASS}}` | `db.t4g.medium` |
-| Multi-AZ | Yes | Instance deployment |
+| Instance class | `{{INSTANCE_CLASS}}` | `db.t4g.micro` (MVP) |
+| Multi-AZ | No | MVP Single-AZ; upgrade later |
 
 ## Storage & Encryption
 

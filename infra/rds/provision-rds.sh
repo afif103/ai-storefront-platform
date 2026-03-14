@@ -7,7 +7,7 @@
 # Creates:
 #   - Custom parameter group (saas-pg16-params) with rds.force_ssl=1
 #   - DB subnet group (saas-db-subnet-group) from two private-data subnets
-#   - RDS instance (saas-db): PostgreSQL 16, db.t4g.medium, Multi-AZ,
+#   - RDS instance (saas-db): PostgreSQL 16, db.t4g.micro, Single-AZ (MVP),
 #     20 GB gp3, encrypted, deletion protection, no public access
 #   - Master/admin password stored in /prod/rds-master-password
 #
@@ -23,7 +23,7 @@ DB_INSTANCE_ID="${DB_INSTANCE_ID:-saas-db}"
 DB_NAME="${DB_NAME:-saas_db}"
 ENGINE="postgres"
 ENGINE_VERSION="${ENGINE_VERSION:-16}"
-INSTANCE_CLASS="${INSTANCE_CLASS:-db.t4g.medium}"
+INSTANCE_CLASS="${INSTANCE_CLASS:-db.t4g.micro}"
 STORAGE_SIZE="${STORAGE_SIZE:-20}"
 MAX_STORAGE="${MAX_STORAGE:-100}"
 STORAGE_TYPE="gp3"
@@ -204,7 +204,7 @@ DB_EXISTS=$(aws rds describe-db-instances \
 if [[ "$DB_EXISTS" != "NOT_FOUND" ]]; then
   echo "  SKIP $DB_INSTANCE_ID (already exists)"
 else
-  echo "  Creating $DB_INSTANCE_ID (Multi-AZ, $INSTANCE_CLASS, $STORAGE_SIZE GB gp3)..."
+  echo "  Creating $DB_INSTANCE_ID (Single-AZ MVP, $INSTANCE_CLASS, $STORAGE_SIZE GB gp3)..."
   echo "  This will take approximately 10-15 minutes."
 
   aws rds create-db-instance \
@@ -219,7 +219,7 @@ else
     --max-allocated-storage "$MAX_STORAGE" \
     --storage-type "$STORAGE_TYPE" \
     --storage-encrypted \
-    --multi-az \
+    --no-multi-az \
     --db-subnet-group-name "$SUBNET_GROUP_NAME" \
     --vpc-security-group-ids "$SG_RDS" \
     --db-parameter-group-name "$PARAM_GROUP_NAME" \
@@ -272,7 +272,7 @@ echo "  Port:             $RDS_PORT"
 echo "  Engine:           PostgreSQL $ENGINE_VERSION"
 echo "  Instance class:   $INSTANCE_CLASS"
 echo "  Storage:          $STORAGE_SIZE GB $STORAGE_TYPE (max $MAX_STORAGE GB)"
-echo "  Multi-AZ:         Yes"
+echo "  Multi-AZ:         No (MVP — upgrade later with: aws rds modify-db-instance --multi-az)"
 echo "  Encryption:       At rest (AWS-managed key) + in transit (rds.force_ssl=1)"
 echo "  DB name:          $DB_NAME"
 echo "  Master user:      $MASTER_USERNAME (bootstrap only)"
