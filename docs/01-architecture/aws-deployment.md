@@ -106,14 +106,15 @@
 | Multi-AZ | No (MVP) — upgrade to Multi-AZ `db.t4g.medium` when budget/usage justifies |
 | Storage | 20 GB gp3, auto-scaling to 100 GB |
 | Encryption | At rest (AWS managed key) + in transit (`require_ssl`) |
-| Backup | Automated, 7-day retention |
+| Backup | Automated, 1-day retention (MVP); upgrade to 7-day for production |
 | Parameter group | `rds.force_ssl = 1` |
 | Security group | Inbound 5432 from ECS tasks SG only |
 
-> **MVP cost override:** Single-AZ `db.t4g.micro` chosen for low-traffic sample/MVP use.
-> Free-tier eligible if account qualifies. Production target: Multi-AZ `db.t4g.medium`.
-> Trade-offs: no automatic failover, 1 GB RAM vs 4 GB. Instance class and Multi-AZ
-> are changeable with a brief outage.
+> **MVP cost override:** Single-AZ `db.t4g.micro` with 1-day backup retention chosen for
+> low-traffic sample/MVP use. Free-tier eligible if account qualifies.
+> Production target: Multi-AZ `db.t4g.medium`, 7-day backup retention.
+> Trade-offs: no automatic failover, 1 GB RAM vs 4 GB, shorter backup window.
+> All settings are changeable with a brief outage.
 
 ### Database Roles (created in initial migration)
 - `app_user`: used by FastAPI/Celery. RLS enforced.

@@ -32,6 +32,7 @@ PARAM_GROUP_FAMILY="postgres16"
 SUBNET_GROUP_NAME="${SUBNET_GROUP_NAME:-saas-db-subnet-group}"
 MASTER_USERNAME="${MASTER_USERNAME:-saas_admin}"
 MASTER_SECRET_NAME="${MASTER_SECRET_NAME:-/prod/rds-master-password}"
+BACKUP_RETENTION="${BACKUP_RETENTION:-1}"
 
 # These must match VPC provisioning outputs (task 8.4)
 PRIV_DATA_SUBNET_1="subnet-0ace4111d2f0c0e34"
@@ -120,7 +121,7 @@ else
   aws rds create-db-parameter-group \
     --db-parameter-group-name "$PARAM_GROUP_NAME" \
     --db-parameter-group-family "$PARAM_GROUP_FAMILY" \
-    --description "SaaS PostgreSQL 16 — force SSL" \
+    --description "SaaS PostgreSQL 16 - force SSL" \
     --tags "Key=Name,Value=$PARAM_GROUP_NAME" "Key=Project,Value=saas" "Key=Environment,Value=production" \
     --region "$REGION" --output text > /dev/null
   echo "  CREATED $PARAM_GROUP_NAME"
@@ -223,7 +224,7 @@ else
     --db-subnet-group-name "$SUBNET_GROUP_NAME" \
     --vpc-security-group-ids "$SG_RDS" \
     --db-parameter-group-name "$PARAM_GROUP_NAME" \
-    --backup-retention-period 7 \
+    --backup-retention-period "$BACKUP_RETENTION" \
     --preferred-backup-window "16:00-17:00" \
     --preferred-maintenance-window "sun:14:00-sun:15:00" \
     --no-publicly-accessible \
@@ -280,7 +281,7 @@ echo "  Master secret:    $MASTER_SECRET_NAME"
 echo "  Param group:      $PARAM_GROUP_NAME"
 echo "  Subnet group:     $SUBNET_GROUP_NAME"
 echo "  Security group:   $SG_RDS"
-echo "  Backup:           7-day retention, 16:00-17:00 UTC"
+echo "  Backup:           ${BACKUP_RETENTION}-day retention, 16:00-17:00 UTC"
 echo "  Deletion protect: Enabled"
 echo ""
 echo "Next steps:"

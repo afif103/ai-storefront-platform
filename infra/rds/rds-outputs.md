@@ -54,7 +54,7 @@ Resource IDs produced by `provision-rds.sh`. Fill in after running the script.
 
 | Setting | Value |
 |---------|-------|
-| Retention | 7 days |
+| Retention | 1 day (MVP); upgrade to 7 for production |
 | Backup window | 16:00-17:00 UTC |
 | Maintenance window | Sun 14:00-15:00 UTC |
 | Deletion protection | Enabled |
