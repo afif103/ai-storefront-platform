@@ -256,11 +256,11 @@ Ordered epics M1–M9. All implementation is through Claude Code.
 | 8.2 | Create Dockerfile for backend (multi-stage, slim) | Claude | **DONE** | Builds successfully, runs backend and worker via different entrypoints |
 | 8.3 | Set up GitHub Actions CI (test + lint + build) | Claude | **DONE** | PR and push to main: backend lint (ruff, black), backend test (pytest with Postgres + Redis), frontend check (eslint, build), Docker build validation. ECR push deferred to CD packet. |
 | 8.4 | Provision VPC, subnets, security groups in `ap-southeast-1` | Claude | **DONE** | P1 script+template 80d4e04, P2 executed, fix a841cfa |
-| 8.5 | Provision RDS PostgreSQL (encryption, `require_ssl`) | Claude | Not started | MVP: Single-AZ `db.t4g.micro`. Future: Multi-AZ `db.t4g.medium`. DB accessible from ECS tasks only, `app_user` + `app_migrator` roles created |
+| 8.5 | Provision RDS PostgreSQL (encryption, `require_ssl`) | Claude | **DONE** | MVP: Single-AZ `db.t4g.micro`, encrypted, `rds.force_ssl=1`. Bootstrap task creates `app_migrator` (DDL+DML) + `app_user` (DML, RLS). SG repair: RDS ingress + ECS egress rules added during execution (missing from 8.4 P2). |
 | 8.6 | Provision ElastiCache Redis (Multi-AZ, encryption in transit) | Claude | Not started | Redis accessible from ECS tasks only |
 | 8.7 | Provision S3 bucket (Block Public Access, versioning) | Claude | Not started | Bucket exists with correct policy, lifecycle rules |
 | 8.8a | Create ECR repository + OIDC + CI image push | Claude | **DONE** | ECR repo exists in ap-southeast-1, GitHub OIDC role created, CI pushes image on push to main |
-| 8.8b | Create ECS cluster + task definitions + deploy services | Claude | In progress | P1 repo contract and P2 cluster/roles/secrets/logs complete. Service deploy blocked by 8.4/8.5/8.6. |
+| 8.8b | Create ECS cluster + task definitions + deploy services | Claude | In progress | P1 repo contract and P2 cluster/roles/secrets/logs complete. Service deploy blocked by 8.6. |
 | 8.9 | Set up ALB + CloudFront + WAF | Claude | Not started | HTTPS, health checks, WAF rules per `security.md §8` |
 | 8.10 | Set up Vercel project with wildcard subdomain | Claude | Not started | Frontend deploys on push, `*.yourdomain.com` resolves |
 | 8.11 | Set up GitHub Actions CD (deploy to staging + production) | Claude | Not started | Staging auto-deploy on main. Production via manual workflow dispatch. |
