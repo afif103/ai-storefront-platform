@@ -150,8 +150,9 @@ async def main() -> None:
 
         # Tables/sequences are created by app_migrator (via alembic), not
         # by the admin user. ALTER DEFAULT PRIVILEGES without FOR ROLE only
-        # covers objects the current user creates. This FOR ROLE clause
-        # ensures app_user can access objects created by app_migrator.
+        # covers objects the current user creates. FOR ROLE requires membership,
+        # so temporarily grant app_migrator to the admin user.
+        await conn.execute(f"GRANT app_migrator TO {quote_ident(master_user)}")
         await conn.execute(
             "ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public "
             "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user"
@@ -160,6 +161,7 @@ async def main() -> None:
             "ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public "
             "GRANT USAGE, SELECT ON SEQUENCES TO app_user"
         )
+        await conn.execute(f"REVOKE app_migrator FROM {quote_ident(master_user)}")
 
         # Grant on existing objects so reruns are safe if migrations
         # have already created tables before bootstrap runs.
