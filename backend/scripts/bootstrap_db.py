@@ -77,13 +77,25 @@ async def main() -> None:
 
     try:
         # -- app_migrator (DDL + DML, used by alembic migrations) ----------
+        # PASSWORD clause in CREATE/ALTER ROLE is a string literal in PG
+        # grammar — $1 parameters are not supported. Use set_config() to
+        # pass the password safely, then format(%L) to quote it in a DO block.
         print("Creating/updating app_migrator role...")
+        await conn.execute("SELECT set_config('app.bootstrap_pw', $1, false)", migrator_password)
         row = await conn.fetchrow("SELECT 1 FROM pg_roles WHERE rolname = 'app_migrator'")
         if row is None:
-            await conn.execute("CREATE ROLE app_migrator LOGIN PASSWORD $1", migrator_password)
+            await conn.execute(
+                "DO $$ BEGIN EXECUTE format("
+                "'CREATE ROLE app_migrator LOGIN PASSWORD %L',"
+                " current_setting('app.bootstrap_pw')); END $$"
+            )
             print("  Created role")
         else:
-            await conn.execute("ALTER ROLE app_migrator WITH PASSWORD $1", migrator_password)
+            await conn.execute(
+                "DO $$ BEGIN EXECUTE format("
+                "'ALTER ROLE app_migrator WITH PASSWORD %L',"
+                " current_setting('app.bootstrap_pw')); END $$"
+            )
             print("  Updated password")
 
         await conn.execute(f"GRANT CONNECT ON DATABASE {db_ident} TO app_migrator")
@@ -108,12 +120,21 @@ async def main() -> None:
 
         # -- app_user (DML only, RLS-enforced, used at runtime) ------------
         print("Creating/updating app_user role...")
+        await conn.execute("SELECT set_config('app.bootstrap_pw', $1, false)", app_user_password)
         row = await conn.fetchrow("SELECT 1 FROM pg_roles WHERE rolname = 'app_user'")
         if row is None:
-            await conn.execute("CREATE ROLE app_user LOGIN PASSWORD $1", app_user_password)
+            await conn.execute(
+                "DO $$ BEGIN EXECUTE format("
+                "'CREATE ROLE app_user LOGIN PASSWORD %L',"
+                " current_setting('app.bootstrap_pw')); END $$"
+            )
             print("  Created role")
         else:
-            await conn.execute("ALTER ROLE app_user WITH PASSWORD $1", app_user_password)
+            await conn.execute(
+                "DO $$ BEGIN EXECUTE format("
+                "'ALTER ROLE app_user WITH PASSWORD %L',"
+                " current_setting('app.bootstrap_pw')); END $$"
+            )
             print("  Updated password")
 
         await conn.execute(f"GRANT CONNECT ON DATABASE {db_ident} TO app_user")
