@@ -6,9 +6,9 @@ Resource IDs produced by `provision-s3.sh`.
 
 | Resource | Value | Notes |
 |----------|-------|-------|
-| Bucket name | `{{BUCKET_NAME}}` | |
-| Region | `{{REGION}}` | |
-| ARN | `arn:aws:s3:::{{BUCKET_NAME}}` | |
+| Bucket name | `saas-media-prod-701893741240` | |
+| Region | `ap-southeast-1` | |
+| ARN | `arn:aws:s3:::saas-media-prod-701893741240` | |
 
 ## Settings
 
