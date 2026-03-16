@@ -30,7 +30,7 @@ aws secretsmanager create-secret \
 
 aws secretsmanager create-secret \
   --name /prod/redis-url \
-  --secret-string "redis://REDIS_HOST:6379/0" \
+  --secret-string "rediss://REDIS_HOST:6379/0?ssl_cert_reqs=required" \
   --region ap-southeast-1
 
 aws secretsmanager create-secret \

@@ -34,7 +34,7 @@ Resource IDs produced by `provision-redis.sh`.
 
 | Secret | Purpose |
 |--------|---------|
-| `/prod/redis-url` | `rediss://` connection — API + worker |
+| `/prod/redis-url` | `rediss://...?ssl_cert_reqs=required` — API + worker. Celery requires the query param. |
 
 ## Backup
 
@@ -48,4 +48,4 @@ Resource IDs produced by `provision-redis.sh`.
 
 | Downstream Task | Needs |
 |-----------------|-------|
-| 8.8b P3 (ECS services) | `PRIMARY_ENDPOINT` (via `/prod/redis-url` secret) |
+| 8.8b P3 (ECS services) | `PRIMARY_ENDPOINT` (via `/prod/redis-url` secret). DONE — backend HEALTHY, worker Celery ready. |

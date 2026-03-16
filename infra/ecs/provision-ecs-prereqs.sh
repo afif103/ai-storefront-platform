@@ -73,7 +73,7 @@ IP_HASH_SALT_VALUE=$(generate_random_base64 24)
 
 declare -A SECRET_VALUES=(
   ["/prod/database-url"]="postgresql+asyncpg://placeholder:placeholder@localhost:5432/saas_db"
-  ["/prod/redis-url"]="redis://placeholder:6379/0"
+  ["/prod/redis-url"]="rediss://placeholder:6379/0?ssl_cert_reqs=required"
   ["/prod/secret-key"]="$SECRET_KEY_VALUE"
   ["/prod/ai-api-key"]="placeholder-update-before-deploy"
   ["/prod/ip-hash-salt"]="$IP_HASH_SALT_VALUE"

@@ -9,7 +9,7 @@ classified by source and service.
 |----------|----------|--------|---------|-------|
 | `DATABASE_URL` | Yes | Secrets Manager (`/prod/database-url`) | API, Worker | `postgresql+asyncpg://app_user:pass@host:5432/db` (runtime, RLS-enforced) |
 | `DATABASE_URL` | Yes | Secrets Manager (`/prod/database-url-migrator`) | Migration | Same env var name, different secret source. `app_migrator` role (DDL + DML). See `migration-task-def.json`. |
-| `REDIS_URL` | Yes | Secrets Manager | API, Worker | `redis://host:6379/0` — Celery broker + AI quota |
+| `REDIS_URL` | Yes | Secrets Manager | API, Worker | `rediss://host:6379/0?ssl_cert_reqs=required` — TLS required. Celery broker + AI quota |
 | `SECRET_KEY` | Yes | Secrets Manager | API | JWT signing (mock mode). Set strong value regardless. |
 | `AI_API_KEY` | Yes | Secrets Manager | API, Worker | Provider API key (OpenAI/Groq/Anthropic) |
 | `IP_HASH_SALT` | Yes | Secrets Manager | API | Privacy-sensitive salt for IP hashing |
