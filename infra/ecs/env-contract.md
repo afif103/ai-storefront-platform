@@ -81,15 +81,13 @@ scoped to the specific secret ARNs created in `provision-ecs-prereqs.sh`.
 
 **Purpose:** Used by the running application code at runtime.
 
-**Current state:** Trust policy only. Runtime permissions are deferred until the
-target resources exist. The following permissions must be added before services start:
+**Current state:** Shared ECS task role (`saas-backend-task-role`) now has inline S3 object-access policy (`S3MediaAccess`). Only backend code currently uses S3; worker remains unchanged functionally. Remaining runtime permissions are deferred until the target resources exist.
 
-| Permission | Resource | Reason | Added after |
-|------------|----------|--------|-------------|
-| `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` | Bucket object ARN | Presigned URL generation + delete | 8.7 (S3 bucket) |
-| `s3:ListBucket` | Bucket ARN | Bucket-level operations if needed | 8.7 (S3 bucket) |
-| `ses:SendEmail`, `ses:SendRawEmail` | `*` (or scoped to verified identity) | Email notifications | 7.6 (SES identity) |
-| `cognito-idp:InitiateAuth` | User pool ARN | Token refresh flow | 1.1 (Cognito pool) |
+| Permission | Resource | Reason | Status |
+|------------|----------|--------|--------|
+| `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` | `arn:aws:s3:::saas-media-prod-701893741240/*` | Presigned URL generation + delete | **Attached** (inline `S3MediaAccess` on shared task role) |
+| `ses:SendEmail`, `ses:SendRawEmail` | `*` (or scoped to verified identity) | Email notifications | Deferred until SES identity exists |
+| `cognito-idp:InitiateAuth` | User pool ARN | Token refresh flow | Deferred until Cognito pool exists |
 
 **Not needed on task role:** Secrets Manager (execution role's job),
 ECR (execution role), CloudWatch Logs (execution role).
