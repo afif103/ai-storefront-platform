@@ -34,7 +34,7 @@
         { "name": "AWS_REGION", "value": "ap-southeast-1" },
         { "name": "COGNITO_REGION", "value": "ap-southeast-1" },
         { "name": "SES_REGION", "value": "ap-southeast-1" },
-        { "name": "S3_BUCKET", "value": "{{S3_BUCKET}}" },
+        { "name": "S3_BUCKET", "value": "saas-media-prod-701893741240" },
         { "name": "COGNITO_USER_POOL_ID", "value": "{{COGNITO_USER_POOL_ID}}" },
         { "name": "COGNITO_CLIENT_ID", "value": "{{COGNITO_CLIENT_ID}}" },
         { "name": "SES_SENDER_EMAIL", "value": "{{SES_SENDER_EMAIL}}" },
