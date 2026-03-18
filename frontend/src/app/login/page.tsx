@@ -34,7 +34,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    const trimmed = devToken.trim();
+    const trimmed = devToken.replace(/\s+/g, "");
     if (!trimmed) {
       setError("Please paste a JWT token");
       return;
