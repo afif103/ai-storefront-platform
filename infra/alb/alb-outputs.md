@@ -1,6 +1,6 @@
 # ALB Outputs
 
-Resource IDs produced during 8.9 P1–P2. HTTPS live for `api.ramitestapp.top`. CloudFront and WAF are pending.
+Resource IDs produced during 8.9 P1–P3a. HTTPS live for `api.ramitestapp.top` and `origin-api.ramitestapp.top`. CloudFront and WAF are pending.
 
 ## Load Balancer
 
@@ -10,6 +10,7 @@ Resource IDs produced during 8.9 P1–P2. HTTPS live for `api.ramitestapp.top`. 
 | ALB ARN | `arn:aws:elasticloadbalancing:ap-southeast-1:701893741240:loadbalancer/app/saas-alb/f6eea380f52e2210` |
 | DNS name | `saas-alb-1087157138.ap-southeast-1.elb.amazonaws.com` |
 | API domain | `api.ramitestapp.top` (CNAME → ALB DNS) |
+| Origin hostname | `origin-api.ramitestapp.top` (CNAME → ALB DNS) — temporary public origin for CloudFront; direct access deferred to hardening packet |
 | Scheme | internet-facing |
 | Region | `ap-southeast-1` |
 
@@ -30,13 +31,15 @@ Resource IDs produced during 8.9 P1–P2. HTTPS live for `api.ramitestapp.top`. 
 | HTTPS | `arn:aws:elasticloadbalancing:ap-southeast-1:701893741240:listener/app/saas-alb/f6eea380f52e2210/5a8f5cc1444c1536` | HTTPS / 443 | Forward to `saas-backend-tg` |
 | HTTP | `arn:aws:elasticloadbalancing:ap-southeast-1:701893741240:listener/app/saas-alb/f6eea380f52e2210/611112626af0706c` | HTTP / 80 | Redirect 301 → HTTPS :443 |
 
-## ACM Certificate
+## ACM Certificates
 
-| Resource | Value |
-|----------|-------|
-| ARN | `arn:aws:acm:ap-southeast-1:701893741240:certificate/bdc0cd86-a705-44ba-bdf4-5020cec91932` |
-| Domain | `api.ramitestapp.top` |
-| TLS policy | `ELBSecurityPolicy-TLS13-1-2-2021-06` |
+HTTPS listener has 2 certs via SNI. TLS policy: `ELBSecurityPolicy-TLS13-1-2-2021-06`.
+
+| Cert | ARN | Region | Domain | Role |
+|------|-----|--------|--------|------|
+| ALB default | `arn:aws:acm:ap-southeast-1:701893741240:certificate/bdc0cd86-a705-44ba-bdf4-5020cec91932` | ap-southeast-1 | `api.ramitestapp.top` | Direct ALB access |
+| ALB additional (SNI) | `arn:aws:acm:ap-southeast-1:701893741240:certificate/4081ef00-b6de-4eab-94ce-217689bb0fc2` | ap-southeast-1 | `origin-api.ramitestapp.top` | CloudFront → ALB origin |
+| CloudFront viewer | `arn:aws:acm:us-east-1:701893741240:certificate/f2a7d587-2746-4bba-adfa-e4929cdfda52` | us-east-1 | `api.ramitestapp.top` | CloudFront viewer cert (not yet attached) |
 
 ## Security Group Rules
 
@@ -52,5 +55,8 @@ Resource IDs produced during 8.9 P1–P2. HTTPS live for `api.ramitestapp.top`. 
 | Downstream Task | Needs |
 |-----------------|-------|
 | 8.9 P2 (HTTPS) | **DONE** — HTTPS listener + ACM cert live |
-| 8.9 P3 (CloudFront) | ALB DNS as origin |
+| 8.9 P3a (origin prep) | **DONE** — origin hostname, regional cert, viewer cert |
+| 8.9 P3b (WAF) | WebACL in us-east-1 with CLOUDFRONT scope |
+| 8.9 P3c (CloudFront) | Distribution with origin `origin-api.ramitestapp.top` |
+| 8.9 P3d (DNS cutover) | `api` CNAME → CloudFront domain |
 | 8.9 P4 (CORS) | Frontend origin(s) such as `app.ramitestapp.top` / `*.app.ramitestapp.top` for `ALLOWED_ORIGINS` |
