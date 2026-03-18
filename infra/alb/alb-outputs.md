@@ -56,7 +56,8 @@ HTTPS listener has 2 certs via SNI. TLS policy: `ELBSecurityPolicy-TLS13-1-2-202
 |-----------------|-------|
 | 8.9 P2 (HTTPS) | **DONE** — HTTPS listener + ACM cert live |
 | 8.9 P3a (origin prep) | **DONE** — origin hostname, regional cert, viewer cert |
-| 8.9 P3b (WAF) | WebACL in us-east-1 with CLOUDFRONT scope |
-| 8.9 P3c (CloudFront) | Distribution with origin `origin-api.ramitestapp.top` |
+| 8.9 P3b (WAF) | **DONE** — `saas-api-waf` WebACL in us-east-1, ARN `arn:aws:wafv2:us-east-1:701893741240:global/webacl/saas-api-waf/683553aa-bcaf-436b-951c-3ce9f4ff737f`, 4 rules (CommonRuleSet, SQLiRuleSet, KnownBadInputsRuleSet, rate-limit 2000/5min/IP), 1102 WCU, unattached |
+| 8.9 P3c (CloudFront) | Distribution with origin `origin-api.ramitestapp.top`, attach WAF WebACL |
 | 8.9 P3d (DNS cutover) | `api` CNAME → CloudFront domain |
+| 8.9 P3e (ALB hardening) | Restrict ALB origin access (CloudFront prefix list and/or custom origin header) |
 | 8.9 P4 (CORS) | Frontend origin(s) such as `app.ramitestapp.top` / `*.app.ramitestapp.top` for `ALLOWED_ORIGINS` |
