@@ -297,7 +297,7 @@ export default function StorefrontPage() {
                   <img
                     src={product.image_url}
                     alt={product.name}
-                    className="h-40 w-full object-cover"
+                    className="h-40 w-full object-contain bg-gray-100"
                   />
                 )}
                 <div className="p-5">
