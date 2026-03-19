@@ -96,7 +96,11 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 | M6 Admin Panel (P2) | Complete (role change + CSV export) |
 | M6 Admin Panel (P3) | Complete (usage summary + RLS policies) |
 | M6 Admin Panel (P4) | Complete (super admin tenant list UI) |
-| M6 P5+ (tenant admin UI), M7–M9 | Not started |
+| M7 Notifications (P1–P4) | Complete (preferences, email/Telegram, dispatch, donation receipt) |
+| M8 Infrastructure (8.1–8.8b) | Complete (Docker, CI, VPC, RDS, Redis, S3, ECR, ECS) |
+| M8 Infrastructure (8.9) | In progress (ALB + HTTPS + CloudFront + WAF deployed; DNS cutover remaining) |
+| M8 Infrastructure (8.10) | In progress (live demo deployed; custom domain remaining) |
+| M6 P5+, M7 P5+, M8.11–8.13, M9 | Not started |
 
 **M2**: Categories, products, storefront config, media assets, presigned S3 uploads, UTM visit tracking, public storefront with branding. Full dashboard CRUD + anonymous storefront browsing.
 
@@ -113,6 +117,19 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 **M5b**: Product inventory fields (`track_inventory`, `stock_qty`). Atomic stock decrement on order submit. 409 on insufficient stock. Public `in_stock` flag. Storefront out-of-stock UI.
 
 **M5c**: Stock movement audit trail (`stock_movements` table). Cancel-restore with idempotency. Dashboard restock + movement history. Per-product low-stock threshold with amber alerts. Analytics CSV export.
+
+**M7**: Notification preferences (email/Telegram toggles per tenant). SES email + Telegram Bot API services. Celery task dispatch on order/donation creation. Donation receipt email to donor.
+
+**M8**: AWS infrastructure in `ap-southeast-1`. VPC with private subnets + NAT. RDS PostgreSQL (encrypted, SSL-forced). ElastiCache Redis (TLS). S3 with Block Public Access. ECR + GitHub Actions image push. ECS Fargate cluster with backend + worker services. ALB with HTTPS (ACM cert). CloudFront distribution with WAF (4 managed rules). Live demo on Vercel + ECS.
+
+## Live Demo
+
+| Component | URL |
+|-----------|-----|
+| Storefront | `https://ai-storefront-platform.vercel.app/store/rami-demo-store` |
+| Dashboard | `https://ai-storefront-platform.vercel.app/dashboard` (dev-login required) |
+
+Demo state: 1 primary demo tenant (`rami-demo-store`, 3 products, AI chat enabled via Groq Llama 3.3 70B) + 2 seed tenants visible in Admin → Tenants. Analytics page populated with sample event data. Backend running on ECS Fargate (`saas-backend:6`).
 
 ## Running Tests
 
