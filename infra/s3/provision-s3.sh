@@ -6,10 +6,11 @@
 #
 # Creates:
 #   - S3 bucket with Block Public Access, versioning, SSE-S3 encryption,
-#     and lifecycle rule (transition to IA after 90 days)
+#     lifecycle rule (transition to IA after 90 days), and CORS for
+#     presigned PUT uploads from the Vercel frontend.
 #
 # Does NOT create or update: task-role S3 policy, ECS task definitions,
-# CORS configuration, or /prod/* secrets.
+# or /prod/* secrets.
 
 set -euo pipefail
 
@@ -92,6 +93,24 @@ aws s3api put-bucket-lifecycle-configuration \
   --region "$REGION"
 echo "  APPLIED lifecycle: transition to STANDARD_IA after 90 days"
 
+# ─── 6. CORS for presigned PUT uploads from Vercel frontend ────────────────
+
+FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-https://ai-storefront-platform.vercel.app}"
+
+echo "--- CORS ---"
+aws s3api put-bucket-cors \
+  --bucket "$BUCKET_NAME" \
+  --cors-configuration '{
+    "CORSRules": [{
+      "AllowedOrigins": ["'"$FRONTEND_ORIGIN"'"],
+      "AllowedMethods": ["PUT"],
+      "AllowedHeaders": ["Content-Type"],
+      "MaxAgeSeconds": 3600
+    }]
+  }' \
+  --region "$REGION"
+echo "  APPLIED CORS: PUT from $FRONTEND_ORIGIN"
+
 # ─── Summary ─────────────────────────────────────────────────────────────────
 
 echo ""
@@ -102,6 +121,7 @@ echo "  Block Public Access: all ON"
 echo "  Versioning:         Enabled"
 echo "  Encryption:         SSE-S3 (AES256)"
 echo "  Lifecycle:          STANDARD_IA after 90 days"
+echo "  CORS:               PUT from $FRONTEND_ORIGIN"
 echo ""
 echo "Next steps:"
 echo "  1. Verify settings: run P2 verification commands"

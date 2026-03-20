@@ -18,6 +18,7 @@ Resource IDs produced by `provision-s3.sh`.
 | Versioning | Enabled |
 | Encryption | SSE-S3 (AES256) |
 | Lifecycle | Transition to STANDARD_IA after 90 days |
+| CORS | PUT from `https://ai-storefront-platform.vercel.app`, `Content-Type` header, 1h preflight cache |
 
 ## Cross-references
 
@@ -25,4 +26,3 @@ Resource IDs produced by `provision-s3.sh`.
 |-----------------|-------|
 | Task-role S3 policy | Bucket ARN for `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` |
 | Backend task def | `S3_BUCKET` env var |
-| CORS configuration | Allowed origins (after frontend domain is known) |
