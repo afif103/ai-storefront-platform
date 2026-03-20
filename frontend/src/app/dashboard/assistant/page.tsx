@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { RequireAuth } from "@/components/require-auth";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
 
 interface ChatMessage {
@@ -76,20 +76,6 @@ function AssistantContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      <header className="border-b bg-white shadow-sm">
-        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-4">
-          <Link
-            href="/dashboard"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Dashboard
-          </Link>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-lg font-semibold text-gray-900">AI Assistant</h1>
-        </div>
-      </header>
-
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-6">
         {/* Messages */}
         <div className="flex-1 space-y-4 overflow-y-auto pb-4">
@@ -156,14 +142,15 @@ function AssistantContent() {
           </button>
         </form>
       </main>
-    </div>
   );
 }
 
 export default function AssistantPage() {
   return (
     <RequireAuth>
-      <AssistantContent />
+      <DashboardShell>
+        <AssistantContent />
+      </DashboardShell>
     </RequireAuth>
   );
 }

@@ -211,7 +211,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Content area */}
-      <div className="lg:ml-60">{children}</div>
+      <div className="flex min-h-screen flex-col lg:ml-60">{children}</div>
     </div>
   );
 }
