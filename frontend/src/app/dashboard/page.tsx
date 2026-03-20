@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/hooks/use-auth";
 import { RequireAuth } from "@/components/require-auth";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
 
 interface HealthStatus {
@@ -79,8 +78,6 @@ function StatusDot({ ok }: { ok: boolean }) {
 // ---------------------------------------------------------------------------
 
 function DashboardContent() {
-  const { user, logout } = useAuth();
-  const router = useRouter();
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [healthError, setHealthError] = useState("");
 
@@ -96,104 +93,84 @@ function DashboardContent() {
     checkHealth();
   }, []);
 
-  function handleLogout() {
-    logout();
-    router.push("/login");
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white shadow-sm">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
-            <p className="text-sm text-gray-500">{user?.email}</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+    <main className="mx-auto max-w-5xl px-6 py-8">
+      {/* Navigation grid */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {NAV_CARDS.map((card) => (
+          <div
+            key={card.href}
+            className="rounded-lg border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
           >
-            Sign Out
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        {/* Navigation grid */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {NAV_CARDS.map((card) => (
-            <div
-              key={card.href}
-              className="rounded-lg border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+            <h2 className="text-base font-semibold text-gray-900">
+              {card.title}
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">{card.description}</p>
+            <Link
+              href={card.href}
+              className="mt-4 inline-block text-sm font-medium text-blue-600 hover:text-blue-700"
             >
-              <h2 className="text-base font-semibold text-gray-900">
-                {card.title}
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">{card.description}</p>
-              <Link
-                href={card.href}
-                className="mt-4 inline-block text-sm font-medium text-blue-600 hover:text-blue-700"
-              >
-                Open {card.title} &rarr;
-              </Link>
-            </div>
-          ))}
-        </div>
+              Open {card.title} &rarr;
+            </Link>
+          </div>
+        ))}
+      </div>
 
-        {/* Platform Admin — always visible, backend 403 is the real guard */}
-        <div className="mt-8 rounded-lg border-l-4 border-gray-800 bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900">
-            Platform Admin
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage tenants, suspension, and platform-wide settings
+      {/* Platform Admin — always visible, backend 403 is the real guard */}
+      <div className="mt-8 rounded-lg border-l-4 border-gray-800 bg-white p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-gray-900">
+          Platform Admin
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage tenants, suspension, and platform-wide settings
+        </p>
+        <Link
+          href="/dashboard/admin/tenants"
+          className="mt-4 inline-block rounded bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900"
+        >
+          Manage Tenants
+        </Link>
+      </div>
+
+      {/* System Status */}
+      <div className="mt-8 rounded-lg border bg-white px-5 py-4 shadow-sm">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+          System Status
+        </h2>
+        {healthError ? (
+          <p className="mt-2 text-sm text-red-600">
+            Unable to reach backend: {healthError}
           </p>
-          <Link
-            href="/dashboard/admin/tenants"
-            className="mt-4 inline-block rounded bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900"
-          >
-            Manage Tenants
-          </Link>
-        </div>
-
-        {/* System Status */}
-        <div className="mt-8 rounded-lg border bg-white px-5 py-4 shadow-sm">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-            System Status
-          </h2>
-          {healthError ? (
-            <p className="mt-2 text-sm text-red-600">
-              Unable to reach backend: {healthError}
-            </p>
-          ) : health ? (
-            <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-600">
-              <span className="flex items-center gap-1.5">
-                <StatusDot ok={health.status === "ok"} />
-                API {health.status}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <StatusDot ok={health.db === "ok"} />
-                Database {health.db}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <StatusDot ok={health.redis === "ok"} />
-                Redis {health.redis}
-              </span>
-              <span className="text-xs text-gray-400">v{health.version}</span>
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-gray-400">Checking...</p>
-          )}
-        </div>
-      </main>
-    </div>
+        ) : health ? (
+          <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-600">
+            <span className="flex items-center gap-1.5">
+              <StatusDot ok={health.status === "ok"} />
+              API {health.status}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <StatusDot ok={health.db === "ok"} />
+              Database {health.db}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <StatusDot ok={health.redis === "ok"} />
+              Redis {health.redis}
+            </span>
+            <span className="text-xs text-gray-400">v{health.version}</span>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-gray-400">Checking...</p>
+        )}
+      </div>
+    </main>
   );
 }
 
 export default function DashboardPage() {
   return (
     <RequireAuth>
-      <DashboardContent />
+      <DashboardShell>
+        <DashboardContent />
+      </DashboardShell>
     </RequireAuth>
   );
 }
