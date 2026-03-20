@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { RequireAuth } from "@/components/require-auth";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
 
 interface Order {
@@ -79,21 +79,13 @@ function OrdersContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white shadow-sm">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">
-              Dashboard
-            </Link>
-            <span className="text-gray-300">/</span>
-            <h1 className="text-lg font-semibold text-gray-900">Orders</h1>
-          </div>
-        </div>
-      </header>
+    <main className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mb-6">
+        <h1 className="text-lg font-semibold text-gray-900">Orders</h1>
+        <p className="mt-1 text-sm text-gray-500">View and manage customer orders</p>
+      </div>
 
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        {error && (
+      {error && (
           <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
@@ -165,15 +157,16 @@ function OrdersContent() {
             </table>
           </div>
         )}
-      </main>
-    </div>
+    </main>
   );
 }
 
 export default function OrdersPage() {
   return (
     <RequireAuth>
-      <OrdersContent />
+      <DashboardShell>
+        <OrdersContent />
+      </DashboardShell>
     </RequireAuth>
   );
 }
