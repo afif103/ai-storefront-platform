@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { RequireAuth } from "@/components/require-auth";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
 
 // ---------------------------------------------------------------------------
@@ -151,52 +151,41 @@ function AnalyticsContent() {
   const ec = data?.event_counts ?? {};
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white shadow-sm">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Dashboard
-            </Link>
-            <span className="text-gray-400">/</span>
-            <h1 className="text-lg font-semibold text-gray-900">Analytics</h1>
-          </div>
-
-          {/* Range selector */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500">{RANGE_LABELS[preset]}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1">
-              {(["7d", "30d", "90d"] as RangePreset[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPreset(p)}
-                  className={`rounded px-3 py-1.5 text-sm font-medium ${
-                    preset === p
-                      ? "bg-blue-600 text-white"
-                      : "border border-gray-300 text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => data && downloadCsv(data, preset)}
-              disabled={loading || !data || data.visitors === 0}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Export CSV
-            </button>
-          </div>
+    <main className="mx-auto max-w-5xl px-6 py-8">
+      {/* Page intro + controls */}
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Analytics</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Visitor funnel, sessions, and daily trends
+          </p>
         </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 py-8">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{RANGE_LABELS[preset]}</span>
+          <div className="flex gap-1">
+            {(["7d", "30d", "90d"] as RangePreset[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPreset(p)}
+                className={`rounded px-3 py-1.5 text-sm font-medium ${
+                  preset === p
+                    ? "bg-blue-600 text-white"
+                    : "border border-gray-300 text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => data && downloadCsv(data, preset)}
+            disabled={loading || !data || data.visitors === 0}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Export CSV
+          </button>
+        </div>
+      </div>
         {loading && (
           <p className="text-sm text-gray-400">Loading analytics...</p>
         )}
@@ -324,8 +313,7 @@ function AnalyticsContent() {
             )}
           </>
         )}
-      </main>
-    </div>
+    </main>
   );
 }
 
@@ -343,7 +331,9 @@ function KpiCard({ label, value }: { label: string; value: number }) {
 export default function AnalyticsPage() {
   return (
     <RequireAuth>
-      <AnalyticsContent />
+      <DashboardShell>
+        <AnalyticsContent />
+      </DashboardShell>
     </RequireAuth>
   );
 }
