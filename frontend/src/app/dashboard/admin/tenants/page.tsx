@@ -176,7 +176,17 @@ function AdminTenantsContent() {
               <tbody className="divide-y">
                 {tenants.map((t) => (
                   <tr key={t.id} className={!t.is_active ? "bg-red-50/50" : ""}>
-                    <td className="px-4 py-3 font-medium text-gray-900">{t.name}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <a
+                        href={`/storefront/${t.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Visit ${t.name} storefront (opens in new tab)`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {t.name}
+                      </a>
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">{t.slug}</td>
                     <td className="px-4 py-3">
                       <span
