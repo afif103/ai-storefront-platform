@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { RequireAuth } from "@/components/require-auth";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
 import { uploadFile } from "@/lib/upload";
 import type { UploadProgress } from "@/lib/upload";
@@ -180,23 +180,11 @@ function StorefrontSettingsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white shadow-sm">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
-          <Link
-            href="/dashboard"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Dashboard
-          </Link>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-lg font-semibold text-gray-900">
-            Storefront Settings
-          </h1>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-2xl px-6 py-8">
+    <main className="mx-auto max-w-2xl px-6 py-8">
+      <div className="mb-6">
+        <h1 className="text-lg font-semibold text-gray-900">Storefront Settings</h1>
+        <p className="mt-1 text-sm text-gray-500">Customize branding, colors, and storefront details</p>
+      </div>
         {error && (
           <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             {error}
@@ -353,15 +341,16 @@ function StorefrontSettingsContent() {
             </button>
           </div>
         </form>
-      </main>
-    </div>
+    </main>
   );
 }
 
 export default function StorefrontSettingsPage() {
   return (
     <RequireAuth>
-      <StorefrontSettingsContent />
+      <DashboardShell>
+        <StorefrontSettingsContent />
+      </DashboardShell>
     </RequireAuth>
   );
 }
