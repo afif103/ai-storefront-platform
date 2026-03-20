@@ -129,7 +129,7 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 | Storefront | `https://ai-storefront-platform.vercel.app/store/rami-demo-store` |
 | Dashboard | `https://ai-storefront-platform.vercel.app/dashboard` (dev-login required) |
 
-Demo state: 1 primary demo tenant (`rami-demo-store`, 3 products, AI chat enabled via Groq Llama 3.3 70B) + 2 seed tenants visible in Admin → Tenants. Analytics page populated with sample event data. Backend running on ECS Fargate (`saas-backend:6`).
+Demo state: 1 primary demo tenant (`rami-demo-store`, 3 products, AI chat enabled via Groq Llama 3.3 70B) + 2 seed tenants visible in Admin → Tenants. Dashboard has sidebar navigation across all pages. Analytics page populated with sample event data. Backend running on ECS Fargate (`saas-backend:6`).
 
 ## Running Tests
 
