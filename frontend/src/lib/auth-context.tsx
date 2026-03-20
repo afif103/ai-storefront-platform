@@ -3,7 +3,9 @@
 import {
   createContext,
   useCallback,
+  useEffect,
   useMemo,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -47,6 +49,11 @@ function getServerSnapshot(): string | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Gate: stays true until after first client-side mount so RequireAuth
+  // does not redirect before getAccessToken() reads sessionStorage.
+  const [hydrating, setHydrating] = useState(true);
+  useEffect(() => setHydrating(false), []);
+
   const accessToken = useSyncExternalStore(
     subscribe,
     getAccessToken,
@@ -70,11 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       accessToken,
       user,
-      isLoading: false,
+      isLoading: hydrating,
       login,
       logout,
     }),
-    [accessToken, user, login, logout]
+    [accessToken, user, hydrating, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
