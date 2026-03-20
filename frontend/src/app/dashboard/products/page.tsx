@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { RequireAuth } from "@/components/require-auth";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
 
 interface Product {
@@ -140,38 +141,33 @@ function ProductsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white shadow-sm">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">
-              Dashboard
-            </Link>
-            <span className="text-gray-300">/</span>
-            <h1 className="text-lg font-semibold text-gray-900">Products</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {selected.size > 0 && (
-              <button
-                onClick={handleBulkDelete}
-                disabled={deletingIds.size > 0}
-                className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                Delete {selected.size} selected
-              </button>
-            )}
-            <Link
-              href="/dashboard/products/new"
-              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Add Product
-            </Link>
-          </div>
+    <>
+    <main className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Products</h1>
+          <p className="mt-1 text-sm text-gray-500">Manage product catalog and inventory</p>
         </div>
-      </header>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={deletingIds.size > 0}
+              className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              Delete {selected.size} selected
+            </button>
+          )}
+          <Link
+            href="/dashboard/products/new"
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Add Product
+          </Link>
+        </div>
+      </div>
 
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        {error && (
+      {error && (
           <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
@@ -312,21 +308,23 @@ function ProductsContent() {
             </table>
           </div>
         )}
-      </main>
+    </main>
 
-      {toast && (
-        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
-          {toast}
-        </div>
-      )}
-    </div>
+    {toast && (
+      <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
+        {toast}
+      </div>
+    )}
+    </>
   );
 }
 
 export default function ProductsPage() {
   return (
     <RequireAuth>
-      <ProductsContent />
+      <DashboardShell>
+        <ProductsContent />
+      </DashboardShell>
     </RequireAuth>
   );
 }
