@@ -3,9 +3,7 @@
 import {
   createContext,
   useCallback,
-  useEffect,
   useMemo,
-  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -48,11 +46,13 @@ function getServerSnapshot(): string | null {
   return null;
 }
 
+/** No-op subscribe — hydration state never changes after mount. */
+const subscribeNoop = (): (() => void) => () => {};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Gate: stays true until after first client-side mount so RequireAuth
-  // does not redirect before getAccessToken() reads sessionStorage.
-  const [hydrating, setHydrating] = useState(true);
-  useEffect(() => setHydrating(false), []);
+  // Server: true (loading) — prevents RequireAuth redirect during SSR.
+  // Client: false — getAccessToken() has already read sessionStorage.
+  const hydrating = useSyncExternalStore(subscribeNoop, () => false, () => true);
 
   const accessToken = useSyncExternalStore(
     subscribe,
