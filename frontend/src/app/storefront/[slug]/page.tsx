@@ -140,7 +140,7 @@ export default function StorefrontPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-sm text-gray-400">Loading storefront...</p>
+        <p className="text-sm text-gray-400">{t("loadingStorefront")}</p>
       </div>
     );
   }
@@ -235,7 +235,7 @@ export default function StorefrontPage() {
               </svg>
               {cart.totalItems > 0 && (
                 <span
-                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
+                  className="absolute -right-1 rtl:-right-auto rtl:-left-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
                   style={{ backgroundColor: secondaryColor ?? "#dc2626" }}
                 >
                   {cart.totalItems}
@@ -288,10 +288,10 @@ export default function StorefrontPage() {
 
         {/* Product grid */}
         {filterLoading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">{t("loading")}</p>
         ) : products.length === 0 ? (
           <div className="rounded-lg border bg-white p-8 text-center">
-            <p className="text-gray-500">No products available.</p>
+            <p className="text-gray-500">{t("noProducts")}</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -341,7 +341,7 @@ export default function StorefrontPage() {
                     {!product.in_stock
                       ? t("outOfStock")
                       : addedId === product.id
-                        ? "Added!"
+                        ? t("added")
                         : t("addToCart")}
                   </button>
                 </div>
