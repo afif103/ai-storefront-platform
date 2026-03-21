@@ -1,0 +1,9 @@
+{
+  "storefront": {
+    "donate": "Donate",
+    "pledge": "Pledge",
+    "addToCart": "Add to Cart",
+    "outOfStock": "Out of Stock",
+    "allCategories": "All"
+  }
+}

@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api-client";
 import { initAnalytics, track, flush } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
 import { useCart } from "@/hooks/use-cart";
 import { StorefrontChat } from "@/components/storefront-chat";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 interface Category {
   id: string;
@@ -49,6 +51,7 @@ interface PaginatedProducts {
 export default function StorefrontPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const t = useTranslations("storefront");
 
   useVisit(slug);
   const cart = useCart(slug);
@@ -192,7 +195,7 @@ export default function StorefrontPage() {
                 color: headerTextColor,
               }}
             >
-              Donate
+              {t("donate")}
             </Link>
             <Link
               href={`/storefront/${slug}/pledge`}
@@ -202,8 +205,13 @@ export default function StorefrontPage() {
                 color: headerTextColor,
               }}
             >
-              Pledge
+              {t("pledge")}
             </Link>
+
+            <LocaleSwitcher
+              className="rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:opacity-80"
+              style={{ borderColor: headerTextColor, color: headerTextColor }}
+            />
 
             {/* Cart badge */}
             <Link
@@ -255,7 +263,7 @@ export default function StorefrontPage() {
                   : undefined
               }
             >
-              All
+              {t("allCategories")}
             </button>
             {categories.map((cat) => (
               <button
@@ -331,10 +339,10 @@ export default function StorefrontPage() {
                     style={{ backgroundColor: primaryColor ?? "#2563eb" }}
                   >
                     {!product.in_stock
-                      ? "Out of Stock"
+                      ? t("outOfStock")
                       : addedId === product.id
                         ? "Added!"
-                        : "Add to Cart"}
+                        : t("addToCart")}
                   </button>
                 </div>
               </div>
