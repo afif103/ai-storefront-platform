@@ -6,25 +6,12 @@ import { z } from "zod/v4";
 import { useTranslations } from "next-intl";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 
-const signupSchema = z
-  .object({
-    email: z.email("Please enter a valid email address"),
-    fullName: z.string().min(1, "Full name is required").max(255),
-    password: z
-      .string()
-      .min(12, "Password must be at least 12 characters")
-      .regex(/[A-Z]/, "Password must contain an uppercase letter")
-      .regex(/[a-z]/, "Password must contain a lowercase letter")
-      .regex(/[0-9]/, "Password must contain a number")
-      .regex(/[^A-Za-z0-9]/, "Password must contain a symbol"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-type SignupForm = z.infer<typeof signupSchema>;
+interface SignupForm {
+  email: string;
+  fullName: string;
+  password: string;
+  confirmPassword: string;
+}
 
 export default function SignupPage() {
   const [form, setForm] = useState<SignupForm>({
@@ -36,6 +23,24 @@ export default function SignupPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const t = useTranslations("signup");
+
+  const signupSchema = z
+    .object({
+      email: z.email(t("emailInvalid")),
+      fullName: z.string().min(1, t("fullNameRequired")).max(255),
+      password: z
+        .string()
+        .min(12, t("passwordMinLength"))
+        .regex(/[A-Z]/, t("passwordUppercase"))
+        .regex(/[a-z]/, t("passwordLowercase"))
+        .regex(/[0-9]/, t("passwordNumber"))
+        .regex(/[^A-Za-z0-9]/, t("passwordSymbol")),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("passwordsMismatch"),
+      path: ["confirmPassword"],
+    });
 
   function handleChange(field: keyof SignupForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));

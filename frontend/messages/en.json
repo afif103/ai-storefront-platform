@@ -107,7 +107,15 @@
     "signIn": "Sign in",
     "checkYourEmail": "Check Your Email",
     "verificationEmailSent": "Once Cognito is configured, a verification email will be sent to",
-    "goToVerification": "Go to verification page"
+    "goToVerification": "Go to verification page",
+    "emailInvalid": "Please enter a valid email address",
+    "fullNameRequired": "Full name is required",
+    "passwordMinLength": "Password must be at least 12 characters",
+    "passwordUppercase": "Password must contain an uppercase letter",
+    "passwordLowercase": "Password must contain a lowercase letter",
+    "passwordNumber": "Password must contain a number",
+    "passwordSymbol": "Password must contain a symbol",
+    "passwordsMismatch": "Passwords do not match"
   },
   "verifyEmail": {
     "title": "Verify Your Email",
