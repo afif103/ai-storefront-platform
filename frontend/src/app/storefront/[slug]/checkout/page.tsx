@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api-client";
 import { initAnalytics, track, flush, getOrCreateSessionId } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
@@ -20,6 +21,7 @@ interface OrderResponse {
 export default function CheckoutPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const t = useTranslations("checkout");
   const { visitId } = useVisit(slug);
   const cart = useCart(slug);
 
@@ -91,19 +93,19 @@ export default function CheckoutPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-md rounded-lg border border-green-300 bg-green-50 p-8 text-center">
-          <h2 className="text-lg font-bold text-green-800">Order Placed!</h2>
+          <h2 className="text-lg font-bold text-green-800">{t("orderPlaced")}</h2>
           <p className="mt-2 text-sm text-green-700">
-            Order number: <span className="font-mono font-bold">{success.order_number}</span>
+            {t("orderNumber")} <span className="font-mono font-bold">{success.order_number}</span>
           </p>
           <p className="mt-1 text-sm text-green-700">
-            Total: {success.total_amount} {success.currency}
+            {t("totalConfirm")} {success.total_amount} {success.currency}
           </p>
-          <p className="mt-1 text-sm text-green-700">Status: {success.status}</p>
+          <p className="mt-1 text-sm text-green-700">{t("status")} {success.status}</p>
           <Link
             href={`/storefront/${slug}`}
             className="mt-6 inline-block rounded-lg bg-green-700 px-6 py-2 text-sm font-medium text-white hover:bg-green-800"
           >
-            Back to Store
+            {t("backToStore")}
           </Link>
         </div>
       </div>
@@ -114,12 +116,12 @@ export default function CheckoutPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-md rounded-lg border bg-white p-8 text-center">
-          <p className="text-gray-500">Your cart is empty.</p>
+          <p className="text-gray-500">{t("emptyCart")}</p>
           <Link
             href={`/storefront/${slug}`}
             className="mt-4 inline-block rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            Browse Products
+            {t("browseProducts")}
           </Link>
         </div>
       </div>
@@ -133,20 +135,20 @@ export default function CheckoutPage() {
           href={`/storefront/${slug}`}
           className="mb-4 inline-block text-sm text-blue-600 hover:underline"
         >
-          &larr; Back to store
+          {t("backLink")}
         </Link>
 
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">Checkout</h1>
+        <h1 className="mb-6 text-2xl font-bold text-gray-900">{t("title")}</h1>
 
         {/* Cart summary */}
         <div className="mb-6 rounded-lg border bg-white p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">Your Items</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("yourItems")}</h2>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-gray-500">
-                <th className="pb-2">Item</th>
-                <th className="pb-2 text-center">Qty</th>
-                <th className="pb-2 text-right">Subtotal</th>
+              <tr className="border-b text-start text-gray-500">
+                <th className="pb-2">{t("item")}</th>
+                <th className="pb-2 text-center">{t("qty")}</th>
+                <th className="pb-2 text-end">{t("subtotal")}</th>
                 <th className="pb-2"></th>
               </tr>
             </thead>
@@ -197,15 +199,15 @@ export default function CheckoutPage() {
                       </button>
                     </div>
                   </td>
-                  <td className="py-2 text-right text-gray-900">
+                  <td className="py-2 text-end text-gray-900">
                     {(parseFloat(item.priceAmount) * item.qty).toFixed(3)} {item.currency}
                   </td>
-                  <td className="py-2 pl-2 text-right">
+                  <td className="py-2 ps-2 text-end">
                     <button
                       type="button"
                       onClick={() => cart.removeItem(item.catalogItemId)}
                       className="text-red-500 hover:text-red-700"
-                      title="Remove"
+                      title={t("remove")}
                     >
                       &times;
                     </button>
@@ -215,7 +217,7 @@ export default function CheckoutPage() {
             </tbody>
           </table>
           <div className="mt-3 flex justify-between border-t pt-3 font-bold text-gray-900">
-            <span>Total</span>
+            <span>{t("total")}</span>
             <span>
               {cartTotal} {cartCurrency}
             </span>
@@ -224,7 +226,7 @@ export default function CheckoutPage() {
 
         {/* Order form */}
         <form onSubmit={handleSubmit} className="rounded-lg border bg-white p-4">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">Your Details</h2>
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("yourDetails")}</h2>
 
           {error && (
             <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -234,7 +236,7 @@ export default function CheckoutPage() {
 
           <div className="mb-3">
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Name <span className="text-red-500">*</span>
+              {t("name")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -246,7 +248,7 @@ export default function CheckoutPage() {
             />
           </div>
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("phone")}</label>
             <input
               type="tel"
               maxLength={50}
@@ -256,7 +258,7 @@ export default function CheckoutPage() {
             />
           </div>
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("email")}</label>
             <input
               type="email"
               maxLength={255}
@@ -266,7 +268,7 @@ export default function CheckoutPage() {
             />
           </div>
           <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Payment Notes</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("paymentNotes")}</label>
             <textarea
               maxLength={2000}
               value={paymentNotes}
@@ -281,7 +283,7 @@ export default function CheckoutPage() {
             disabled={submitting}
             className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {submitting ? "Placing Order..." : "Place Order"}
+            {submitting ? t("placingOrder") : t("placeOrder")}
           </button>
         </form>
       </div>

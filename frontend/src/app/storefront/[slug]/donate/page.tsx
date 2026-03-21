@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api-client";
 import { initAnalytics, track, flush } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
@@ -19,6 +20,7 @@ interface DonationResponse {
 export default function DonatePage() {
   const params = useParams();
   const slug = params.slug as string;
+  const t = useTranslations("donate");
   const { visitId } = useVisit(slug);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function DonatePage() {
 
     const formatted = formatAmount(amount);
     if (parseFloat(formatted) <= 0 || isNaN(parseFloat(formatted))) {
-      setError("Please enter a valid amount greater than 0.");
+      setError(t("invalidAmount"));
       return;
     }
 
@@ -87,19 +89,19 @@ export default function DonatePage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-md rounded-lg border border-green-300 bg-green-50 p-8 text-center">
-          <h2 className="text-lg font-bold text-green-800">Thank You!</h2>
+          <h2 className="text-lg font-bold text-green-800">{t("thankYou")}</h2>
           <p className="mt-2 text-sm text-green-700">
-            Donation number: <span className="font-mono font-bold">{success.donation_number}</span>
+            {t("donationNumber")} <span className="font-mono font-bold">{success.donation_number}</span>
           </p>
           <p className="mt-1 text-sm text-green-700">
-            Amount: {success.amount} {success.currency}
+            {t("amountConfirm")} {success.amount} {success.currency}
           </p>
-          <p className="mt-1 text-sm text-green-700">Status: {success.status}</p>
+          <p className="mt-1 text-sm text-green-700">{t("status")} {success.status}</p>
           <Link
             href={`/storefront/${slug}`}
             className="mt-6 inline-block rounded-lg bg-green-700 px-6 py-2 text-sm font-medium text-white hover:bg-green-800"
           >
-            Back to Store
+            {t("backToStore")}
           </Link>
         </div>
       </div>
@@ -113,10 +115,10 @@ export default function DonatePage() {
           href={`/storefront/${slug}`}
           className="mb-4 inline-block text-sm text-blue-600 hover:underline"
         >
-          &larr; Back to store
+          {t("backLink")}
         </Link>
 
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">Make a Donation</h1>
+        <h1 className="mb-6 text-2xl font-bold text-gray-900">{t("title")}</h1>
 
         <form onSubmit={handleSubmit} className="rounded-lg border bg-white p-6">
           {error && (
@@ -127,7 +129,7 @@ export default function DonatePage() {
 
           <div className="mb-3">
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Your Name <span className="text-red-500">*</span>
+              {t("yourName")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -139,7 +141,7 @@ export default function DonatePage() {
             />
           </div>
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("phone")}</label>
             <input
               type="tel"
               maxLength={50}
@@ -149,7 +151,7 @@ export default function DonatePage() {
             />
           </div>
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("email")}</label>
             <input
               type="email"
               maxLength={255}
@@ -160,7 +162,7 @@ export default function DonatePage() {
           </div>
           <div className="mb-3">
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Amount <span className="text-red-500">*</span>
+              {t("amount")} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -174,13 +176,13 @@ export default function DonatePage() {
             />
           </div>
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Campaign</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("campaign")}</label>
             <input
               type="text"
               maxLength={255}
               value={campaign}
               onChange={(e) => setCampaign(e.target.value)}
-              placeholder="e.g. Ramadan 2026"
+              placeholder={t("campaignPlaceholder")}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -193,7 +195,7 @@ export default function DonatePage() {
               className="h-4 w-4 rounded border-gray-300"
             />
             <label htmlFor="receipt" className="text-sm text-gray-700">
-              I would like a receipt
+              {t("receiptRequested")}
             </label>
           </div>
 
@@ -202,7 +204,7 @@ export default function DonatePage() {
             disabled={submitting}
             className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {submitting ? "Submitting..." : "Submit Donation"}
+            {submitting ? t("submitting") : t("submitDonation")}
           </button>
         </form>
       </div>
