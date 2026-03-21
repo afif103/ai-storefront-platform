@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { z } from "zod/v4";
+import { useTranslations } from "next-intl";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 const signupSchema = z
   .object({
@@ -33,6 +35,7 @@ export default function SignupPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const t = useTranslations("signup");
 
   function handleChange(field: keyof SignupForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -67,16 +70,19 @@ export default function SignupPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="w-full max-w-md space-y-4 rounded-lg bg-white p-8 text-center shadow">
-          <h1 className="text-2xl font-bold text-gray-900">Check Your Email</h1>
+          <div className="flex justify-end">
+            <LocaleSwitcher className="text-sm text-gray-500 hover:text-gray-700" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">{t("checkYourEmail")}</h1>
           <p className="text-gray-600">
-            Once Cognito is configured, a verification email will be sent to{" "}
+            {t("verificationEmailSent")}{" "}
             <strong>{form.email}</strong>.
           </p>
           <Link
             href="/verify-email"
             className="inline-block text-blue-600 hover:underline"
           >
-            Go to verification page
+            {t("goToVerification")}
           </Link>
         </div>
       </div>
@@ -86,23 +92,26 @@ export default function SignupPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md space-y-6 rounded-lg bg-white p-8 shadow">
+        <div className="flex justify-end">
+          <LocaleSwitcher className="text-sm text-gray-500 hover:text-gray-700" />
+        </div>
         <h1 className="text-center text-2xl font-bold text-gray-900">
-          Create Account
+          {t("createAccount")}
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field
             id="fullName"
-            label="Full Name"
+            label={t("fullName")}
             type="text"
             value={form.fullName}
             onChange={(v) => handleChange("fullName", v)}
             error={errors.fullName}
-            placeholder="Your full name"
+            placeholder={t("fullNamePlaceholder")}
           />
           <Field
             id="email"
-            label="Email"
+            label={t("email")}
             type="email"
             value={form.email}
             onChange={(v) => handleChange("email", v)}
@@ -111,7 +120,7 @@ export default function SignupPage() {
           />
           <Field
             id="password"
-            label="Password"
+            label={t("password")}
             type="password"
             value={form.password}
             onChange={(v) => handleChange("password", v)}
@@ -119,7 +128,7 @@ export default function SignupPage() {
           />
           <Field
             id="confirmPassword"
-            label="Confirm Password"
+            label={t("confirmPassword")}
             type="password"
             value={form.confirmPassword}
             onChange={(v) => handleChange("confirmPassword", v)}
@@ -130,14 +139,14 @@ export default function SignupPage() {
             type="submit"
             className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            Sign Up
+            {t("signUp")}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-600">
-          Already have an account?{" "}
+          {t("alreadyHaveAccount")}{" "}
           <Link href="/login" className="text-blue-600 hover:underline">
-            Sign in
+            {t("signIn")}
           </Link>
         </p>
       </div>

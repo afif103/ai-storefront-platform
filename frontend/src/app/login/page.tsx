@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 const DEV_AUTH_ENABLED = process.env.NEXT_PUBLIC_DEV_AUTH === "true";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
+  const t = useTranslations("login");
 
   // Regular login form state
   const [email, setEmail] = useState("");
@@ -25,9 +28,7 @@ export default function LoginPage() {
     setError("");
 
     // Real Cognito login is not wired yet — show message
-    setError(
-      "Cognito login is not configured yet. Use Dev Login below to paste a mock JWT."
-    );
+    setError(t("cognitoNotConfigured"));
   }
 
   function handleDevLogin(e: React.FormEvent) {
@@ -36,14 +37,14 @@ export default function LoginPage() {
 
     const trimmed = devToken.replace(/\s+/g, "");
     if (!trimmed) {
-      setError("Please paste a JWT token");
+      setError(t("pasteJwt"));
       return;
     }
 
     // Basic JWT structure check (three dot-separated parts)
     const parts = trimmed.split(".");
     if (parts.length !== 3) {
-      setError("Invalid JWT format (expected three dot-separated parts)");
+      setError(t("invalidJwt"));
       return;
     }
 
@@ -54,8 +55,11 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md space-y-6 rounded-lg bg-white p-8 shadow">
+        <div className="flex justify-end">
+          <LocaleSwitcher className="text-sm text-gray-500 hover:text-gray-700" />
+        </div>
         <h1 className="text-center text-2xl font-bold text-gray-900">
-          Sign In
+          {t("signIn")}
         </h1>
 
         {error && (
@@ -70,7 +74,7 @@ export default function LoginPage() {
               htmlFor="email"
               className="block text-sm font-medium text-gray-700"
             >
-              Email
+              {t("email")}
             </label>
             <input
               id="email"
@@ -87,7 +91,7 @@ export default function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-gray-700"
             >
-              Password
+              {t("password")}
             </label>
             <input
               id="password"
@@ -102,16 +106,16 @@ export default function LoginPage() {
             type="submit"
             className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            Sign In
+            {t("signInButton")}
           </button>
         </form>
 
         <div className="flex justify-between text-sm">
           <Link href="/forgot-password" className="text-blue-600 hover:underline">
-            Forgot password?
+            {t("forgotPassword")}
           </Link>
           <Link href="/signup" className="text-blue-600 hover:underline">
-            Create account
+            {t("createAccount")}
           </Link>
         </div>
 
@@ -123,17 +127,18 @@ export default function LoginPage() {
               onClick={() => setShowDevLogin(!showDevLogin)}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
-              {showDevLogin ? "Hide" : "Show"} Dev Login
+              {showDevLogin ? t("hideDevLogin") : t("showDevLogin")}
             </button>
 
             {showDevLogin && (
               <form onSubmit={handleDevLogin} className="mt-3 space-y-3">
                 <p className="text-xs text-gray-500">
-                  Paste a mock JWT from the backend. Generate one with:
+                  {t("devLoginInstructions")}
                   <br />
                   <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">
                     cd backend &amp;&amp; python -c &quot;from app.core.security
-                    import create_mock_access_token; print(create_mock_access_token(sub=&apos;your-sub&apos;,
+                    import create_mock_access_token;
+                    print(create_mock_access_token(sub=&apos;your-sub&apos;,
                     email=&apos;you@example.com&apos;))&quot;
                   </code>
                 </p>
@@ -148,7 +153,7 @@ export default function LoginPage() {
                   type="submit"
                   className="w-full rounded bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900"
                 >
-                  Dev Login with Token
+                  {t("devLoginButton")}
                 </button>
               </form>
             )}
