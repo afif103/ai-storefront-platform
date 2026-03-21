@@ -121,5 +121,15 @@
     "title": "Verify Your Email",
     "description": "Check your inbox for a verification link from Cognito. This page will be functional once AWS Cognito is configured (M1 task 1.11).",
     "backToLogin": "Back to Login"
+  },
+  "forgotPassword": {
+    "title": "Reset Password",
+    "description": "Enter your email and we'll send you a reset link.",
+    "email": "Email",
+    "sendResetLink": "Send Reset Link",
+    "backToLogin": "Back to login",
+    "checkYourEmail": "Check Your Email",
+    "resetEmailSent": "If <bold>{email}</bold> is registered, you will receive a password reset link. This will work once Cognito is configured.",
+    "backToLoginButton": "Back to Login"
   }
 }

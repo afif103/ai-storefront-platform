@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const t = useTranslations("forgotPassword");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -17,16 +20,21 @@ export default function ForgotPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="w-full max-w-md space-y-4 rounded-lg bg-white p-8 text-center shadow">
-          <h1 className="text-2xl font-bold text-gray-900">Check Your Email</h1>
+          <div className="flex justify-end">
+            <LocaleSwitcher className="text-sm text-gray-500 hover:text-gray-700" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">{t("checkYourEmail")}</h1>
           <p className="text-gray-600">
-            If <strong>{email}</strong> is registered, you will receive a
-            password reset link. This will work once Cognito is configured.
+            {t.rich("resetEmailSent", {
+              email,
+              bold: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
           <Link
             href="/login"
             className="inline-block rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            Back to Login
+            {t("backToLoginButton")}
           </Link>
         </div>
       </div>
@@ -36,11 +44,14 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md space-y-6 rounded-lg bg-white p-8 shadow">
+        <div className="flex justify-end">
+          <LocaleSwitcher className="text-sm text-gray-500 hover:text-gray-700" />
+        </div>
         <h1 className="text-center text-2xl font-bold text-gray-900">
-          Reset Password
+          {t("title")}
         </h1>
         <p className="text-center text-sm text-gray-600">
-          Enter your email and we&apos;ll send you a reset link.
+          {t("description")}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -49,7 +60,7 @@ export default function ForgotPasswordPage() {
               htmlFor="email"
               className="block text-sm font-medium text-gray-700"
             >
-              Email
+              {t("email")}
             </label>
             <input
               id="email"
@@ -65,13 +76,13 @@ export default function ForgotPasswordPage() {
             type="submit"
             className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            Send Reset Link
+            {t("sendResetLink")}
           </button>
         </form>
 
         <p className="text-center text-sm">
           <Link href="/login" className="text-blue-600 hover:underline">
-            Back to login
+            {t("backToLogin")}
           </Link>
         </p>
       </div>
