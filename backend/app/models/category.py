@@ -15,6 +15,8 @@ class Category(TenantScopedBase):
     # tenant_id inherited from TenantScopedBase
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    name_ar: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     created_at: Mapped[datetime] = mapped_column(
