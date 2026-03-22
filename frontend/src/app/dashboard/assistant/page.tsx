@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
@@ -26,6 +27,7 @@ function AssistantContent() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations("dashboardAssistant");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -65,9 +67,9 @@ function AssistantContent() {
         const msg = parsed.message ?? detail;
         const type = parsed.type;
         if (type === "quota_exhausted") {
-          setError("AI token quota exhausted for this month.");
+          setError(t("quotaExhausted"));
         } else if (type === "rate_limited") {
-          setError("Rate limit reached. Please wait a moment.");
+          setError(t("rateLimited"));
         } else {
           setError(String(msg));
         }
@@ -82,7 +84,7 @@ function AssistantContent() {
           {messages.length === 0 && (
             <div className="rounded-lg border bg-white p-8 text-center">
               <p className="text-gray-500">
-                Ask me about your orders, donations, pledges, or products.
+                {t("emptyPrompt")}
               </p>
             </div>
           )}
@@ -105,7 +107,7 @@ function AssistantContent() {
           {sending && (
             <div className="flex justify-start">
               <div className="rounded-lg border bg-white px-4 py-3 text-sm text-gray-400">
-                Thinking...
+                {t("thinking")}
               </div>
             </div>
           )}
@@ -128,7 +130,7 @@ function AssistantContent() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={t("inputPlaceholder")}
             maxLength={2000}
             disabled={sending}
             className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-50"
@@ -138,7 +140,7 @@ function AssistantContent() {
             disabled={sending || !input.trim()}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            Send
+            {t("send")}
           </button>
         </form>
       </main>

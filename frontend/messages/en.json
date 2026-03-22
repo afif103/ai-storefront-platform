@@ -220,5 +220,13 @@
     "thStatus": "Status",
     "thCreated": "Created",
     "thActions": "Actions"
+  },
+  "dashboardAssistant": {
+    "quotaExhausted": "AI token quota exhausted for this month.",
+    "rateLimited": "Rate limit reached. Please wait a moment.",
+    "emptyPrompt": "Ask me about your orders, donations, pledges, or products.",
+    "thinking": "Thinking...",
+    "inputPlaceholder": "Type a message...",
+    "send": "Send"
   }
 }
