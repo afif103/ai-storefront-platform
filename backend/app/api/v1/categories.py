@@ -77,6 +77,8 @@ async def create_category(
         tenant_id=tenant_id,
         name=body.name,
         description=body.description,
+        name_ar=body.name_ar,
+        description_ar=body.description_ar,
         sort_order=body.sort_order,
         is_active=body.is_active,
     )

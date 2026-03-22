@@ -14,6 +14,8 @@ class ProductCreate(BaseModel):
     category_id: uuid.UUID | None = None
     name: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
+    name_ar: str | None = Field(None, min_length=1, max_length=255)
+    description_ar: str | None = None
     price_amount: Decimal = Field(..., ge=0, decimal_places=3)
     currency: str | None = Field(None, min_length=3, max_length=3)
     is_active: bool = True
@@ -41,6 +43,8 @@ class ProductUpdate(BaseModel):
     category_id: uuid.UUID | None = None
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
+    name_ar: str | None = Field(None, min_length=1, max_length=255)
+    description_ar: str | None = None
     price_amount: Decimal | None = Field(None, ge=0, decimal_places=3)
     currency: str | None = Field(None, min_length=3, max_length=3)
     is_active: bool | None = None
@@ -63,6 +67,8 @@ class ProductResponse(BaseModel):
     category_id: uuid.UUID | None = None
     name: str
     description: str | None = None
+    name_ar: str | None = None
+    description_ar: str | None = None
     price_amount: Decimal
     currency: str | None = None
     effective_currency: str
