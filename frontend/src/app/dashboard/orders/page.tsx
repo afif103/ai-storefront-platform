@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
@@ -36,6 +37,7 @@ function OrdersContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [transitioning, setTransitioning] = useState<string | null>(null);
+  const t = useTranslations("dashboardOrders");
 
   useEffect(() => {
     let cancelled = false;
@@ -81,8 +83,8 @@ function OrdersContent() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-gray-900">Orders</h1>
-        <p className="mt-1 text-sm text-gray-500">View and manage customer orders</p>
+        <h1 className="text-lg font-semibold text-gray-900">{t("title")}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t("subtitle")}</p>
       </div>
 
       {error && (
@@ -92,22 +94,22 @@ function OrdersContent() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">{t("loading")}</p>
         ) : orders.length === 0 ? (
           <div className="rounded-lg border bg-white p-8 text-center">
-            <p className="text-gray-500">No orders yet.</p>
+            <p className="text-gray-500">{t("empty")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
             <table className="w-full text-left text-sm">
               <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
-                  <th className="px-4 py-3">Number</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">{t("thNumber")}</th>
+                  <th className="px-4 py-3">{t("thCustomer")}</th>
+                  <th className="px-4 py-3">{t("thTotal")}</th>
+                  <th className="px-4 py-3">{t("thStatus")}</th>
+                  <th className="px-4 py-3">{t("thCreated")}</th>
+                  <th className="px-4 py-3">{t("thActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">

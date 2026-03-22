@@ -182,5 +182,43 @@
     "databaseLabel": "Database",
     "redisLabel": "Redis",
     "checking": "Checking..."
+  },
+  "dashboardOrders": {
+    "title": "Orders",
+    "subtitle": "View and manage customer orders",
+    "loading": "Loading...",
+    "empty": "No orders yet.",
+    "thNumber": "Number",
+    "thCustomer": "Customer",
+    "thTotal": "Total",
+    "thStatus": "Status",
+    "thCreated": "Created",
+    "thActions": "Actions"
+  },
+  "dashboardDonations": {
+    "title": "Donations",
+    "subtitle": "Track and manage donation submissions",
+    "loading": "Loading...",
+    "empty": "No donations yet.",
+    "thNumber": "Number",
+    "thDonor": "Donor",
+    "thAmount": "Amount",
+    "thCampaign": "Campaign",
+    "thStatus": "Status",
+    "thCreated": "Created",
+    "thActions": "Actions"
+  },
+  "dashboardPledges": {
+    "title": "Pledges",
+    "subtitle": "Monitor pledge commitments and fulfillment",
+    "loading": "Loading...",
+    "empty": "No pledges yet.",
+    "thNumber": "Number",
+    "thPledgor": "Pledgor",
+    "thAmount": "Amount",
+    "thTargetDate": "Target Date",
+    "thStatus": "Status",
+    "thCreated": "Created",
+    "thActions": "Actions"
   }
 }
