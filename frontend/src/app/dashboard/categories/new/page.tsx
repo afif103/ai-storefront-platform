@@ -11,7 +11,9 @@ function CreateCategoryContent() {
   const router = useRouter();
   const t = useTranslations("dashboardCategories");
   const [name, setName] = useState("");
+  const [nameAr, setNameAr] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionAr, setDescriptionAr] = useState("");
   const [sortOrder, setSortOrder] = useState(0);
   const [isActive, setIsActive] = useState(true);
   const [error, setError] = useState("");
@@ -27,6 +29,8 @@ function CreateCategoryContent() {
       body: JSON.stringify({
         name,
         description: description || null,
+        name_ar: nameAr || null,
+        description_ar: descriptionAr || null,
         sort_order: sortOrder,
         is_active: isActive,
       }),
@@ -82,12 +86,37 @@ function CreateCategoryContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("formNameAr")}
+            </label>
+            <input
+              type="text"
+              maxLength={255}
+              value={nameAr}
+              onChange={(e) => setNameAr(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               {t("description")}
             </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("formDescriptionAr")}
+            </label>
+            <textarea
+              rows={3}
+              value={descriptionAr}
+              onChange={(e) => setDescriptionAr(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>

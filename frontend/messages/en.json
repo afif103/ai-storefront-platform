@@ -287,7 +287,9 @@
     "creating": "Creating...",
     "createCategory": "Create Category",
     "saving": "Saving...",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "formNameAr": "Name (Arabic)",
+    "formDescriptionAr": "Description (Arabic)"
   },
   "dashboardProducts": {
     "title": "Products",
