@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
 
@@ -17,6 +18,7 @@ interface PaginatedCategories {
 
 function CreateProductContent() {
   const router = useRouter();
+  const t = useTranslations("dashboardProducts");
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
@@ -77,10 +79,10 @@ function CreateProductContent() {
       <header className="border-b bg-white shadow-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
           <Link href="/dashboard/products" className="text-sm text-blue-600 hover:underline">
-            Products
+            {t("title")}
           </Link>
           <span className="text-gray-300">/</span>
-          <h1 className="text-lg font-semibold text-gray-900">New Product</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t("newProduct")}</h1>
         </div>
       </header>
 
@@ -97,7 +99,7 @@ function CreateProductContent() {
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Name
+              {t("formName")}
             </label>
             <input
               type="text"
@@ -111,7 +113,7 @@ function CreateProductContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Description
+              {t("formDescription")}
             </label>
             <textarea
               rows={3}
@@ -123,14 +125,14 @@ function CreateProductContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Category <span className="text-gray-400">(optional)</span>
+              {t("formCategoryOptional")}
             </label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="">No category</option>
+              <option value="">{t("noCategory")}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -142,7 +144,7 @@ function CreateProductContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Price
+                {t("formPrice")}
               </label>
               <input
                 type="number"
@@ -157,12 +159,12 @@ function CreateProductContent() {
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Currency <span className="text-gray-400">(optional, e.g. KWD)</span>
+                {t("formCurrencyHint")}
               </label>
               <input
                 type="text"
                 maxLength={3}
-                placeholder="Tenant default"
+                placeholder={t("tenantDefault")}
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value.toUpperCase())}
                 className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -173,7 +175,7 @@ function CreateProductContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Sort Order
+                {t("formSortOrder")}
               </label>
               <input
                 type="number"
@@ -191,7 +193,7 @@ function CreateProductContent() {
                   onChange={(e) => setIsActive(e.target.checked)}
                   className="rounded border-gray-300"
                 />
-                Active
+                {t("active")}
               </label>
             </div>
           </div>
@@ -205,14 +207,14 @@ function CreateProductContent() {
                   onChange={(e) => setTrackInventory(e.target.checked)}
                   className="rounded border-gray-300"
                 />
-                Track Inventory
+                {t("trackInventory")}
               </label>
             </div>
 
             {trackInventory && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Stock Qty
+                  {t("formStockQty")}
                 </label>
                 <input
                   type="number"
@@ -229,8 +231,7 @@ function CreateProductContent() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Low Stock Threshold
-                  <span className="ml-1 text-gray-400">(0 = disabled)</span>
+                  {t("formLowStockThreshold")}
                 </label>
                 <input
                   type="number"
@@ -249,19 +250,19 @@ function CreateProductContent() {
               href="/dashboard/products"
               className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
-              Cancel
+              {t("cancel")}
             </Link>
             <button
               type="submit"
               disabled={submitting}
               className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {submitting ? "Creating..." : "Create Product"}
+              {submitting ? t("creating") : t("createProduct")}
             </button>
           </div>
 
           <p className="text-xs text-gray-400">
-            Upload images on the edit page.
+            {t("uploadImagesHint")}
           </p>
         </form>
       </main>

@@ -317,6 +317,25 @@
     "deleteError": "Failed to delete \"{name}\": {error}",
     "confirmBulkDelete": "Delete selected products ({count})?",
     "bulkDeletedToast": "Deleted {count} products",
-    "bulkDeleteError": "Bulk delete failed: {error}"
+    "bulkDeleteError": "Bulk delete failed: {error}",
+    "formName": "Name",
+    "formDescription": "Description",
+    "formCategoryOptional": "Category (optional)",
+    "noCategory": "No category",
+    "formPrice": "Price",
+    "formCurrencyHint": "Currency (optional, e.g. KWD)",
+    "tenantDefault": "Tenant default",
+    "formSortOrder": "Sort Order",
+    "trackInventory": "Track Inventory",
+    "formStockQty": "Stock Qty",
+    "formLowStockThreshold": "Low Stock Threshold (0 = disabled)",
+    "cancel": "Cancel",
+    "newProduct": "New Product",
+    "creating": "Creating...",
+    "createProduct": "Create Product",
+    "uploadImagesHint": "Upload images on the edit page.",
+    "editProduct": "Edit Product",
+    "saving": "Saving...",
+    "saveChanges": "Save Changes"
   }
 }

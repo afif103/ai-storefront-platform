@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
 import { uploadFile, getMediaDownloadUrl } from "@/lib/upload";
@@ -76,6 +77,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 function EditProductContent() {
   const router = useRouter();
+  const t = useTranslations("dashboardProducts");
   const params = useParams();
   const productId = params.id as string;
 
@@ -356,7 +358,7 @@ function EditProductContent() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-gray-400">Loading...</p>
+        <p className="text-sm text-gray-400">{t("loading")}</p>
       </div>
     );
   }
@@ -371,10 +373,10 @@ function EditProductContent() {
             href="/dashboard/products"
             className="text-sm text-blue-600 hover:underline"
           >
-            Products
+            {t("title")}
           </Link>
           <span className="text-gray-300">/</span>
-          <h1 className="text-lg font-semibold text-gray-900">Edit Product</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t("editProduct")}</h1>
         </div>
       </header>
 
@@ -391,7 +393,7 @@ function EditProductContent() {
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Name
+              {t("formName")}
             </label>
             <input
               type="text"
@@ -405,7 +407,7 @@ function EditProductContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Description
+              {t("formDescription")}
             </label>
             <textarea
               rows={3}
@@ -417,14 +419,14 @@ function EditProductContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Category <span className="text-gray-400">(optional)</span>
+              {t("formCategoryOptional")}
             </label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="">No category</option>
+              <option value="">{t("noCategory")}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -436,7 +438,7 @@ function EditProductContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Price
+                {t("formPrice")}
               </label>
               <input
                 type="number"
@@ -451,13 +453,12 @@ function EditProductContent() {
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Currency{" "}
-                <span className="text-gray-400">(optional, e.g. KWD)</span>
+                {t("formCurrencyHint")}
               </label>
               <input
                 type="text"
                 maxLength={3}
-                placeholder="Tenant default"
+                placeholder={t("tenantDefault")}
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value.toUpperCase())}
                 className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -468,7 +469,7 @@ function EditProductContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Sort Order
+                {t("formSortOrder")}
               </label>
               <input
                 type="number"
@@ -486,7 +487,7 @@ function EditProductContent() {
                   onChange={(e) => setIsActive(e.target.checked)}
                   className="rounded border-gray-300"
                 />
-                Active
+                {t("active")}
               </label>
             </div>
           </div>
@@ -500,14 +501,14 @@ function EditProductContent() {
                   onChange={(e) => setTrackInventory(e.target.checked)}
                   className="rounded border-gray-300"
                 />
-                Track Inventory
+                {t("trackInventory")}
               </label>
             </div>
 
             {trackInventory && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Stock Qty
+                  {t("formStockQty")}
                 </label>
                 <input
                   type="number"
@@ -524,8 +525,7 @@ function EditProductContent() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Low Stock Threshold
-                  <span className="ml-1 text-gray-400">(0 = disabled)</span>
+                  {t("formLowStockThreshold")}
                 </label>
                 <input
                   type="number"
@@ -544,14 +544,14 @@ function EditProductContent() {
               href="/dashboard/products"
               className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
-              Cancel
+              {t("cancel")}
             </Link>
             <button
               type="submit"
               disabled={submitting || anyUploading}
               className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {submitting ? "Saving..." : "Save Changes"}
+              {submitting ? t("saving") : t("saveChanges")}
             </button>
           </div>
         </form>
