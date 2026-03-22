@@ -131,5 +131,28 @@
     "checkYourEmail": "Check Your Email",
     "resetEmailSent": "If <bold>{email}</bold> is registered, you will receive a password reset link. This will work once Cognito is configured.",
     "backToLoginButton": "Back to Login"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "signOut": "Sign Out",
+    "openMenu": "Open menu",
+    "navLabel": "Dashboard navigation",
+    "loading": "Loading...",
+    "sectionOverview": "Overview",
+    "sectionAnalytics": "Analytics",
+    "sectionAI": "AI",
+    "sectionStore": "Store",
+    "sectionTransactions": "Transactions",
+    "sectionAdmin": "Admin",
+    "navDashboard": "Dashboard",
+    "navAnalytics": "Analytics",
+    "navAssistant": "Assistant",
+    "navStorefront": "Storefront",
+    "navCategories": "Categories",
+    "navProducts": "Products",
+    "navOrders": "Orders",
+    "navDonations": "Donations",
+    "navPledges": "Pledges",
+    "navManageTenants": "Manage Tenants"
   }
 }

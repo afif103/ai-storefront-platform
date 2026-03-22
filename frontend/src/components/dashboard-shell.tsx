@@ -3,54 +3,56 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 // ---------------------------------------------------------------------------
-// Navigation structure
+// Navigation structure (translation keys, resolved at render time)
 // ---------------------------------------------------------------------------
 
 interface NavItem {
-  label: string;
+  labelKey: string;
   href: string;
 }
 
 interface NavGroup {
-  section: string;
+  sectionKey: string;
   items: NavItem[];
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    section: "Overview",
-    items: [{ label: "Dashboard", href: "/dashboard" }],
+    sectionKey: "sectionOverview",
+    items: [{ labelKey: "navDashboard", href: "/dashboard" }],
   },
   {
-    section: "Analytics",
-    items: [{ label: "Analytics", href: "/dashboard/analytics" }],
+    sectionKey: "sectionAnalytics",
+    items: [{ labelKey: "navAnalytics", href: "/dashboard/analytics" }],
   },
   {
-    section: "AI",
-    items: [{ label: "Assistant", href: "/dashboard/assistant" }],
+    sectionKey: "sectionAI",
+    items: [{ labelKey: "navAssistant", href: "/dashboard/assistant" }],
   },
   {
-    section: "Store",
+    sectionKey: "sectionStore",
     items: [
-      { label: "Storefront", href: "/dashboard/storefront" },
-      { label: "Categories", href: "/dashboard/categories" },
-      { label: "Products", href: "/dashboard/products" },
+      { labelKey: "navStorefront", href: "/dashboard/storefront" },
+      { labelKey: "navCategories", href: "/dashboard/categories" },
+      { labelKey: "navProducts", href: "/dashboard/products" },
     ],
   },
   {
-    section: "Transactions",
+    sectionKey: "sectionTransactions",
     items: [
-      { label: "Orders", href: "/dashboard/orders" },
-      { label: "Donations", href: "/dashboard/donations" },
-      { label: "Pledges", href: "/dashboard/pledges" },
+      { labelKey: "navOrders", href: "/dashboard/orders" },
+      { labelKey: "navDonations", href: "/dashboard/donations" },
+      { labelKey: "navPledges", href: "/dashboard/pledges" },
     ],
   },
   {
-    section: "Admin",
-    items: [{ label: "Manage Tenants", href: "/dashboard/admin/tenants" }],
+    sectionKey: "sectionAdmin",
+    items: [{ labelKey: "navManageTenants", href: "/dashboard/admin/tenants" }],
   },
 ];
 
@@ -72,11 +74,13 @@ function SidebarContent({
   email,
   onLogout,
   onNavClick,
+  t,
 }: {
   pathname: string;
   email: string | undefined;
   onLogout: () => void;
   onNavClick?: () => void;
+  t: ReturnType<typeof useTranslations>;
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -87,16 +91,16 @@ function SidebarContent({
           className="text-base font-semibold text-gray-900"
           onClick={onNavClick}
         >
-          Dashboard
+          {t("title")}
         </Link>
       </div>
 
       {/* Nav groups */}
-      <nav aria-label="Dashboard navigation" className="flex-1 overflow-y-auto px-3 py-4">
+      <nav aria-label={t("navLabel")} className="flex-1 overflow-y-auto px-3 py-4">
         {NAV_GROUPS.map((group) => (
-          <div key={group.section} className="mb-4">
+          <div key={group.sectionKey} className="mb-4">
             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
-              {group.section}
+              {t(group.sectionKey)}
             </p>
             {group.items.map((item) => {
               const active = isActive(pathname, item.href);
@@ -111,7 +115,7 @@ function SidebarContent({
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               );
             })}
@@ -119,14 +123,17 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* Bottom: user + sign out */}
+      {/* Bottom: locale + user + sign out */}
       <div className="border-t px-4 py-3">
-        <p className="truncate text-xs text-gray-500">{email}</p>
+        <div className="flex items-center justify-between">
+          <p className="truncate text-xs text-gray-500">{email}</p>
+          <LocaleSwitcher className="text-xs text-gray-400 hover:text-gray-600" />
+        </div>
         <button
           onClick={onLogout}
           className="mt-2 w-full rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
         >
-          Sign Out
+          {t("signOut")}
         </button>
       </div>
     </div>
@@ -142,6 +149,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const t = useTranslations("dashboard");
 
   function handleLogout() {
     logout();
@@ -156,6 +164,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           pathname={pathname}
           email={user?.email}
           onLogout={handleLogout}
+          t={t}
         />
       </aside>
 
@@ -181,9 +190,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               d="M4 6h16M4 12h16M4 18h16"
             />
           </svg>
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">{t("openMenu")}</span>
         </button>
-        <span className="ml-3 text-sm font-semibold text-gray-900">Dashboard</span>
+        <span className="ml-3 text-sm font-semibold text-gray-900">{t("title")}</span>
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -205,6 +214,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               email={user?.email}
               onLogout={handleLogout}
               onNavClick={() => setMobileOpen(false)}
+              t={t}
             />
           </aside>
         </div>
