@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
@@ -30,6 +31,7 @@ const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 function StorefrontSettingsContent() {
+  const t = useTranslations("dashboardStorefront");
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
   const [heroText, setHeroText] = useState("");
   const [primaryColor, setPrimaryColor] = useState("");
@@ -90,11 +92,11 @@ function StorefrontSettingsContent() {
     setSuccess("");
 
     if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
-      setUploadError("Only JPEG, PNG, and WebP images are allowed.");
+      setUploadError(t("uploadInvalidType"));
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError("File size must be under 10 MB.");
+      setUploadError(t("uploadTooLarge"));
       return;
     }
 
@@ -130,14 +132,14 @@ function StorefrontSettingsContent() {
     );
 
     if (!updateResult.ok) {
-      setUploadError(`Logo uploaded but failed to save: ${updateResult.detail}`);
+      setUploadError(t("uploadSaveError", { error: updateResult.detail }));
       setUploading(false);
       setUploadProgress(null);
       return;
     }
 
     setConfig(updateResult.data);
-    setSuccess("Logo updated successfully.");
+    setSuccess(t("logoUpdated"));
     setUploading(false);
     setUploadProgress(null);
 
@@ -164,7 +166,7 @@ function StorefrontSettingsContent() {
 
     if (result.ok) {
       setConfig(result.data);
-      setSuccess("Storefront settings saved.");
+      setSuccess(t("settingsSaved"));
     } else {
       setError(result.detail);
     }
@@ -174,7 +176,7 @@ function StorefrontSettingsContent() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-gray-400">Loading...</p>
+        <p className="text-sm text-gray-400">{t("loading")}</p>
       </div>
     );
   }
@@ -182,8 +184,8 @@ function StorefrontSettingsContent() {
   return (
     <main className="mx-auto max-w-2xl px-6 py-8">
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-gray-900">Storefront Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">Customize branding, colors, and storefront details</p>
+        <h1 className="text-lg font-semibold text-gray-900">{t("title")}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t("subtitle")}</p>
       </div>
         {error && (
           <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -199,7 +201,7 @@ function StorefrontSettingsContent() {
         {/* Logo Upload Section */}
         <div className="mb-6 rounded-lg border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Logo
+            {t("sectionLogo")}
           </h2>
 
           <div className="mb-4">
@@ -207,26 +209,26 @@ function StorefrontSettingsContent() {
               /* eslint-disable-next-line @next/next/no-img-element -- presigned/object URL */
               <img
                 src={logoPreview}
-                alt="Storefront logo"
+                alt={t("logoAlt")}
                 className="h-20 w-20 rounded border border-gray-200 object-contain"
               />
             ) : (
               <div className="flex h-20 w-20 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50">
-                <span className="text-xs text-gray-400">No logo</span>
+                <span className="text-xs text-gray-400">{t("noLogo")}</span>
               </div>
             )}
             {config?.logo_s3_key ? (
-              <p className="mt-1 text-xs text-gray-500">Logo is set.</p>
+              <p className="mt-1 text-xs text-gray-500">{t("logoIsSet")}</p>
             ) : (
-              <p className="mt-1 text-xs text-gray-500">No logo uploaded yet.</p>
+              <p className="mt-1 text-xs text-gray-500">{t("noLogoYet")}</p>
             )}
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Upload logo
+              {t("uploadLogoLabel")}{" "}
               <span className="ml-1 text-gray-400">
-                (JPEG, PNG, WebP, max 10 MB)
+                {t("uploadLogoFormats")}
               </span>
             </label>
             <input
@@ -248,12 +250,12 @@ function StorefrontSettingsContent() {
                 />
               </div>
               <p className="mt-1 text-xs text-gray-500">
-                Uploading... {uploadProgress.percent}%
+                {t("uploadingProgress", { percent: uploadProgress.percent })}
               </p>
             </div>
           )}
           {uploading && !uploadProgress && (
-            <p className="mt-2 text-xs text-gray-500">Preparing upload...</p>
+            <p className="mt-2 text-xs text-gray-500">{t("preparingUpload")}</p>
           )}
 
           {uploadError && (
@@ -269,18 +271,18 @@ function StorefrontSettingsContent() {
           className="space-y-4 rounded-lg border bg-white p-6 shadow-sm"
         >
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Branding
+            {t("sectionBranding")}
           </h2>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Hero Text
+              {t("heroText")}
             </label>
             <input
               type="text"
               value={heroText}
               onChange={(e) => setHeroText(e.target.value)}
-              placeholder="Welcome to our store"
+              placeholder={t("heroTextPlaceholder")}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -288,7 +290,7 @@ function StorefrontSettingsContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Primary Color
+                {t("primaryColor")}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -309,7 +311,7 @@ function StorefrontSettingsContent() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Secondary Color
+                {t("secondaryColor")}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -337,7 +339,7 @@ function StorefrontSettingsContent() {
               disabled={submitting}
               className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {submitting ? "Saving..." : "Save Branding"}
+              {submitting ? t("saving") : t("saveBranding")}
             </button>
           </div>
         </form>

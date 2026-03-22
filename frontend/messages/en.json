@@ -363,5 +363,31 @@
     "imagesSavedNote": "Images are saved immediately when uploaded. Remove only hides from this view.",
     "imagesInvalidType": "\"{name}\" skipped \u2014 only JPEG, PNG, and WebP are allowed.",
     "imagesTooLarge": "\"{name}\" skipped \u2014 file size must be under 10 MB."
+  },
+  "dashboardStorefront": {
+    "title": "Storefront Settings",
+    "subtitle": "Customize branding, colors, and storefront details",
+    "loading": "Loading...",
+    "sectionLogo": "Logo",
+    "logoAlt": "Storefront logo",
+    "noLogo": "No logo",
+    "logoIsSet": "Logo is set.",
+    "noLogoYet": "No logo uploaded yet.",
+    "uploadLogoLabel": "Upload logo",
+    "uploadLogoFormats": "(JPEG, PNG, WebP, max 10 MB)",
+    "uploadingProgress": "Uploading... {percent}%",
+    "preparingUpload": "Preparing upload...",
+    "uploadInvalidType": "Only JPEG, PNG, and WebP images are allowed.",
+    "uploadTooLarge": "File size must be under 10 MB.",
+    "uploadSaveError": "Logo uploaded but failed to save: {error}",
+    "logoUpdated": "Logo updated successfully.",
+    "sectionBranding": "Branding",
+    "heroText": "Hero Text",
+    "heroTextPlaceholder": "Welcome to our store",
+    "primaryColor": "Primary Color",
+    "secondaryColor": "Secondary Color",
+    "saving": "Saving...",
+    "saveBranding": "Save Branding",
+    "settingsSaved": "Storefront settings saved."
   }
 }
