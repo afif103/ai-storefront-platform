@@ -228,5 +228,33 @@
     "thinking": "Thinking...",
     "inputPlaceholder": "Type a message...",
     "send": "Send"
+  },
+  "dashboardAnalytics": {
+    "title": "Analytics",
+    "subtitle": "Visitor funnel, sessions, and daily trends",
+    "exportCsv": "Export CSV",
+    "loading": "Loading analytics...",
+    "emptyTitle": "No data for the selected range.",
+    "emptyHint": "Analytics events will appear here once your storefront receives traffic.",
+    "range7d": "Last 7 days",
+    "range30d": "Last 30 days",
+    "range90d": "Last 90 days",
+    "funnelStorefrontViews": "Storefront Views",
+    "funnelProductViews": "Product Views",
+    "funnelAddToCart": "Add to Cart",
+    "funnelBeginCheckout": "Begin Checkout",
+    "funnelOrders": "Orders",
+    "funnelDonations": "Donations",
+    "funnelPledges": "Pledges",
+    "kpiVisitors": "Visitors",
+    "kpiSessions": "Sessions",
+    "conversionFunnel": "Conversion Funnel",
+    "thStep": "Step",
+    "thCount": "Count",
+    "thRate": "Rate",
+    "thBar": "Bar",
+    "dailyActivity": "Daily Activity",
+    "thDate": "Date",
+    "thSubmissions": "Submissions"
   }
 }

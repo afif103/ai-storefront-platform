@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
@@ -48,10 +49,10 @@ function dateRange(preset: RangePreset): { from: string; to: string } {
   };
 }
 
-const RANGE_LABELS: Record<RangePreset, string> = {
-  "7d": "Last 7 days",
-  "30d": "Last 30 days",
-  "90d": "Last 90 days",
+const RANGE_LABEL_KEYS: Record<RangePreset, string> = {
+  "7d": "range7d",
+  "30d": "range30d",
+  "90d": "range90d",
 };
 
 const FUNNEL_LABELS: Record<string, string> = {
@@ -62,6 +63,16 @@ const FUNNEL_LABELS: Record<string, string> = {
   submit_order: "Orders",
   submit_donation: "Donations",
   submit_pledge: "Pledges",
+};
+
+const FUNNEL_KEYS: Record<string, string> = {
+  storefront_view: "funnelStorefrontViews",
+  product_view: "funnelProductViews",
+  add_to_cart: "funnelAddToCart",
+  begin_checkout: "funnelBeginCheckout",
+  submit_order: "funnelOrders",
+  submit_donation: "funnelDonations",
+  submit_pledge: "funnelPledges",
 };
 
 // ---------------------------------------------------------------------------
@@ -125,6 +136,7 @@ function AnalyticsContent() {
   const [data, setData] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const t = useTranslations("dashboardAnalytics");
 
   useEffect(() => {
     async function fetchSummary() {
@@ -155,13 +167,13 @@ function AnalyticsContent() {
       {/* Page intro + controls */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Analytics</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t("title")}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Visitor funnel, sessions, and daily trends
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">{RANGE_LABELS[preset]}</span>
+          <span className="text-sm text-gray-500">{t(RANGE_LABEL_KEYS[preset])}</span>
           <div className="flex gap-1">
             {(["7d", "30d", "90d"] as RangePreset[]).map((p) => (
               <button
@@ -182,12 +194,12 @@ function AnalyticsContent() {
             disabled={loading || !data || data.visitors === 0}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Export CSV
+            {t("exportCsv")}
           </button>
         </div>
       </div>
         {loading && (
-          <p className="text-sm text-gray-400">Loading analytics...</p>
+          <p className="text-sm text-gray-400">{t("loading")}</p>
         )}
 
         {error && (
@@ -202,33 +214,32 @@ function AnalyticsContent() {
             {data.visitors === 0 ? (
               <div className="rounded-lg border bg-white p-12 text-center">
                 <p className="text-gray-500">
-                  No data for the selected range.
+                  {t("emptyTitle")}
                 </p>
                 <p className="mt-1 text-sm text-gray-400">
-                  Analytics events will appear here once your storefront
-                  receives traffic.
+                  {t("emptyHint")}
                 </p>
               </div>
             ) : (
               <>
                 {/* KPI cards */}
                 <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
-                  <KpiCard label="Visitors" value={data.visitors} />
-                  <KpiCard label="Sessions" value={data.sessions} />
+                  <KpiCard label={t("kpiVisitors")} value={data.visitors} />
+                  <KpiCard label={t("kpiSessions")} value={data.sessions} />
                   <KpiCard
-                    label="Storefront Views"
+                    label={t("funnelStorefrontViews")}
                     value={ec.storefront_view ?? 0}
                   />
                   <KpiCard
-                    label="Orders"
+                    label={t("funnelOrders")}
                     value={ec.submit_order ?? 0}
                   />
                   <KpiCard
-                    label="Donations"
+                    label={t("funnelDonations")}
                     value={ec.submit_donation ?? 0}
                   />
                   <KpiCard
-                    label="Pledges"
+                    label={t("funnelPledges")}
                     value={ec.submit_pledge ?? 0}
                   />
                 </div>
@@ -236,22 +247,22 @@ function AnalyticsContent() {
                 {/* Funnel */}
                 <section className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
                   <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                    Conversion Funnel
+                    {t("conversionFunnel")}
                   </h2>
                   <table className="w-full text-left text-sm">
                     <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
                       <tr>
-                        <th className="px-3 py-2">Step</th>
-                        <th className="px-3 py-2 text-right">Count</th>
-                        <th className="px-3 py-2 text-right">Rate</th>
-                        <th className="px-3 py-2">Bar</th>
+                        <th className="px-3 py-2">{t("thStep")}</th>
+                        <th className="px-3 py-2 text-right">{t("thCount")}</th>
+                        <th className="px-3 py-2 text-right">{t("thRate")}</th>
+                        <th className="px-3 py-2">{t("thBar")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
                       {data.funnel.map((step) => (
                         <tr key={step.event_name}>
                           <td className="px-3 py-2 text-gray-900">
-                            {FUNNEL_LABELS[step.event_name] ?? step.event_name}
+                            {FUNNEL_KEYS[step.event_name] ? t(FUNNEL_KEYS[step.event_name]) : step.event_name}
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-gray-900">
                             {step.count}
@@ -279,16 +290,16 @@ function AnalyticsContent() {
                 {data.daily_series && data.daily_series.length > 0 && (
                   <section className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
                     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                      Daily Activity
+                      {t("dailyActivity")}
                     </h2>
                     <table className="w-full text-left text-sm">
                       <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
                         <tr>
-                          <th className="px-3 py-2">Date</th>
+                          <th className="px-3 py-2">{t("thDate")}</th>
                           <th className="px-3 py-2 text-right">
-                            Storefront Views
+                            {t("funnelStorefrontViews")}
                           </th>
-                          <th className="px-3 py-2 text-right">Submissions</th>
+                          <th className="px-3 py-2 text-right">{t("thSubmissions")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
