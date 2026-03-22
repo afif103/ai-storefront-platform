@@ -154,5 +154,33 @@
     "navDonations": "Donations",
     "navPledges": "Pledges",
     "navManageTenants": "Manage Tenants"
+  },
+  "dashboardHome": {
+    "cardAnalytics": "Analytics",
+    "cardAnalyticsDesc": "View visitor funnel, sessions, and daily trends",
+    "cardAssistant": "AI Assistant",
+    "cardAssistantDesc": "Chat with your AI-powered business assistant",
+    "cardStorefront": "Storefront",
+    "cardStorefrontDesc": "Customize branding, colors, and hero content",
+    "cardCategories": "Categories",
+    "cardCategoriesDesc": "Organize your catalog with categories",
+    "cardProducts": "Products",
+    "cardProductsDesc": "Manage product catalog and inventory",
+    "cardOrders": "Orders",
+    "cardOrdersDesc": "View and manage customer orders",
+    "cardDonations": "Donations",
+    "cardDonationsDesc": "Track and manage donation submissions",
+    "cardPledges": "Pledges",
+    "cardPledgesDesc": "Monitor pledge commitments and fulfillment",
+    "openLink": "Open {title} \u2192",
+    "platformAdmin": "Platform Admin",
+    "platformAdminDesc": "Manage tenants, suspension, and platform-wide settings",
+    "platformAdminButton": "Manage Tenants",
+    "systemStatus": "System Status",
+    "backendError": "Unable to reach backend: {error}",
+    "apiLabel": "API",
+    "databaseLabel": "Database",
+    "redisLabel": "Redis",
+    "checking": "Checking..."
   }
 }
