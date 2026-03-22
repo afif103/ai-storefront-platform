@@ -354,6 +354,14 @@
     "emptyNote": "\u2014",
     "reasonManualRestock": "Manual Restock",
     "reasonManualAdjustment": "Manual Adjustment",
-    "reasonOrderCancelRestore": "Order Cancel Restore"
+    "reasonOrderCancelRestore": "Order Cancel Restore",
+    "images": "Images",
+    "imagesPreparing": "Preparing...",
+    "imagesRemove": "Remove",
+    "imagesAddLabel": "Add images",
+    "imagesFormats": "(JPEG, PNG, WebP, max 10 MB each)",
+    "imagesSavedNote": "Images are saved immediately when uploaded. Remove only hides from this view.",
+    "imagesInvalidType": "\"{name}\" skipped \u2014 only JPEG, PNG, and WebP are allowed.",
+    "imagesTooLarge": "\"{name}\" skipped \u2014 file size must be under 10 MB."
   }
 }

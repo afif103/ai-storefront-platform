@@ -234,12 +234,12 @@ function EditProductContent() {
     for (const file of Array.from(files)) {
       if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
         setImageError(
-          `"${file.name}" skipped — only JPEG, PNG, and WebP are allowed.`
+          t("imagesInvalidType", { name: file.name })
         );
         continue;
       }
       if (file.size > MAX_FILE_SIZE) {
-        setImageError(`"${file.name}" skipped — file size must be under 10 MB.`);
+        setImageError(t("imagesTooLarge", { name: file.name }));
         continue;
       }
       validFiles.push(file);
@@ -657,7 +657,7 @@ function EditProductContent() {
         {/* Product Images Section */}
         <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Images
+            {t("images")}
           </h2>
 
           {/* Thumbnail Grid */}
@@ -682,7 +682,7 @@ function EditProductContent() {
                       <span className="text-xs font-medium text-white">
                         {img.progress
                           ? `${img.progress.percent}%`
-                          : "Preparing..."}
+                          : t("imagesPreparing")}
                       </span>
                     </div>
                   )}
@@ -700,7 +700,7 @@ function EditProductContent() {
                       type="button"
                       onClick={() => handleRemoveImage(img.id)}
                       className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow group-hover:flex"
-                      title="Remove"
+                      title={t("imagesRemove")}
                     >
                       x
                     </button>
@@ -713,9 +713,9 @@ function EditProductContent() {
           {/* Upload Control */}
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Add images
+              {t("imagesAddLabel")}{" "}
               <span className="ml-1 text-gray-400">
-                (JPEG, PNG, WebP, max 10 MB each)
+                {t("imagesFormats")}
               </span>
             </label>
             <input
@@ -736,8 +736,7 @@ function EditProductContent() {
           )}
 
           <p className="mt-3 text-xs text-gray-400">
-            Images are saved immediately when uploaded. Remove only hides from
-            this view.
+            {t("imagesSavedNote")}
           </p>
         </div>
       </main>
