@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
 
 function CreateCategoryContent() {
   const router = useRouter();
+  const t = useTranslations("dashboardCategories");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [sortOrder, setSortOrder] = useState(0);
@@ -46,10 +48,10 @@ function CreateCategoryContent() {
             href="/dashboard/categories"
             className="text-sm text-blue-600 hover:underline"
           >
-            Categories
+            {t("title")}
           </Link>
           <span className="text-gray-300">/</span>
-          <h1 className="text-lg font-semibold text-gray-900">New Category</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t("newCategory")}</h1>
         </div>
       </header>
 
@@ -66,7 +68,7 @@ function CreateCategoryContent() {
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Name
+              {t("thName")}
             </label>
             <input
               type="text"
@@ -80,7 +82,7 @@ function CreateCategoryContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Description
+              {t("description")}
             </label>
             <textarea
               rows={3}
@@ -93,7 +95,7 @@ function CreateCategoryContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Sort Order
+                {t("thSortOrder")}
               </label>
               <input
                 type="number"
@@ -111,7 +113,7 @@ function CreateCategoryContent() {
                   onChange={(e) => setIsActive(e.target.checked)}
                   className="rounded border-gray-300"
                 />
-                Active
+                {t("active")}
               </label>
             </div>
           </div>
@@ -121,14 +123,14 @@ function CreateCategoryContent() {
               href="/dashboard/categories"
               className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
-              Cancel
+              {t("cancel")}
             </Link>
             <button
               type="submit"
               disabled={submitting}
               className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {submitting ? "Creating..." : "Create Category"}
+              {submitting ? t("creating") : t("createCategory")}
             </button>
           </div>
         </form>

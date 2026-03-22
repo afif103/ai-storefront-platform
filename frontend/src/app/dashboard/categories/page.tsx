@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
@@ -30,6 +31,7 @@ function CategoriesContent() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState("");
   const searchParams = useSearchParams();
+  const t = useTranslations("dashboardCategories");
 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
@@ -54,7 +56,7 @@ function CategoriesContent() {
   }, [searchParams, fetchCategories]);
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete "${name}"?`)) return;
+    if (!confirm(t("confirmDelete", { name }))) return;
     setDeletingIds((prev) => new Set(prev).add(id));
     setError("");
 
@@ -75,9 +77,9 @@ function CategoriesContent() {
         next.delete(id);
         return next;
       });
-      showToast(`Deleted "${name}"`);
+      showToast(t("deletedToast", { name }));
     } else {
-      setError(`Failed to delete "${name}": ${result.detail}`);
+      setError(t("deleteError", { name, error: result.detail }));
     }
   }
 
@@ -89,7 +91,7 @@ function CategoriesContent() {
   async function handleBulkDelete() {
     if (selected.size === 0) return;
     const count = selected.size;
-    if (!confirm(`Delete ${count} category(ies)?`)) return;
+    if (!confirm(t("confirmBulkDelete", { count }))) return;
 
     const ids = [...selected];
     setDeletingIds(new Set(ids));
@@ -109,9 +111,9 @@ function CategoriesContent() {
       const deletedSet = new Set(ids);
       setCategories((prev) => prev.filter((c) => !deletedSet.has(c.id)));
       setSelected(new Set());
-      showToast(`Deleted ${result.data.deleted} category(ies)`);
+      showToast(t("bulkDeletedToast", { count: result.data.deleted }));
     } else {
-      setError(`Bulk delete failed: ${result.detail}`);
+      setError(t("bulkDeleteError", { error: result.detail }));
     }
   }
 
@@ -137,8 +139,8 @@ function CategoriesContent() {
     <main className="mx-auto max-w-5xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Categories</h1>
-          <p className="mt-1 text-sm text-gray-500">Organize your catalog with categories</p>
+          <h1 className="text-lg font-semibold text-gray-900">{t("title")}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {selected.size > 0 && (
@@ -147,14 +149,14 @@ function CategoriesContent() {
               disabled={deletingIds.size > 0}
               className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
-              Delete {selected.size} selected
+              {t("deleteSelected", { count: selected.size })}
             </button>
           )}
           <Link
             href="/dashboard/categories/new"
             className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            Add Category
+            {t("addCategory")}
           </Link>
         </div>
       </div>
@@ -166,15 +168,15 @@ function CategoriesContent() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">{t("loading")}</p>
         ) : categories.length === 0 ? (
           <div className="rounded-lg border bg-white p-8 text-center">
-            <p className="text-gray-500">No categories yet.</p>
+            <p className="text-gray-500">{t("empty")}</p>
             <Link
               href="/dashboard/categories/new"
               className="mt-2 inline-block text-sm text-blue-600 hover:underline"
             >
-              Create your first category
+              {t("createFirst")}
             </Link>
           </div>
         ) : (
@@ -190,11 +192,11 @@ function CategoriesContent() {
                       className="rounded"
                     />
                   </th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Sort Order</th>
-                  <th className="px-4 py-3">Active</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">{t("thName")}</th>
+                  <th className="px-4 py-3">{t("thSortOrder")}</th>
+                  <th className="px-4 py-3">{t("active")}</th>
+                  <th className="px-4 py-3">{t("thCreated")}</th>
+                  <th className="px-4 py-3">{t("thActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -225,7 +227,7 @@ function CategoriesContent() {
                               : "bg-gray-100 text-gray-500"
                           }`}
                         >
-                          {cat.is_active ? "Active" : "Inactive"}
+                          {cat.is_active ? t("active") : t("inactive")}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
@@ -237,14 +239,14 @@ function CategoriesContent() {
                             href={`/dashboard/categories/${cat.id}/edit`}
                             className="text-blue-600 hover:underline"
                           >
-                            Edit
+                            {t("edit")}
                           </Link>
                           <button
                             onClick={() => handleDelete(cat.id, cat.name)}
                             disabled={isDeleting}
                             className="text-red-600 hover:underline disabled:opacity-50"
                           >
-                            {isDeleting ? "Deleting..." : "Delete"}
+                            {isDeleting ? t("deleting") : t("delete")}
                           </button>
                         </div>
                       </td>

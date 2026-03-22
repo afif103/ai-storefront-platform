@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
 
@@ -16,6 +17,7 @@ interface Category {
 
 function EditCategoryContent() {
   const router = useRouter();
+  const t = useTranslations("dashboardCategories");
   const params = useParams();
   const categoryId = params.id as string;
 
@@ -74,7 +76,7 @@ function EditCategoryContent() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-gray-400">Loading...</p>
+        <p className="text-sm text-gray-400">{t("loading")}</p>
       </div>
     );
   }
@@ -87,11 +89,11 @@ function EditCategoryContent() {
             href="/dashboard/categories"
             className="text-sm text-blue-600 hover:underline"
           >
-            Categories
+            {t("title")}
           </Link>
           <span className="text-gray-300">/</span>
           <h1 className="text-lg font-semibold text-gray-900">
-            Edit Category
+            {t("editCategory")}
           </h1>
         </div>
       </header>
@@ -109,7 +111,7 @@ function EditCategoryContent() {
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Name
+              {t("thName")}
             </label>
             <input
               type="text"
@@ -123,7 +125,7 @@ function EditCategoryContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Description
+              {t("description")}
             </label>
             <textarea
               rows={3}
@@ -136,7 +138,7 @@ function EditCategoryContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Sort Order
+                {t("thSortOrder")}
               </label>
               <input
                 type="number"
@@ -154,7 +156,7 @@ function EditCategoryContent() {
                   onChange={(e) => setIsActive(e.target.checked)}
                   className="rounded border-gray-300"
                 />
-                Active
+                {t("active")}
               </label>
             </div>
           </div>
@@ -164,14 +166,14 @@ function EditCategoryContent() {
               href="/dashboard/categories"
               className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
-              Cancel
+              {t("cancel")}
             </Link>
             <button
               type="submit"
               disabled={submitting}
               className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {submitting ? "Saving..." : "Save Changes"}
+              {submitting ? t("saving") : t("saveChanges")}
             </button>
           </div>
         </form>
