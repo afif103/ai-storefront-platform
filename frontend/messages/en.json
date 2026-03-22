@@ -336,6 +336,24 @@
     "uploadImagesHint": "Upload images on the edit page.",
     "editProduct": "Edit Product",
     "saving": "Saving...",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "restock": "Restock",
+    "restockQtyLabel": "Qty to add",
+    "restockQtyPlaceholder": "Qty",
+    "restockNoteOptional": "Note (optional)",
+    "restockNotePlaceholder": "e.g. Weekly shipment",
+    "restockAdding": "Adding...",
+    "restockSuccess": "Added {qty} units",
+    "restockError": "Error: {error}",
+    "movementHistory": "Stock Movement History",
+    "noMovements": "No stock movements yet.",
+    "movementDate": "Date",
+    "movementReason": "Reason",
+    "movementQty": "Qty",
+    "movementNote": "Note",
+    "emptyNote": "\u2014",
+    "reasonManualRestock": "Manual Restock",
+    "reasonManualAdjustment": "Manual Adjustment",
+    "reasonOrderCancelRestore": "Order Cancel Restore"
   }
 }

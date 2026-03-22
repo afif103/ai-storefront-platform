@@ -66,10 +66,10 @@ interface PaginatedMovements {
   has_more: boolean;
 }
 
-const REASON_LABELS: Record<string, string> = {
-  manual_restock: "Manual Restock",
-  manual_adjustment: "Manual Adjustment",
-  order_cancel_restore: "Order Cancel Restore",
+const REASON_KEYS: Record<string, string> = {
+  manual_restock: "reasonManualRestock",
+  manual_adjustment: "reasonManualAdjustment",
+  order_cancel_restore: "reasonOrderCancelRestore",
 };
 
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
@@ -106,6 +106,7 @@ function EditProductContent() {
   const [restockNote, setRestockNote] = useState("");
   const [restocking, setRestocking] = useState(false);
   const [restockMsg, setRestockMsg] = useState("");
+  const [restockIsError, setRestockIsError] = useState(false);
   const restockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Stock movement history
@@ -193,6 +194,7 @@ function EditProductContent() {
     e.preventDefault();
     setRestocking(true);
     setRestockMsg("");
+    setRestockIsError(false);
 
     const result = await apiFetch<Product>(
       `/api/v1/tenants/me/products/${productId}/restock`,
@@ -207,14 +209,16 @@ function EditProductContent() {
 
     if (result.ok) {
       setStockQty(result.data.stock_qty ?? 0);
-      setRestockMsg(`Added ${restockQty} units`);
+      setRestockIsError(false);
+      setRestockMsg(t("restockSuccess", { qty: restockQty }));
       setRestockQty("");
       setRestockNote("");
       if (restockTimerRef.current) clearTimeout(restockTimerRef.current);
       restockTimerRef.current = setTimeout(() => setRestockMsg(""), 3000);
       fetchMovements();
     } else {
-      setRestockMsg(`Error: ${result.detail}`);
+      setRestockIsError(true);
+      setRestockMsg(t("restockError", { error: result.detail }));
     }
     setRestocking(false);
   }
@@ -560,17 +564,17 @@ function EditProductContent() {
         {trackInventory && (
           <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Restock
+              {t("restock")}
             </h2>
             <form onSubmit={handleRestock} className="flex items-end gap-3">
               <div className="w-24">
                 <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Qty to add
+                  {t("restockQtyLabel")}
                 </label>
                 <input
                   type="number"
                   min="1"
-                  placeholder="Qty"
+                  placeholder={t("restockQtyPlaceholder")}
                   value={restockQty}
                   onChange={(e) => setRestockQty(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -578,12 +582,12 @@ function EditProductContent() {
               </div>
               <div className="flex-1">
                 <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Note <span className="text-gray-400">(optional)</span>
+                  {t("restockNoteOptional")}
                 </label>
                 <input
                   type="text"
                   maxLength={500}
-                  placeholder="e.g. Weekly shipment"
+                  placeholder={t("restockNotePlaceholder")}
                   value={restockNote}
                   onChange={(e) => setRestockNote(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -594,11 +598,11 @@ function EditProductContent() {
                 disabled={restocking || !restockQty || parseInt(restockQty) < 1}
                 className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
               >
-                {restocking ? "Adding..." : "Restock"}
+                {restocking ? t("restockAdding") : t("restock")}
               </button>
             </form>
             {restockMsg && (
-              <p className={`mt-2 text-xs ${restockMsg.startsWith("Error") ? "text-red-600" : "text-green-600"}`}>
+              <p className={`mt-2 text-xs ${restockIsError ? "text-red-600" : "text-green-600"}`}>
                 {restockMsg}
               </p>
             )}
@@ -609,21 +613,21 @@ function EditProductContent() {
         {trackInventory && (
           <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Stock Movement History
+              {t("movementHistory")}
             </h2>
             {movementsLoading ? (
-              <p className="text-sm text-gray-400">Loading...</p>
+              <p className="text-sm text-gray-400">{t("loading")}</p>
             ) : movements.length === 0 ? (
-              <p className="text-sm text-gray-400">No stock movements yet.</p>
+              <p className="text-sm text-gray-400">{t("noMovements")}</p>
             ) : (
               <div className="overflow-hidden rounded border">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                      <th className="px-3 py-2">Date</th>
-                      <th className="px-3 py-2">Reason</th>
-                      <th className="px-3 py-2 text-right">Qty</th>
-                      <th className="px-3 py-2">Note</th>
+                      <th className="px-3 py-2">{t("movementDate")}</th>
+                      <th className="px-3 py-2">{t("movementReason")}</th>
+                      <th className="px-3 py-2 text-right">{t("movementQty")}</th>
+                      <th className="px-3 py-2">{t("movementNote")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -633,13 +637,13 @@ function EditProductContent() {
                           {new Date(m.created_at).toLocaleString()}
                         </td>
                         <td className="px-3 py-2 text-xs">
-                          {REASON_LABELS[m.reason] ?? m.reason}
+                          {REASON_KEYS[m.reason] ? t(REASON_KEYS[m.reason]) : m.reason}
                         </td>
                         <td className={`px-3 py-2 text-right text-xs font-medium ${m.delta_qty > 0 ? "text-green-600" : "text-red-600"}`}>
                           {m.delta_qty > 0 ? `+${m.delta_qty}` : m.delta_qty}
                         </td>
                         <td className="px-3 py-2 text-xs text-gray-500">
-                          {m.note ?? "—"}
+                          {m.note ?? t("emptyNote")}
                         </td>
                       </tr>
                     ))}
