@@ -77,6 +77,8 @@ def _public_product(
         category_id=product.category_id,
         name=product.name,
         description=product.description,
+        name_ar=product.name_ar,
+        description_ar=product.description_ar,
         price_amount=product.price_amount,
         effective_currency=product.currency or tenant.default_currency,
         sort_order=product.sort_order,

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api-client";
 import { initAnalytics, track, flush } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
@@ -15,6 +15,8 @@ interface Category {
   id: string;
   name: string;
   description: string | null;
+  name_ar: string | null;
+  description_ar: string | null;
   sort_order: number;
 }
 
@@ -23,6 +25,8 @@ interface PublicProduct {
   category_id: string | null;
   name: string;
   description: string | null;
+  name_ar: string | null;
+  description_ar: string | null;
   price_amount: string;
   effective_currency: string;
   sort_order: number;
@@ -52,6 +56,7 @@ export default function StorefrontPage() {
   const params = useParams();
   const slug = params.slug as string;
   const t = useTranslations("storefront");
+  const locale = useLocale();
 
   useVisit(slug);
   const cart = useCart(slug);
@@ -121,7 +126,7 @@ export default function StorefrontPage() {
     cart.addItem(
       {
         catalogItemId: product.id,
-        name: product.name,
+        name: (locale === "ar" && product.name_ar) ? product.name_ar : product.name,
         priceAmount: product.price_amount,
         currency: product.effective_currency,
       },
@@ -280,7 +285,7 @@ export default function StorefrontPage() {
                     : undefined
                 }
               >
-                {cat.name}
+                {(locale === "ar" && cat.name_ar) ? cat.name_ar : cat.name}
               </button>
             ))}
           </div>
@@ -304,19 +309,22 @@ export default function StorefrontPage() {
                   /* eslint-disable-next-line @next/next/no-img-element -- presigned URL expires; next/image caching would break */
                   <img
                     src={product.image_url}
-                    alt={product.name}
+                    alt={(locale === "ar" && product.name_ar) ? product.name_ar : product.name}
                     className="h-40 w-full object-contain bg-gray-100"
                   />
                 )}
                 <div className="p-5">
                   <h3 className="text-sm font-semibold text-gray-900">
-                    {product.name}
+                    {(locale === "ar" && product.name_ar) ? product.name_ar : product.name}
                   </h3>
-                  {product.description && (
-                    <p className="mt-1 line-clamp-2 text-sm text-gray-500">
-                      {product.description}
-                    </p>
-                  )}
+                  {(() => {
+                    const desc = (locale === "ar" && product.description_ar) ? product.description_ar : product.description;
+                    return desc ? (
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                        {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <p
                     className="mt-3 text-base font-bold"
                     style={{ color: secondaryColor ?? "#111827" }}

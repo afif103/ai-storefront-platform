@@ -108,6 +108,8 @@ class PublicProductResponse(BaseModel):
     category_id: uuid.UUID | None = None
     name: str
     description: str | None = None
+    name_ar: str | None = None
+    description_ar: str | None = None
     price_amount: Decimal
     effective_currency: str
     sort_order: int
