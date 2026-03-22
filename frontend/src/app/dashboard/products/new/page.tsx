@@ -22,7 +22,9 @@ function CreateProductContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
+  const [nameAr, setNameAr] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionAr, setDescriptionAr] = useState("");
   const [priceAmount, setPriceAmount] = useState("");
   const [currency, setCurrency] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -53,6 +55,8 @@ function CreateProductContent() {
       body: JSON.stringify({
         name,
         description: description || null,
+        name_ar: nameAr || null,
+        description_ar: descriptionAr || null,
         category_id: categoryId || null,
         price_amount: priceAmount,
         currency: currency.toUpperCase() || null,
@@ -113,12 +117,37 @@ function CreateProductContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("formNameAr")}
+            </label>
+            <input
+              type="text"
+              maxLength={255}
+              value={nameAr}
+              onChange={(e) => setNameAr(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               {t("formDescription")}
             </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("formDescriptionAr")}
+            </label>
+            <textarea
+              rows={3}
+              value={descriptionAr}
+              onChange={(e) => setDescriptionAr(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>

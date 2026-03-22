@@ -23,6 +23,8 @@ interface Product {
   category_id: string | null;
   name: string;
   description: string | null;
+  name_ar: string | null;
+  description_ar: string | null;
   price_amount: string;
   currency: string | null;
   is_active: boolean;
@@ -84,7 +86,9 @@ function EditProductContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
+  const [nameAr, setNameAr] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionAr, setDescriptionAr] = useState("");
   const [priceAmount, setPriceAmount] = useState("");
   const [currency, setCurrency] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -125,7 +129,9 @@ function EditProductContent() {
       if (productResult.ok) {
         const p = productResult.data;
         setName(p.name);
+        setNameAr(p.name_ar ?? "");
         setDescription(p.description ?? "");
+        setDescriptionAr(p.description_ar ?? "");
         setCategoryId(p.category_id ?? "");
         setPriceAmount(p.price_amount);
         setCurrency(p.currency ?? "");
@@ -338,6 +344,8 @@ function EditProductContent() {
       body: JSON.stringify({
         name,
         description: description || null,
+        name_ar: nameAr || null,
+        description_ar: descriptionAr || null,
         category_id: categoryId || null,
         price_amount: priceAmount,
         currency: currency.toUpperCase() || null,
@@ -411,12 +419,37 @@ function EditProductContent() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("formNameAr")}
+            </label>
+            <input
+              type="text"
+              maxLength={255}
+              value={nameAr}
+              onChange={(e) => setNameAr(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               {t("formDescription")}
             </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("formDescriptionAr")}
+            </label>
+            <textarea
+              rows={3}
+              value={descriptionAr}
+              onChange={(e) => setDescriptionAr(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
