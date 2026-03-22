@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
@@ -38,6 +39,7 @@ function ProductsContent() {
   const [stockFilter, setStockFilter] = useState<"all" | "low">("all");
   const [toast, setToast] = useState("");
   const searchParams = useSearchParams();
+  const t = useTranslations("dashboardProducts");
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -62,7 +64,7 @@ function ProductsContent() {
   }, [searchParams, fetchProducts]);
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete "${name}"?`)) return;
+    if (!confirm(t("confirmDelete", { name }))) return;
     setDeletingIds((prev) => new Set(prev).add(id));
     setError("");
 
@@ -83,9 +85,9 @@ function ProductsContent() {
         next.delete(id);
         return next;
       });
-      showToast(`Deleted "${name}"`);
+      showToast(t("deletedToast", { name }));
     } else {
-      setError(`Failed to delete "${name}": ${result.detail}`);
+      setError(t("deleteError", { name, error: result.detail }));
     }
   }
 
@@ -97,7 +99,7 @@ function ProductsContent() {
   async function handleBulkDelete() {
     if (selected.size === 0) return;
     const count = selected.size;
-    if (!confirm(`Delete ${count} product(s)?`)) return;
+    if (!confirm(t("confirmBulkDelete", { count }))) return;
 
     const ids = [...selected];
     setDeletingIds(new Set(ids));
@@ -117,9 +119,9 @@ function ProductsContent() {
       const deletedSet = new Set(ids);
       setProducts((prev) => prev.filter((p) => !deletedSet.has(p.id)));
       setSelected(new Set());
-      showToast(`Deleted ${result.data.deleted} product(s)`);
+      showToast(t("bulkDeletedToast", { count: result.data.deleted }));
     } else {
-      setError(`Bulk delete failed: ${result.detail}`);
+      setError(t("bulkDeleteError", { error: result.detail }));
     }
   }
 
@@ -145,8 +147,8 @@ function ProductsContent() {
     <main className="mx-auto max-w-5xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Products</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage product catalog and inventory</p>
+          <h1 className="text-lg font-semibold text-gray-900">{t("title")}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {selected.size > 0 && (
@@ -155,14 +157,14 @@ function ProductsContent() {
               disabled={deletingIds.size > 0}
               className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
-              Delete {selected.size} selected
+              {t("deleteSelected", { count: selected.size })}
             </button>
           )}
           <Link
             href="/dashboard/products/new"
             className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            Add Product
+            {t("addProduct")}
           </Link>
         </div>
       </div>
@@ -183,7 +185,7 @@ function ProductsContent() {
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              All
+              {t("filterAll")}
             </button>
             <button
               onClick={() => setStockFilter("low")}
@@ -193,7 +195,7 @@ function ProductsContent() {
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Low stock only
+              {t("filterLowStock")}
               {products.filter((p) => p.is_low_stock).length > 0 && (
                 <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-200 text-[10px] font-bold text-amber-800">
                   {products.filter((p) => p.is_low_stock).length}
@@ -204,15 +206,15 @@ function ProductsContent() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">{t("loading")}</p>
         ) : products.length === 0 ? (
           <div className="rounded-lg border bg-white p-8 text-center">
-            <p className="text-gray-500">No products yet.</p>
+            <p className="text-gray-500">{t("empty")}</p>
             <Link
               href="/dashboard/products/new"
               className="mt-2 inline-block text-sm text-blue-600 hover:underline"
             >
-              Create your first product
+              {t("createFirst")}
             </Link>
           </div>
         ) : (
@@ -228,12 +230,12 @@ function ProductsContent() {
                       className="rounded"
                     />
                   </th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Price</th>
-                  <th className="px-4 py-3">Active</th>
-                  <th className="px-4 py-3">Stock</th>
-                  <th className="px-4 py-3">Sort</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">{t("thName")}</th>
+                  <th className="px-4 py-3">{t("thPrice")}</th>
+                  <th className="px-4 py-3">{t("active")}</th>
+                  <th className="px-4 py-3">{t("thStock")}</th>
+                  <th className="px-4 py-3">{t("thSort")}</th>
+                  <th className="px-4 py-3">{t("thActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -267,20 +269,20 @@ function ProductsContent() {
                               : "bg-gray-100 text-gray-500"
                           }`}
                         >
-                          {prod.is_active ? "Active" : "Inactive"}
+                          {prod.is_active ? t("active") : t("inactive")}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {!prod.track_inventory ? (
-                          <span className="text-xs text-gray-400">Unlimited</span>
+                          <span className="text-xs text-gray-400">{t("unlimited")}</span>
                         ) : (prod.stock_qty ?? 0) === 0 ? (
-                          <span className="text-xs font-medium text-red-600">Out of stock</span>
+                          <span className="text-xs font-medium text-red-600">{t("outOfStock")}</span>
                         ) : prod.is_low_stock ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                            {prod.stock_qty} left
+                            {t("stockLeft", { qty: prod.stock_qty ?? 0 })}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-700">{prod.stock_qty} left</span>
+                          <span className="text-xs text-gray-700">{t("stockLeft", { qty: prod.stock_qty ?? 0 })}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-gray-600">{prod.sort_order}</td>
@@ -290,14 +292,14 @@ function ProductsContent() {
                             href={`/dashboard/products/${prod.id}/edit`}
                             className="text-blue-600 hover:underline"
                           >
-                            Edit
+                            {t("edit")}
                           </Link>
                           <button
                             onClick={() => handleDelete(prod.id, prod.name)}
                             disabled={isDeleting}
                             className="text-red-600 hover:underline disabled:opacity-50"
                           >
-                            {isDeleting ? "Deleting..." : "Delete"}
+                            {isDeleting ? t("deleting") : t("delete")}
                           </button>
                         </div>
                       </td>
