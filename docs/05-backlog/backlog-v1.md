@@ -269,6 +269,54 @@ Ordered epics M1–M9. All implementation is through Claude Code.
 
 ---
 
+## B — Bilingual / i18n (Arabic + English)
+
+### Track A — Storefront Public Pages (shipped)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| A1 | Bilingual foundation: `next-intl`, cookie-based locale, `en.json` + `ar.json`, `LanguageSwitcher` component | Claude | **DONE** | `next-intl` configured with `NEXT_LOCALE` cookie. No URL-prefix routing. Storefront pages wrapped with `NextIntlClientProvider`. |
+| A2 | Localize storefront shell + chat widget | Claude | **DONE** | Header, footer, chat bubble, chat panel, all storefront chrome strings in both locales. |
+| A3 | Localize storefront checkout, donate, pledge flows | Claude | **DONE** | All form labels, validation messages, success/error states in both locales. |
+
+### Track B — Dashboard UI Chrome (shipped)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| B1 | Auth pages: login, signup, forgot password + language switcher | Claude | **DONE** | All auth UI strings bilingual. Signup validation messages localized. |
+| B2 | Dashboard shell + shared nav | Claude | **DONE** | Sidebar, header, nav links, tenant name — all bilingual. |
+| B3 | Dashboard home page | Claude | **DONE** | Welcome text, nav cards, KPI labels bilingual. |
+| B4 | Transaction pages (orders, donations, pledges) | Claude | **DONE** | Table headers, status badges, empty states, action buttons bilingual. |
+| B5 | Assistant page | Claude | **DONE** | Chat UI, input placeholder, send button, quota warning bilingual. |
+| B6 | Analytics page | Claude | **DONE** | KPI cards, funnel labels, date range, CSV export button bilingual. |
+| B7 | Categories pages (list, new, edit) | Claude | **DONE** | Table headers, form labels, validation, empty states bilingual. |
+| B8 | Products pages (list, new, edit, images, inventory) | Claude | **DONE** | All product form sections bilingual including restock/movement history UI. |
+| B9 | Product edit images section | Claude | **DONE** | Upload, delete, alt text labels bilingual. |
+| B10 | Storefront settings page | Claude | **DONE** | All branding config labels, upload controls, color pickers bilingual. |
+
+### Track C — Product/Category Content Translation (shipped)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| C1 | Strategy: duplicate Arabic columns (`name_ar`, `description_ar`) on products + categories | Claude | **DONE** | Approved over JSONB or translations table for MVP simplicity. |
+| C2 | DB migration: add `name_ar`, `description_ar` to products + categories | Claude | **DONE** | Alembic revision `o9p0q1r2s3t4`. 4 nullable columns added. Round-trip tested (upgrade → downgrade → upgrade). |
+| C3 | Backend schemas/CRUD: expose Arabic fields on tenant endpoints | Claude | **DONE** | `CategoryCreate/Update/Response` + `ProductCreate/Update/Response` include `name_ar`, `description_ar`. `PublicProductResponse` and `public_storefront.py` intentionally unchanged in C3. |
+| C4 | Dashboard category form authoring (new + edit) | Claude | **DONE** | Arabic name/description inputs below English counterparts. Optional fields, send `null` when empty. `formNameAr`/`formDescriptionAr` i18n keys. |
+| C5 | Dashboard product form authoring (new + edit) | Claude | **DONE** | Same pattern as C4 for products. Restock/images/movement sections untouched. |
+| C6 | Storefront Arabic content rendering + fallback | Claude | **DONE** | `PublicProductResponse` extended with `name_ar`/`description_ar`. 5 render points updated: category filter buttons, product image alt, product card title, product card description (resolved variable pattern), add-to-cart name snapshot. Fallback: `(locale === "ar" && arabic_value) ? arabic_value : primary_value`. Hero text + stock_display unchanged. |
+
+### Track D — Remaining (not started)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| D1 | Admin panel pages bilingual | Claude | Not started | Super admin tenant list, suspend/reactivate dialogs. |
+| D2 | Notification preferences page bilingual | Claude | Not started | Email/Telegram toggle labels, save button. |
+| D3 | RTL layout support for Arabic locale | Claude | Not started | `dir="rtl"` on root when locale is `ar`. Tailwind RTL utilities. |
+| D4 | Storefront hero text Arabic support | Claude | Not started | `hero_text_ar` on `storefront_config` + fallback rendering. |
+| D5 | CSV/export content: keep English-only (documented decision) | Claude | Not started | Confirm exports use primary fields only. Document as intentional. |
+
+---
+
 ## M9 — Hardening & Launch Prep
 
 | # | Task | Primary Implementor | Status | DoD |
@@ -288,16 +336,18 @@ Ordered epics M1–M9. All implementation is through Claude Code.
 
 ## Summary
 
-| Milestone | Tasks | Claude |
-|-----------|-------|--------|
-| M1 Auth & Tenancy | 11 | 11 |
-| M2 Storefront | 10 | 10 |
-| M3 Structured Capture | 10 | 10 |
-| M4 AI Assistant | 10 | 10 |
-| M5 Attribution & Dashboard | 9 | 9 |
-| M5b Inventory / Stock v1 | 6 | 6 |
-| M6 Admin Panel | 7 | 7 |
-| M7 Notifications | 7 | 7 |
-| M8 Infra & DevOps | 14 | 14 |
-| M9 Hardening | 10 | 10 |
-| **Total** | **94** | **94** |
+| Milestone | Tasks | Claude | Status |
+|-----------|-------|--------|--------|
+| M1 Auth & Tenancy | 11 | 11 | Complete |
+| M2 Storefront | 10 | 10 | Complete |
+| M3 Structured Capture | 10 | 10 | Complete |
+| M4 AI Assistant | 10 | 10 | Complete |
+| M5 Attribution & Dashboard | 9 | 9 | Complete |
+| M5b Inventory / Stock v1 | 6 | 6 | Complete |
+| M5c Inventory Movements | 19 | 19 | Complete |
+| M6 Admin Panel | 7+ | 7+ | P1–P4 Complete |
+| M7 Notifications | 7+ | 7+ | P1–P4 Complete |
+| M8 Infra & DevOps | 14 | 14 | 8.1–8.8b Complete, 8.9–8.10 In Progress |
+| M9 Hardening | 10 | 10 | Not Started |
+| B — Bilingual / i18n | 24 | 24 | Tracks A–C Complete, Track D Not Started |
+| **Total** | **137+** | **137+** | |

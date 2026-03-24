@@ -100,6 +100,8 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 | M8 Infrastructure (8.1–8.8b) | Complete (Docker, CI, VPC, RDS, Redis, S3, ECR, ECS) |
 | M8 Infrastructure (8.9) | In progress (ALB + HTTPS + CloudFront + WAF deployed; DNS cutover remaining) |
 | M8 Infrastructure (8.10) | In progress (live demo deployed; custom domain remaining) |
+| B — Bilingual / i18n (A–C) | Complete (storefront + dashboard UI chrome + product/category content) |
+| B — Bilingual / i18n (D) | Not started (admin pages, RTL layout, hero text Arabic) |
 | M6 P5+, M7 P5+, M8.11–8.13, M9 | Not started |
 
 **M2**: Categories, products, storefront config, media assets, presigned S3 uploads, UTM visit tracking, public storefront with branding. Full dashboard CRUD + anonymous storefront browsing.
@@ -121,6 +123,8 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 **M7**: Notification preferences (email/Telegram toggles per tenant). SES email + Telegram Bot API services. Celery task dispatch on order/donation creation. Donation receipt email to donor.
 
 **M8**: AWS infrastructure in `ap-southeast-1`. VPC with private subnets + NAT. RDS PostgreSQL (encrypted, SSL-forced). ElastiCache Redis (TLS). S3 with Block Public Access. ECR + GitHub Actions image push. ECS Fargate cluster with backend + worker services. ALB with HTTPS (ACM cert). CloudFront distribution with WAF (4 managed rules). Live demo on Vercel + ECS.
+
+**B — Bilingual**: Full English/Arabic i18n using `next-intl` with cookie-based locale switching (`NEXT_LOCALE`). **Track A**: Storefront public pages (shell, chat, checkout, donate, pledge). **Track B**: All dashboard UI chrome (auth pages, shell, home, transactions, assistant, analytics, categories, products, storefront settings). **Track C**: Product/category content translation via duplicate Arabic DB columns (`name_ar`, `description_ar`), dashboard authoring forms, and storefront rendering with `(locale === "ar" && arabic_value) ? arabic_value : primary_value` fallback. CSV exports remain English-only.
 
 ## Live Demo
 
