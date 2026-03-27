@@ -1,7 +1,7 @@
 # Milestones
 
 ## Overview
-MVP is split into 9 milestones (M1–M9), ordered by dependency. Each milestone has a target duration and dependency chain. See `backlog-v1.md` for detailed tasks within each milestone.
+V1 (MVP) is split into 9 milestones (M1–M9), ordered by dependency. V2 adds 4 milestones (M10–M13) covering POS / omnichannel and merchant-ready upgrades as two parallel tracks. See `backlog-v1.md` for detailed tasks within each milestone.
 
 ---
 
@@ -32,6 +32,25 @@ M1 Auth & Tenancy ──────┐
 ```
 
 Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). The dependency arrow means "must be feature-complete before the next milestone's features are testable end-to-end."
+
+---
+
+## V2 Milestone Map
+
+V2 runs two parallel tracks: **POS / Omnichannel** (M10B → M11–M13 POS packets) and **Merchant-Ready Core** (M10A → M11–M13 core packets). Both tracks converge in M13 for unified reporting.
+
+```
+M10A Auth/Onboarding ───────────┐
+  (real auth, self-serve         │
+   onboarding)                   │
+                                 ├──▶ M11 Selling & Payments MVP ──▶ M12 Operations ──▶ M13 Reporting
+                                 │      (POS sell screen, cash,        & Variants          & Polish
+M10B POS Foundation ────────────┘       receipts, inventory,
+  (cashier role, pos_sales               payment config,
+   domain)                               customers table)
+```
+
+Note: M10A and M10B start with planning-only packets (M10A.1, M10B.1) before any implementation. Both planning packets can run in parallel. `customers` table ships in M11 and does not block POS MVP.
 
 ---
 
@@ -267,7 +286,99 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 
 ---
 
+### M10A — Foundations: Auth & Onboarding
+**Priority**: P0
+**Dependencies**: V1 complete (M1–M9)
+
+| Acceptance Criteria |
+|---------------------|
+| Real auth replaces mock mode (signup, login, email verification; MFA optional later) |
+| Self-serve tenant onboarding: signup → create store → configure storefront |
+| Role matrix covers owner / admin / member / cashier with clear permission boundaries |
+| Existing dev/demo data migrated or test fixtures updated for real auth |
+
+---
+
+### M10B — Foundations: POS Domain
+**Priority**: P0
+**Dependencies**: V1 complete (M1–M9)
+
+| Acceptance Criteria |
+|---------------------|
+| Cashier role added to role system with scoped permissions (sell-only, no settings access) |
+| `pos_sales` + `pos_sale_items` tables with RLS, separate from online `orders` |
+| POS sales service layer (create sale, calculate totals) |
+| POS domain does NOT depend on `order_items` normalization — online orders keep current JSONB storage |
+
+---
+
+### M11 — Selling & Payments MVP
+**Priority**: P0
+**Dependencies**: M10A + M10B
+
+| Acceptance Criteria |
+|---------------------|
+| POS sell screen: product grid/search → cart → cash checkout (inside dashboard auth) |
+| POS cash payment: tendered amount → change calculation |
+| POS receipt: print-friendly HTML layout (thermal-friendly CSS) |
+| POS inventory: sale decrements shared `stock_qty` via `record_stock_movement()` |
+| Product catalog supports SKU/barcode field for POS lookup |
+| Payment method config per tenant (cash, bank transfer, manual external, gateway placeholder) |
+| Payment status tracking on online orders |
+| Receipt generation for online orders (HTML, print button) |
+| Shared customer records foundation across channels (does not block first POS MVP) |
+| Customer linking on order/donation/POS sale create with dedup by phone/email |
+
+---
+
+### M12 — Operations & Variants
+**Priority**: P1
+**Dependencies**: M11
+
+| Acceptance Criteria |
+|---------------------|
+| Product variants (size/color) with per-variant stock tracking |
+| Variant UI on dashboard product edit, storefront selector, POS variant picker |
+| POS shift open/close with cash summary |
+| POS void/cancel with stock restore via `record_stock_movement()` |
+| Daily POS sales summary |
+| Shipping/delivery module: methods, zones, fee calculation |
+| Order fulfillment workflow: pack → ship → deliver status chain |
+| Customer order history page |
+
+---
+
+### M13 — Omnichannel Reporting & Polish
+**Priority**: P1
+**Dependencies**: M12
+
+| Acceptance Criteria |
+|---------------------|
+| Unified sales reporting: online orders + POS sales in combined views |
+| Revenue analytics by channel, product, time period |
+| POS dashboard widgets: today's sales, top products |
+| Customer repeat-purchase tracking |
+
+---
+
+## V1 Residue (tracked separately from V2)
+
+The following V1 items are not started or partially complete. They are NOT success criteria for any V2 milestone and are tracked independently.
+
+| Item | Source |
+|------|--------|
+| M6 P5+ — tenant admin team management UI | backlog-v1.md M6 |
+| M7 P5+ — pledge reminders, AI soft-limit notification, notification prefs UI, SES DKIM | backlog-v1.md M7 |
+| M8.9–8.13 — ALB/CF completion, CD pipeline, CloudWatch, Secrets Manager | backlog-v1.md M8 |
+| M9 — hardening & launch prep | backlog-v1.md M9 |
+| Bilingual Track D — admin pages, RTL, hero text Arabic | backlog-v1.md B Track D |
+| Inventory UX consolidation (direct stock_qty edit bypass) | backlog-v1.md M5c tech debt |
+
+---
+
 ## Timeline Summary
+
+### V1 (MVP)
 
 | Milestone | Target Duration | Cumulative |
 |-----------|----------------|------------|
@@ -284,3 +395,15 @@ Note: M8 (Infra) work starts in parallel with M1 (Docker Compose, CI skeleton). 
 | M9 Hardening | 1.5 weeks | Week 15 |
 
 **Estimated MVP delivery: ~15 weeks** (with M8 infra running in parallel throughout).
+
+### V2 (POS + Merchant-Ready)
+
+| Milestone | Track | Status |
+|-----------|-------|--------|
+| M10A — Foundations: Auth & Onboarding | Merchant-Ready Core | M10A.1 Planning next |
+| M10B — Foundations: POS Domain | POS / Omnichannel | M10B.1 Planning complete |
+| M11 — Selling & Payments MVP | Both tracks | Not started |
+| M12 — Operations & Variants | Both tracks | Not started |
+| M13 — Omnichannel Reporting & Polish | Both tracks (convergence) | Not started |
+
+M10A and M10B can run in parallel. Both start with planning-only packets before implementation.

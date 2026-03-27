@@ -1,6 +1,6 @@
-# Backlog v1
+# Backlog (V1 + V2)
 
-Ordered epics M1–M9. All implementation is through Claude Code.
+V1 (MVP): ordered epics M1–M9. V2 (POS + Merchant-Ready): M10–M13 with two parallel tracks. All implementation is through Claude Code.
 
 ---
 
@@ -334,7 +334,234 @@ Ordered epics M1–M9. All implementation is through Claude Code.
 
 ---
 
+## V2 — POS + Merchant-Ready
+
+V2 runs two parallel tracks that converge in M13:
+- **M10A / Merchant-Ready Core**: real auth, onboarding, roles/permissions
+- **M10B / POS Omnichannel**: cashier role, POS sales domain, POS foundation
+
+Key design decisions:
+- POS uses a separate `pos_sales` + `pos_sale_items` domain, NOT the existing `orders` table
+- Online orders keep current JSONB line item storage; `order_items` normalization is an optional follow-up, not a POS prerequisite
+- Shared customer records ship in M11 and do NOT block first POS MVP
+- Both tracks share products table, inventory (`record_stock_movement`), and reporting
+
+---
+
+## M10A — Foundations: Auth & Onboarding
+
+### M10A.1 — Auth + Onboarding Planning (next)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10A.1a | Auth planning: auth provider config, signup flow, email verification, mock retirement plan | Claude | Not started | Planning doc ready for review. No code changes. |
+| 10A.1b | Onboarding planning: signup → create store → configure storefront journey (screen-by-screen) | Claude | Not started | Screen flow documented, decisions on auto-create vs wizard captured. |
+| 10A.1c | Role matrix review: owner / admin / member / cashier — permissions and access boundaries | Claude | Not started | Role matrix table with per-role access rules. |
+
+### M10A.2 — Real Auth Implementation
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10A.2a | Real auth implementation (retire mock mode, real signup/login/verify) | Claude | Not started | Mock mode removed or gated. Real signup → verify → login flow works end-to-end. |
+| 10A.2b | Test fixture migration for real auth | Claude | Not started | Existing integration tests pass without mock mode. Dev seed data updated. |
+
+### M10A.3 — Self-Serve Onboarding
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10A.3a | Onboarding flow: signup → create tenant → storefront setup | Claude | Not started | New user can self-serve from signup to configured storefront. |
+
+---
+
+## M10B — Foundations: POS Domain
+
+### M10B.1 — POS Planning (complete)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10B.1a | POS domain planning: `pos_sales` + `pos_sale_items` schema design, screen wireframes, cashier role boundaries, inventory integration design | Claude | **DONE** | Planning memo accepted. Schema and screen flows documented in planning memo. |
+
+### M10B.2 — Cashier Role + Permissions
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10B.2a | Add `cashier` to role CHECK constraint + migration | Claude | Not started | Role CHECK updated. Migration reversible. |
+| 10B.2b | Cashier permission scoping (sell-only, no settings/admin access) | Claude | Not started | Cashier can access POS sell screen. Cannot access settings, team, admin, analytics. |
+
+### M10B.3 — POS Sales Domain
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10B.3a | `pos_sales` + `pos_sale_items` tables + RLS + migration | Claude | Not started | Tables with tenant_id, RLS policies, cross-tenant isolation test. Separate from `orders`. |
+| 10B.3b | POS sales service layer (create sale, calculate totals) | Claude | Not started | Service creates sale with line items, computes totals. |
+| 10B.3c | POS sales integration tests | Claude | Not started | CRUD, RLS isolation, total calculation correctness. |
+
+---
+
+## M11 — Selling & Payments MVP
+
+### M11.1 — POS Sell Screen
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 11.1a | POS sell screen UI: product grid/search → cart → cash checkout | Claude | Not started | Dashboard page (inside auth). Product search/browse, add to cart, cash payment. |
+
+### M11.2 — POS Inventory Integration
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 11.2a | POS sale decrements shared stock via `record_stock_movement(reason="pos_sale")` | Claude | Not started | Stock updated atomically. Insufficient stock → error. Untracked products bypass. |
+
+### M11.3 — POS Receipt
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 11.3a | POS receipt: print-friendly HTML layout, thermal-friendly CSS | Claude | Not started | Receipt renders with sale details, print button triggers browser print. |
+
+### M11.4 — Product SKU/Barcode
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 11.4a | SKU/barcode field on products (optional text field) | Claude | Not started | Product create/edit schema includes `sku`. POS sell screen supports lookup by SKU. |
+
+### M11.5 — Payment Method Config
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 11.5a | Payment method config per tenant (cash, bank transfer, manual external, gateway placeholder) | Claude | Not started | Tenant can configure accepted payment methods. POS and online orders reference payment method. |
+
+### M11.6 — Online Order Payment + Receipts
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 11.6a | Payment status tracking on online orders | Claude | Not started | Orders track payment method and payment status. |
+| 11.6b | Receipt generation for online orders (HTML, print button) | Claude | Not started | Dashboard can view/print order receipt. |
+
+### M11.7 — Customer Records Foundation
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 11.7a | Shared customer records table + RLS + model + CRUD service + tests | Claude | Not started | Customer records with tenant_id, name, phone, email, notes. RLS-isolated. |
+
+### M11.8 — Customer Linking
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 11.8a | Customer linking on order/donation/POS sale create (dedup by phone/email) | Claude | Not started | New sale/order auto-links or creates customer record. Dedup prevents duplicates. |
+
+---
+
+## M12 — Operations & Variants
+
+### M12.1 — Product Variants Schema
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 12.1a | Product variants table + per-variant stock tracking + migration | Claude | Not started | Variant table with size/color attributes, per-variant `stock_qty`. |
+
+### M12.2 — Variant UI
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 12.2a | Variant UI: dashboard product edit, storefront selector, POS variant picker | Claude | Not started | All three surfaces support selecting and displaying variants. |
+
+### M12.3 — POS Shift Management
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 12.3a | POS shift open/close with cash summary | Claude | Not started | Cashier opens shift (starting cash), closes with reconciliation summary. |
+
+### M12.4 — POS Void/Cancel
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 12.4a | POS void/cancel with stock restore via `record_stock_movement()` | Claude | Not started | Voided sale restores stock for tracked-inventory items. |
+
+### M12.5 — Shipping Module
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 12.5a | Shipping/delivery: methods, zones, fee calculation | Claude | Not started | Tenant configures shipping methods and zone-based fees. |
+
+### M12.6 — Order Fulfillment Workflow
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 12.6a | Order fulfillment: pack → ship → deliver status chain | Claude | Not started | Orders track fulfillment status with transitions. |
+
+### M12.7 — Customer Order History
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 12.7a | Customer order history page | Claude | Not started | Dashboard page showing per-customer activity across online orders and POS sales. |
+
+---
+
+## M13 — Omnichannel Reporting & Polish
+
+### M13.1 — Unified Reporting
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 13.1a | Unified sales reporting: online orders + POS sales in combined views | Claude | Not started | Single reporting view covering both channels. |
+
+### M13.2 — Revenue Analytics
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 13.2a | Revenue analytics by channel, product, time period | Claude | Not started | Dashboard analytics extended with channel and product breakdowns. |
+
+### M13.3 — POS Dashboard Widgets
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 13.3a | POS dashboard widgets: today's sales, top products | Claude | Not started | Dashboard home shows POS-specific KPI widgets. |
+
+### M13.4 — Customer Repeat-Purchase Tracking
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 13.4a | Customer repeat-purchase tracking | Claude | Not started | Analytics shows repeat vs new customer metrics. |
+
+---
+
+## V2 Optional Follow-Up (post-V2)
+
+These items are explicitly out of scope for V2 and tracked here for future consideration.
+
+| Item | Category |
+|------|----------|
+| `order_items` normalization (JSONB → relational) | Data cleanup |
+| Discount/promo codes | Feature extension |
+| Hold/park POS sale | POS power feature |
+| POS offline queue | POS power feature |
+| Terminal/register identity | POS power feature (multi-register) |
+| Bulk product import/export (CSV) | Convenience |
+| Subscription tier enforcement | Business/billing track |
+| Customer lifetime value tracking | Analytics extension |
+| Storefront SEO improvements | Marketing extension |
+| POS multi-register support | Scale feature |
+
+---
+
+## V1 Residue (tracked separately from V2)
+
+The following V1 items are not started or partially complete. They are NOT success criteria for any V2 milestone.
+
+| Item | Source |
+|------|--------|
+| M6 P5+ — tenant admin team management UI | M6 Packet 5+ |
+| M7 P5+ — pledge reminders, AI soft-limit notification, notification prefs UI, SES DKIM | M7 Packet 5+ |
+| M8.9–8.13 — ALB/CF completion, CD pipeline, CloudWatch, Secrets Manager | M8 |
+| M9 — hardening & launch prep (all tasks) | M9 |
+| Bilingual Track D — admin pages, RTL, hero text Arabic | B Track D |
+| Inventory UX consolidation (direct stock_qty edit bypass) | M5c tech debt |
+
+---
+
 ## Summary
+
+### V1
 
 | Milestone | Tasks | Claude | Status |
 |-----------|-------|--------|--------|
@@ -350,4 +577,15 @@ Ordered epics M1–M9. All implementation is through Claude Code.
 | M8 Infra & DevOps | 14 | 14 | 8.1–8.8b Complete, 8.9–8.10 In Progress |
 | M9 Hardening | 10 | 10 | Not Started |
 | B — Bilingual / i18n | 24 | 24 | Tracks A–C Complete, Track D Not Started |
-| **Total** | **137+** | **137+** | |
+| **V1 Total** | **137+** | **137+** | |
+
+### V2
+
+| Milestone | Packets | Status |
+|-----------|---------|--------|
+| M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | M10A.1 Planning next |
+| M10B — Foundations: POS Domain | 3 packets (M10B.1–B.3) | M10B.1 Planning complete |
+| M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
+| M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
+| M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
+| **V2 Total** | **25 packets** | |
