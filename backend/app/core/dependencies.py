@@ -18,6 +18,18 @@ from app.models.user import User
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
+async def set_user_context(db: AsyncSession, user: "User") -> None:
+    """Set both user GUCs for RLS: app.current_user_id and app.current_user_email."""
+    await db.execute(
+        text("SELECT set_config('app.current_user_id', :uid, true)"),
+        {"uid": str(user.id)},
+    )
+    await db.execute(
+        text("SELECT set_config('app.current_user_email', :email, true)"),
+        {"email": user.email.strip().lower()},
+    )
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Yield an async DB session. Commits on success, rolls back on error."""
     async with async_session_factory() as session:
@@ -90,14 +102,8 @@ async def get_db_with_tenant(
     4. SET LOCAL app.current_tenant
     5. Return (session, tenant_id)
     """
-    # Step 1: set user context so RLS allows membership lookup by user_id
-    # Note: SET LOCAL does not support parameterised placeholders in asyncpg.
-    # We use set_config(name, value, is_local) which is a regular function
-    # call and supports $1 bind params. The third arg `true` = transaction-local.
-    await db.execute(
-        text("SELECT set_config('app.current_user_id', :uid, true)"),
-        {"uid": str(user.id)},
-    )
+    # Step 1: set user context so RLS allows membership lookup by user_id + email
+    await set_user_context(db, user)
 
     # Step 2: find active membership
     # Check for explicit tenant selection via header

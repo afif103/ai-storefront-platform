@@ -9,7 +9,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, set_user_context
 from app.models.tenant_member import TenantMember
 from app.models.user import User
 from app.services.auth_service import refresh_cognito_token
@@ -84,11 +84,8 @@ async def accept_invite(
     Pre-tenant endpoint: matches invited_email to user.email
     and flips matching invitations from 'invited' to 'active'.
     """
-    # Set user context so RLS allows the membership lookup by user_id
-    await db.execute(
-        text("SELECT set_config('app.current_user_id', :uid, true)"),
-        {"uid": str(user.id)},
-    )
+    # Set user context so RLS allows membership + invitation lookup
+    await set_user_context(db, user)
 
     # Find pending invitations matching user's email
     result = await db.execute(
