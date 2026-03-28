@@ -29,6 +29,7 @@ interface AuthContextValue extends AuthState {
   loginWithCredentials: (email: string, password: string) => Promise<void>;
   login: (accessToken: string) => void;
   logout: () => void;
+  refreshBootstrap: () => Promise<BootstrapPayload>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -137,6 +138,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const refreshBootstrap = useCallback(async (): Promise<BootstrapPayload> => {
+    const res = await apiFetch<BootstrapPayload>("/api/v1/auth/bootstrap", {
+      method: "POST",
+    });
+    if (res.ok) {
+      setBootstrap(res.data);
+      return res.data;
+    }
+    if (res.status === 401) {
+      setAccessToken(null);
+      setBootstrap(null);
+    }
+    throw new Error(res.detail || "Failed to refresh bootstrap");
+  }, []);
+
   const login = useCallback((token: string) => {
     setBootstrap(null);
     setAccessToken(token);
@@ -157,8 +173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       loginWithCredentials,
       logout,
+      refreshBootstrap,
     }),
-    [accessToken, user, bootstrap, hydrating, login, loginWithCredentials, logout],
+    [accessToken, user, bootstrap, hydrating, login, loginWithCredentials, logout, refreshBootstrap],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

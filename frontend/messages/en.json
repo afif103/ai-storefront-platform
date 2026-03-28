@@ -135,6 +135,20 @@
     "devModeNotNeeded": "Email verification is not needed in dev/mock mode.",
     "devModeLoginLink": "Go to Login"
   },
+  "onboarding": {
+    "title": "Welcome",
+    "loading": "Loading...",
+    "createStoreHeading": "Create your first store",
+    "createStoreDescription": "Set up your store to get started. You can change these settings later.",
+    "pendingInvitationsHeading": "You have pending invitations",
+    "pendingInvitationsDescription": "You have been invited to join {count, plural, one {# store} other {# stores}}. Accept to get started, or create your own store below.",
+    "acceptAll": "Accept {count, plural, one {# invitation} other {# invitations}}",
+    "accepting": "Accepting...",
+    "acceptFailed": "Failed to accept invitations",
+    "orCreateYourOwn": "Or create your own store",
+    "createStoreComingSoon": "Store creation form coming soon",
+    "signOut": "Sign out"
+  },
   "forgotPassword": {
     "title": "Reset Password",
     "description": "Enter your email and we'll send you a reset link.",
