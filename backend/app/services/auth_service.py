@@ -48,3 +48,22 @@ def _mock_refresh(refresh_token: str) -> dict:
         "access_token": access_token,
         "refresh_token": "mock-refresh-token-rotated",
     }
+
+
+def mock_login(email: str) -> dict[str, str]:
+    """Generate mock access + id + refresh tokens for local dev login.
+
+    Normalizes email and derives a deterministic sub so that repeated
+    logins with the same email resolve to the same user.
+    """
+    import hashlib
+
+    from app.core.security import create_mock_access_token, create_mock_id_token
+
+    email = email.strip().lower()
+    sub = f"mock-{hashlib.sha256(email.encode()).hexdigest()[:16]}"
+    return {
+        "access_token": create_mock_access_token(sub=sub, email=email),
+        "id_token": create_mock_id_token(sub=sub, email=email, name=email.split("@")[0]),
+        "refresh_token": f"mock-refresh-{sub}",
+    }

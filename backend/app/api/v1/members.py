@@ -72,8 +72,10 @@ async def invite_member(
     db, tenant_id = tenant_data
     await require_role("admin", db, tenant_id, user)
 
+    email = body.email.strip().lower()
+
     # Check if already a member (by email match through user or invited_email)
-    target_user_result = await db.execute(select(User).where(User.email == body.email))
+    target_user_result = await db.execute(select(User).where(User.email == email))
     target_user = target_user_result.scalar_one_or_none()
 
     if target_user:
@@ -91,7 +93,7 @@ async def invite_member(
     existing_invite = await db.execute(
         select(TenantMember).where(
             TenantMember.tenant_id == tenant_id,
-            TenantMember.invited_email == body.email,
+            TenantMember.invited_email == email,
             TenantMember.status == "invited",
         )
     )
@@ -101,7 +103,7 @@ async def invite_member(
     member = TenantMember(
         tenant_id=tenant_id,
         user_id=target_user.id if target_user else None,
-        invited_email=body.email,
+        invited_email=email,
         role=body.role,
         status="invited",
         invited_at=datetime.now(UTC),
@@ -112,7 +114,7 @@ async def invite_member(
     return MemberResponse(
         id=member.id,
         user_id=member.user_id,
-        email=body.email,
+        email=email,
         full_name=None,
         role=member.role,
         status=member.status,

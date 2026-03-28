@@ -73,7 +73,7 @@ async def get_current_user(
 
     if user is None:
         # Auto-provision: create user from JWT claims
-        email = claims.get("email", f"{cognito_sub}@placeholder.local")
+        email = claims.get("email", f"{cognito_sub}@placeholder.local").strip().lower()
         full_name = claims.get("name", claims.get("email", "Unknown"))
         user = User(
             cognito_sub=cognito_sub,
