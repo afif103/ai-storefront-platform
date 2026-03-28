@@ -10,7 +10,7 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 const DEV_AUTH_ENABLED = process.env.NEXT_PUBLIC_DEV_AUTH === "true";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithCredentials } = useAuth();
   const router = useRouter();
   const t = useTranslations("login");
 
@@ -22,13 +22,21 @@ export default function LoginPage() {
   // Dev login state
   const [devToken, setDevToken] = useState("");
   const [showDevLogin, setShowDevLogin] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
-    // Real Cognito login is not wired yet — show message
-    setError(t("cognitoNotConfigured"));
+    try {
+      await loginWithCredentials(email, password);
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleDevLogin(e: React.FormEvent) {
@@ -104,7 +112,8 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={isSubmitting}
+            className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
           >
             {t("signInButton")}
           </button>
