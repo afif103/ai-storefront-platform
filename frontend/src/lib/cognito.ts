@@ -1,5 +1,5 @@
 /**
- * Raw-fetch wrapper for Cognito USER_PASSWORD_AUTH.
+ * Raw-fetch wrappers for Cognito auth flows.
  *
  * No SDK dependency — uses the Cognito JSON API directly.
  * Only used when NEXT_PUBLIC_COGNITO_MOCK is not "true".
@@ -69,4 +69,75 @@ export async function cognitoSignIn(
     id_token: result.IdToken,
     refresh_token: result.RefreshToken,
   };
+}
+
+const COGNITO_CONFIG_ERROR =
+  "Missing Cognito configuration: NEXT_PUBLIC_COGNITO_REGION and NEXT_PUBLIC_COGNITO_CLIENT_ID are required";
+
+function parseCognitoError(res: Response, body: Record<string, string>): string {
+  return body.message ?? body.__type ?? `Cognito error ${res.status}`;
+}
+
+export async function cognitoSignUp(
+  email: string,
+  password: string,
+  name: string,
+): Promise<void> {
+  if (!COGNITO_REGION || !COGNITO_CLIENT_ID) {
+    throw new Error(COGNITO_CONFIG_ERROR);
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const endpoint = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-amz-json-1.1",
+      "X-Amz-Target": "AWSCognitoIdentityProviderService.SignUp",
+    },
+    body: JSON.stringify({
+      ClientId: COGNITO_CLIENT_ID,
+      Username: normalizedEmail,
+      Password: password,
+      UserAttributes: [
+        { Name: "email", Value: normalizedEmail },
+        { Name: "name", Value: name.trim() },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(parseCognitoError(res, body as Record<string, string>));
+  }
+}
+
+export async function cognitoConfirmSignUp(
+  email: string,
+  code: string,
+): Promise<void> {
+  if (!COGNITO_REGION || !COGNITO_CLIENT_ID) {
+    throw new Error(COGNITO_CONFIG_ERROR);
+  }
+
+  const endpoint = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-amz-json-1.1",
+      "X-Amz-Target": "AWSCognitoIdentityProviderService.ConfirmSignUp",
+    },
+    body: JSON.stringify({
+      ClientId: COGNITO_CLIENT_ID,
+      Username: email.trim().toLowerCase(),
+      ConfirmationCode: code.trim(),
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(parseCognitoError(res, body as Record<string, string>));
+  }
 }

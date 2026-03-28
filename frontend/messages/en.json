@@ -115,12 +115,25 @@
     "passwordLowercase": "Password must contain a lowercase letter",
     "passwordNumber": "Password must contain a number",
     "passwordSymbol": "Password must contain a symbol",
-    "passwordsMismatch": "Passwords do not match"
+    "passwordsMismatch": "Passwords do not match",
+    "devModeTitle": "Dev Mode",
+    "devModeSignupSkipped": "Signup is skipped in dev/mock mode. The backend auto-provisions users on first login.",
+    "devModeGoToLogin": "Go to the login page and use any email and password.",
+    "devModeLoginLink": "Go to Login",
+    "signupFailed": "Signup failed"
   },
   "verifyEmail": {
     "title": "Verify Your Email",
-    "description": "Check your inbox for a verification link from Cognito. This page will be functional once AWS Cognito is configured (M1 task 1.11).",
-    "backToLogin": "Back to Login"
+    "backToLogin": "Back to Login",
+    "enterCode": "Enter the 6-digit verification code sent to",
+    "codePlaceholder": "000000",
+    "verify": "Verify",
+    "verifyFailed": "Verification failed",
+    "missingEmail": "No email address provided. Please sign up first.",
+    "backToSignup": "Back to Signup",
+    "devModeTitle": "Dev Mode",
+    "devModeNotNeeded": "Email verification is not needed in dev/mock mode.",
+    "devModeLoginLink": "Go to Login"
   },
   "forgotPassword": {
     "title": "Reset Password",

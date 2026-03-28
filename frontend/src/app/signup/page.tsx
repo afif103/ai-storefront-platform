@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod/v4";
 import { useTranslations } from "next-intl";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { cognitoSignUp } from "@/lib/cognito";
+
+const COGNITO_MOCK = process.env.NEXT_PUBLIC_COGNITO_MOCK === "true";
 
 interface SignupForm {
   email: string;
@@ -14,6 +18,7 @@ interface SignupForm {
 }
 
 export default function SignupPage() {
+  const router = useRouter();
   const [form, setForm] = useState<SignupForm>({
     email: "",
     fullName: "",
@@ -21,8 +26,32 @@ export default function SignupPage() {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const t = useTranslations("signup");
+
+  if (COGNITO_MOCK) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md space-y-4 rounded-lg bg-white p-8 text-center shadow">
+          <div className="flex justify-end">
+            <LocaleSwitcher className="text-sm text-gray-500 hover:text-gray-700" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {t("devModeTitle")}
+          </h1>
+          <p className="text-gray-600">{t("devModeSignupSkipped")}</p>
+          <p className="text-gray-600">{t("devModeGoToLogin")}</p>
+          <Link
+            href="/login"
+            className="inline-block rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {t("devModeLoginLink")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const signupSchema = z
     .object({
@@ -52,9 +81,10 @@ export default function SignupPage() {
     });
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
+    setApiError("");
 
     const result = signupSchema.safeParse(form);
     if (!result.success) {
@@ -67,31 +97,17 @@ export default function SignupPage() {
       return;
     }
 
-    // Cognito signup not wired yet — show success placeholder
-    setSubmitted(true);
-  }
-
-  if (submitted) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md space-y-4 rounded-lg bg-white p-8 text-center shadow">
-          <div className="flex justify-end">
-            <LocaleSwitcher className="text-sm text-gray-500 hover:text-gray-700" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">{t("checkYourEmail")}</h1>
-          <p className="text-gray-600">
-            {t("verificationEmailSent")}{" "}
-            <strong>{form.email}</strong>.
-          </p>
-          <Link
-            href="/verify-email"
-            className="inline-block text-blue-600 hover:underline"
-          >
-            {t("goToVerification")}
-          </Link>
-        </div>
-      </div>
-    );
+    setIsSubmitting(true);
+    try {
+      await cognitoSignUp(form.email, form.password, form.fullName);
+      router.push(
+        `/verify-email?email=${encodeURIComponent(form.email.trim().toLowerCase())}`,
+      );
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : t("signupFailed"));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -103,6 +119,12 @@ export default function SignupPage() {
         <h1 className="text-center text-2xl font-bold text-gray-900">
           {t("createAccount")}
         </h1>
+
+        {apiError && (
+          <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {apiError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field
@@ -142,7 +164,8 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={isSubmitting}
+            className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
           >
             {t("signUp")}
           </button>
