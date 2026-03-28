@@ -350,26 +350,26 @@ Key design decisions:
 
 ## M10A — Foundations: Auth & Onboarding
 
-### M10A.1 — Auth + Onboarding Planning (next)
+### M10A.1 — Auth + Onboarding Planning
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 10A.1a | Auth planning: auth provider config, signup flow, email verification, mock retirement plan | Claude | Not started | Planning doc ready for review. No code changes. |
-| 10A.1b | Onboarding planning: signup → create store → configure storefront journey (screen-by-screen) | Claude | Not started | Screen flow documented, decisions on auto-create vs wizard captured. |
+| 10A.1a | Auth planning: auth provider config, signup flow, email verification, mock retirement plan | Claude | **Done** | Planning completed inline through approved implementation packets. |
+| 10A.1b | Onboarding planning: signup → create store → configure storefront journey (screen-by-screen) | Claude | **Done** | Planning completed inline through approved implementation packets. |
 | 10A.1c | Role matrix review: owner / admin / member / cashier — permissions and access boundaries | Claude | Not started | Role matrix table with per-role access rules. |
 
 ### M10A.2 — Real Auth Implementation
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 10A.2a | Real auth implementation (retire mock mode, real signup/login/verify) | Claude | Not started | Mock mode removed or gated. Real signup → verify → login flow works end-to-end. |
+| 10A.2a | Real auth implementation (Cognito signup/login/verify flows; mock mode retained for local dev) | Claude | **Done** | Cognito wired (signup, login, verify-email, forgot/reset-password). Mock mode retained for local dev. |
 | 10A.2b | Test fixture migration for real auth | Claude | Not started | Existing integration tests pass without mock mode. Dev seed data updated. |
 
 ### M10A.3 — Self-Serve Onboarding
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 10A.3a | Onboarding flow: signup → create tenant → storefront setup | Claude | Not started | New user can self-serve from signup to configured storefront. |
+| 10A.3a | Onboarding flow: signup → invitation accept / create tenant → dashboard | Claude | **Done** | Onboarding page: accept invitations, create-store form with slug/currency, redirects to dashboard. |
 
 ---
 

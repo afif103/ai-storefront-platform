@@ -297,6 +297,10 @@ Note: M10A and M10B start with planning-only packets (M10A.1, M10B.1) before any
 | Role matrix covers owner / admin / member / cashier with clear permission boundaries |
 | Existing dev/demo data migrated or test fixtures updated for real auth |
 
+**Status**: User-facing M10A scope shipped; follow-up internal tasks remain.
+- Shipped: login, signup, verify-email, forgot/reset-password, invitation accept, create-store onboarding
+- Remaining: 10A.1c role matrix review, 10A.2b test fixture migration
+
 ---
 
 ### M10B — Foundations: POS Domain
