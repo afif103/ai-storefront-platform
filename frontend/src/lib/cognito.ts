@@ -141,3 +141,60 @@ export async function cognitoConfirmSignUp(
     throw new Error(parseCognitoError(res, body as Record<string, string>));
   }
 }
+
+export async function cognitoForgotPassword(email: string): Promise<void> {
+  if (!COGNITO_REGION || !COGNITO_CLIENT_ID) {
+    throw new Error(COGNITO_CONFIG_ERROR);
+  }
+
+  const endpoint = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-amz-json-1.1",
+      "X-Amz-Target": "AWSCognitoIdentityProviderService.ForgotPassword",
+    },
+    body: JSON.stringify({
+      ClientId: COGNITO_CLIENT_ID,
+      Username: email.trim().toLowerCase(),
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(parseCognitoError(res, body as Record<string, string>));
+  }
+}
+
+export async function cognitoConfirmForgotPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  if (!COGNITO_REGION || !COGNITO_CLIENT_ID) {
+    throw new Error(COGNITO_CONFIG_ERROR);
+  }
+
+  const endpoint = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-amz-json-1.1",
+      "X-Amz-Target":
+        "AWSCognitoIdentityProviderService.ConfirmForgotPassword",
+    },
+    body: JSON.stringify({
+      ClientId: COGNITO_CLIENT_ID,
+      Username: email.trim().toLowerCase(),
+      ConfirmationCode: code.trim(),
+      Password: newPassword,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(parseCognitoError(res, body as Record<string, string>));
+  }
+}
