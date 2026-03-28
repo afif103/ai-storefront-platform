@@ -12,6 +12,7 @@ from app.api.v1.media import router as media_router
 from app.api.v1.members import router as members_router
 from app.api.v1.notification_preferences import router as notification_prefs_router
 from app.api.v1.platform_admin import router as platform_admin_router
+from app.api.v1.pos import router as pos_router
 from app.api.v1.products import router as products_router
 from app.api.v1.public_storefront import router as public_storefront_router
 from app.api.v1.status_transitions import router as status_transitions_router
@@ -45,5 +46,6 @@ api_v1_router.include_router(
     prefix="/tenants/me/notification-preferences",
     tags=["notification-preferences"],
 )
+api_v1_router.include_router(pos_router, prefix="/tenants/me/pos", tags=["pos"])
 api_v1_router.include_router(platform_admin_router, prefix="/admin", tags=["platform-admin"])
 api_v1_router.include_router(public_storefront_router, prefix="/storefront", tags=["storefront"])
