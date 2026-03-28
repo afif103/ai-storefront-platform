@@ -43,6 +43,10 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    sectionKey: "sectionPOS",
+    items: [{ labelKey: "navPOS", href: "/dashboard/pos" }],
+  },
+  {
     sectionKey: "sectionTransactions",
     items: [
       { labelKey: "navOrders", href: "/dashboard/orders" },
