@@ -31,6 +31,7 @@ class OrderListItem(BaseModel):
     total_amount: Decimal
     currency: str
     status: str
+    source: str
     created_at: datetime
     updated_at: datetime | None
 
@@ -44,6 +45,7 @@ class OrderCreateResponse(BaseModel):
     total_amount: Decimal
     currency: str
     status: str
+    source: str
     created_at: datetime
 
     model_config = {"from_attributes": True}

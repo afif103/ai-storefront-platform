@@ -25,6 +25,10 @@ class Order(TenantScopedBase):
             "status IN ('pending', 'confirmed', 'fulfilled', 'cancelled')",
             name="ck_orders_status",
         ),
+        CheckConstraint(
+            "source IN ('storefront', 'pos')",
+            name="ck_orders_source",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
@@ -39,6 +43,7 @@ class Order(TenantScopedBase):
     items: Mapped[list] = mapped_column(JSONB, nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="'KWD'")
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default="'storefront'")
     payment_link: Mapped[str | None] = mapped_column(Text, nullable=True)
     payment_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)

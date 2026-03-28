@@ -7,8 +7,6 @@ All in the same DB session. No tenant_id exposed in responses.
 import logging
 import uuid
 from datetime import UTC, datetime
-from decimal import Decimal
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +15,6 @@ from app.core.dependencies import get_db_with_slug
 from app.models.category import Category
 from app.models.donation import Donation
 from app.models.media_asset import MediaAsset
-from app.models.order import Order
 from app.models.pledge import Pledge
 from app.models.product import Product
 from app.models.storefront_config import StorefrontConfig
@@ -40,11 +37,8 @@ from app.schemas.storefront_ai_chat import (
 from app.schemas.visit import VisitCreateRequest, VisitCreateResponse
 from app.services.analytics_ingest import handle_analytics_ingest
 from app.services.ip_hash import hash_ip
-from app.services.numbering import (
-    get_next_donation_number,
-    get_next_order_number,
-    get_next_pledge_number,
-)
+from app.services.numbering import get_next_donation_number, get_next_pledge_number
+from app.services.order_create import create_order
 from app.services.storage import presign_get
 from app.workers.tasks.notifications import (
     send_donation_notification,
@@ -320,96 +314,20 @@ async def submit_order(
     # Validate visit_id if provided
     await _validate_visit(db, tenant.id, body.visit_id)
 
-    # Fetch all requested products in one query
-    product_ids = [item.catalog_item_id for item in body.items]
-    result = await db.execute(
-        select(Product).where(
-            Product.id.in_(product_ids),
-            Product.tenant_id == tenant.id,
-            Product.is_active.is_(True),
-        )
-    )
-    products_by_id = {p.id: p for p in result.scalars().all()}
-
-    # Validate all items exist, are active, and have a price
-    order_currency = tenant.default_currency or "KWD"
-    for item in body.items:
-        if item.catalog_item_id not in products_by_id:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Product {item.catalog_item_id} not found or inactive",
-            )
-        product = products_by_id[item.catalog_item_id]
-        if product.price_amount is None:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Product {item.catalog_item_id} has no price",
-            )
-
-    # Build JSONB snapshot and compute total
-    items_jsonb: list[dict] = []
-    total = Decimal("0.000")
-    for item in body.items:
-        product = products_by_id[item.catalog_item_id]
-        unit_price = product.price_amount
-        subtotal = unit_price * item.qty
-        items_jsonb.append(
-            {
-                "catalog_item_id": str(item.catalog_item_id),
-                "name": product.name,
-                "qty": item.qty,
-                "unit_price": str(unit_price),
-                "currency": order_currency,
-                "subtotal": str(subtotal),
-            }
-        )
-        total += subtotal
-
-    # Atomic stock decrement — runs in same transaction as order creation.
-    # get_db() rolls back entire transaction on any exception (including 409).
-    for item in body.items:
-        product = products_by_id[item.catalog_item_id]
-        if not product.track_inventory:
-            continue
-        result_stock = await db.execute(
-            text(
-                "UPDATE products "
-                "SET stock_qty = stock_qty - :qty "
-                "WHERE tenant_id = :tenant_id "
-                "  AND id = :product_id "
-                "  AND track_inventory = true "
-                "  AND stock_qty >= :qty"
-            ),
-            {
-                "qty": item.qty,
-                "tenant_id": str(tenant.id),
-                "product_id": str(item.catalog_item_id),
-            },
-        )
-        if result_stock.rowcount == 0:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Insufficient stock for product '{product.name}'",
-            )
-
-    order_number = await get_next_order_number(db, str(tenant.id))
-
-    order = Order(
+    order = await create_order(
+        db,
         tenant_id=tenant.id,
-        order_number=order_number,
+        tenant_currency=tenant.default_currency or "KWD",
+        items=body.items,
         customer_name=body.customer_name,
         customer_phone=body.customer_phone,
         customer_email=body.customer_email,
-        items=items_jsonb,
-        total_amount=total,
-        currency=order_currency,
+        source="storefront",
+        status="pending",
         payment_notes=body.payment_notes,
         notes=body.notes,
-        status="pending",
         visit_id=body.visit_id,
     )
-    db.add(order)
-    await db.flush()
 
     # Create UTM event if visit_id was provided
     if body.visit_id:
