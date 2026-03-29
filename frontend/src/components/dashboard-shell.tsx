@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -79,12 +79,14 @@ function SidebarContent({
   onLogout,
   onNavClick,
   t,
+  groups,
 }: {
   pathname: string;
   email: string | undefined;
   onLogout: () => void;
   onNavClick?: () => void;
   t: ReturnType<typeof useTranslations>;
+  groups: NavGroup[];
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -101,7 +103,7 @@ function SidebarContent({
 
       {/* Nav groups */}
       <nav aria-label={t("navLabel")} className="flex-1 overflow-y-auto px-3 py-4">
-        {NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.sectionKey} className="mb-4">
             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
               {t(group.sectionKey)}
@@ -148,12 +150,28 @@ function SidebarContent({
 // Shell
 // ---------------------------------------------------------------------------
 
+const CASHIER_SECTIONS = new Set(["sectionPOS"]);
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, bootstrap, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const t = useTranslations("dashboard");
+
+  const role = bootstrap?.memberships?.[0]?.role;
+  const isCashier = role === "cashier";
+
+  useEffect(() => {
+    if (isCashier && pathname !== "/dashboard/pos") {
+      router.replace("/dashboard/pos");
+    }
+  }, [isCashier, pathname, router]);
+
+  const navGroups = useMemo(
+    () => (isCashier ? NAV_GROUPS.filter((g) => CASHIER_SECTIONS.has(g.sectionKey)) : NAV_GROUPS),
+    [isCashier],
+  );
 
   function handleLogout() {
     logout();
@@ -169,6 +187,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           email={user?.email}
           onLogout={handleLogout}
           t={t}
+          groups={navGroups}
         />
       </aside>
 
@@ -219,6 +238,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               onLogout={handleLogout}
               onNavClick={() => setMobileOpen(false)}
               t={t}
+              groups={navGroups}
             />
           </aside>
         </div>
