@@ -195,7 +195,7 @@ async def require_role(
 
     Call from route handlers after get_db_with_tenant.
     """
-    role_hierarchy = {"owner": 3, "admin": 2, "member": 1}
+    role_hierarchy = {"owner": 3, "admin": 2, "member": 1, "cashier": 0}
 
     result = await db.execute(
         select(TenantMember).where(

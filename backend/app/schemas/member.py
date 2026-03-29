@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 class MemberInvite(BaseModel):
     email: EmailStr
-    role: str = Field(default="member", pattern=r"^(admin|member)$")
+    role: str = Field(default="member", pattern=r"^(admin|member|cashier)$")
 
 
 class MemberResponse(BaseModel):
@@ -25,4 +25,4 @@ class MemberResponse(BaseModel):
 
 
 class MemberUpdate(BaseModel):
-    role: str | None = Field(None, pattern=r"^(owner|admin|member)$")
+    role: str | None = Field(None, pattern=r"^(owner|admin|member|cashier)$")
