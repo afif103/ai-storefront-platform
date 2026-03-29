@@ -314,10 +314,11 @@ Note: M10A and M10B start with planning-only packets (M10A.1, M10B.1) before any
 | POS sales service layer (create sale, calculate totals) |
 | POS domain does NOT depend on `order_items` normalization — online orders keep current JSONB storage |
 
-**Status**: M10B.2 POS order foundation shipped; remaining packets not started.
-- Shipped: shared order service, `source` column (storefront|pos), POS order endpoint, frontend cashier page with bilingual strings
-- Deferred: cashier role + permission scoping (originally planned for M10B.2) moved to a later POS packet
-- Remaining: M10B.3 POS sales domain
+**Status**: M10B.3 cashier role + permission scoping shipped.
+- M10B.1: POS planning memo accepted
+- M10B.2: shared order service, `source` column, POS order endpoint, frontend cashier page
+- M10B.3: cashier role at hierarchy level 0, backend allow/deny by hierarchy, invite/update schemas, frontend nav scoping + redirect. No new endpoint added — role sourced from existing bootstrap memberships.
+- Deferred: POS Sales Domain (`pos_sales` + `pos_sale_items` tables, separate POS sales service/tests) moved to a later POS packet. Current POS orders use shared `orders` table with `source='pos'`.
 
 ---
 
@@ -410,7 +411,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Track | Status |
 |-----------|-------|--------|
 | M10A — Foundations: Auth & Onboarding | Merchant-Ready Core | M10A.1 Planning next |
-| M10B — Foundations: POS Domain | POS / Omnichannel | M10B.2 POS order foundation shipped |
+| M10B — Foundations: POS Domain | POS / Omnichannel | M10B.3 Cashier role + permission scoping shipped |
 | M11 — Selling & Payments MVP | Both tracks | Not started |
 | M12 — Operations & Variants | Both tracks | Not started |
 | M13 — Omnichannel Reporting & Polish | Both tracks (convergence) | Not started |

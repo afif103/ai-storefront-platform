@@ -390,15 +390,18 @@ Key design decisions:
 | 10B.2c | POS order integration tests | Claude | **DONE** | 5 tests: happy path, insufficient stock, inactive product, cross-tenant, source persists. |
 | 10B.2d | Frontend POS cashier page with bilingual strings | Claude | **DONE** | `/dashboard/pos` page with product catalog, cart, stock clamping, checkout. Nav entry + en/ar translations. |
 
-> **Deferred**: The originally planned cashier role + permission scoping (add `cashier` to role CHECK, sell-only access boundaries) was deferred to a later POS packet. Current POS endpoint uses existing authenticated tenant user roles.
+> **Resolved**: The cashier role + permission scoping deferred from M10B.2 was shipped in M10B.3 below.
 
-### M10B.3 — POS Sales Domain
+### M10B.3 — Cashier Role + Permission Scoping (complete)
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 10B.3a | `pos_sales` + `pos_sale_items` tables + RLS + migration | Claude | Not started | Tables with tenant_id, RLS policies, cross-tenant isolation test. Separate from `orders`. |
-| 10B.3b | POS sales service layer (create sale, calculate totals) | Claude | Not started | Service creates sale with line items, computes totals. |
-| 10B.3c | POS sales integration tests | Claude | Not started | CRUD, RLS isolation, total calculation correctness. |
+| 10B.3a | Add `cashier` to role CHECK constraint + migration, hierarchy level 0, invite/update schema patterns | Claude | **DONE** | Migration reversible. `role_hierarchy` updated. `MemberInvite` and `MemberUpdate` accept cashier. |
+| 10B.3b | Scope endpoint access: cashier allowed on product list + POS order; denied on all member+ endpoints by hierarchy | Claude | **DONE** | `require_role("cashier")` on product list and POS endpoint. All other endpoints deny cashier automatically. No new endpoints added. |
+| 10B.3c | Cashier permission boundary tests | Claude | **DONE** | 9 tests: allow POS + product list, deny product detail/CRUD/orders/categories/members, role update to cashier, owner regression. |
+| 10B.3d | Frontend dashboard scoping for cashier role | Claude | **DONE** | Role derived from `bootstrap.memberships`. Cashier nav shows POS only. Centralized redirect to `/dashboard/pos`. |
+
+> **Deferred**: The originally planned POS Sales Domain work (`pos_sales` + `pos_sale_items` tables, POS sales service layer, separate POS sales integration tests) was deferred to a later POS packet. Current POS orders use the shared `orders` table with `source='pos'`.
 
 ---
 
@@ -588,7 +591,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Packets | Status |
 |-----------|---------|--------|
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | M10A.1 Planning next |
-| M10B — Foundations: POS Domain | 3 packets (M10B.1–B.3) | M10B.2 POS order foundation shipped |
+| M10B — Foundations: POS Domain | 3 shipped + POS Sales Domain deferred | M10B.3 Cashier role + permission scoping shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
 | M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
