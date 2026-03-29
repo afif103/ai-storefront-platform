@@ -314,6 +314,11 @@ Note: M10A and M10B start with planning-only packets (M10A.1, M10B.1) before any
 | POS sales service layer (create sale, calculate totals) |
 | POS domain does NOT depend on `order_items` normalization — online orders keep current JSONB storage |
 
+**Status**: M10B.2 POS order foundation shipped; remaining packets not started.
+- Shipped: shared order service, `source` column (storefront|pos), POS order endpoint, frontend cashier page with bilingual strings
+- Deferred: cashier role + permission scoping (originally planned for M10B.2) moved to a later POS packet
+- Remaining: M10B.3 POS sales domain
+
 ---
 
 ### M11 — Selling & Payments MVP
@@ -405,7 +410,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Track | Status |
 |-----------|-------|--------|
 | M10A — Foundations: Auth & Onboarding | Merchant-Ready Core | M10A.1 Planning next |
-| M10B — Foundations: POS Domain | POS / Omnichannel | M10B.1 Planning complete |
+| M10B — Foundations: POS Domain | POS / Omnichannel | M10B.2 POS order foundation shipped |
 | M11 — Selling & Payments MVP | Both tracks | Not started |
 | M12 — Operations & Variants | Both tracks | Not started |
 | M13 — Omnichannel Reporting & Polish | Both tracks (convergence) | Not started |

@@ -381,12 +381,16 @@ Key design decisions:
 |---|------|-------|--------|-----|
 | 10B.1a | POS domain planning: `pos_sales` + `pos_sale_items` schema design, screen wireframes, cashier role boundaries, inventory integration design | Claude | **DONE** | Planning memo accepted. Schema and screen flows documented in planning memo. |
 
-### M10B.2 — Cashier Role + Permissions
+### M10B.2 — POS Order Foundation (complete)
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 10B.2a | Add `cashier` to role CHECK constraint + migration | Claude | Not started | Role CHECK updated. Migration reversible. |
-| 10B.2b | Cashier permission scoping (sell-only, no settings/admin access) | Claude | Not started | Cashier can access POS sell screen. Cannot access settings, team, admin, analytics. |
+| 10B.2a | Extract shared order service from storefront + add `source` column with migration | Claude | **DONE** | `order_create.py` shared service. `source` column (storefront\|pos) with CHECK + migration. Storefront refactored to use shared service. |
+| 10B.2b | POS order endpoint (`POST /api/v1/tenants/me/pos/orders`) | Claude | **DONE** | Authenticated endpoint creates fulfilled orders with source=pos. Walk-in default for customer_name. |
+| 10B.2c | POS order integration tests | Claude | **DONE** | 5 tests: happy path, insufficient stock, inactive product, cross-tenant, source persists. |
+| 10B.2d | Frontend POS cashier page with bilingual strings | Claude | **DONE** | `/dashboard/pos` page with product catalog, cart, stock clamping, checkout. Nav entry + en/ar translations. |
+
+> **Deferred**: The originally planned cashier role + permission scoping (add `cashier` to role CHECK, sell-only access boundaries) was deferred to a later POS packet. Current POS endpoint uses existing authenticated tenant user roles.
 
 ### M10B.3 — POS Sales Domain
 
@@ -584,7 +588,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Packets | Status |
 |-----------|---------|--------|
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | M10A.1 Planning next |
-| M10B — Foundations: POS Domain | 3 packets (M10B.1–B.3) | M10B.1 Planning complete |
+| M10B — Foundations: POS Domain | 3 packets (M10B.1–B.3) | M10B.2 POS order foundation shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
 | M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
