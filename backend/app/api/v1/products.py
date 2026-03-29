@@ -89,7 +89,7 @@ async def list_products(
     db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
 ) -> PaginatedResponse[ProductResponse]:
     db, tenant_id = db_tenant
-    await require_role("member", db, tenant_id, user)
+    await require_role("cashier", db, tenant_id, user)
 
     tenant = await _get_tenant(db, tenant_id)
 

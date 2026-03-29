@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db_with_tenant
+from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
+from app.models.user import User
 from app.models.tenant import Tenant
 from app.schemas.order import OrderCreateResponse
 from app.schemas.pos import PosOrderCreateRequest
@@ -18,6 +19,7 @@ router = APIRouter()
 @router.post("/orders", response_model=OrderCreateResponse, status_code=201)
 async def create_pos_order(
     body: PosOrderCreateRequest,
+    user: User = Depends(get_current_user),
     db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
 ) -> OrderCreateResponse:
     """Create a POS order.
@@ -26,6 +28,7 @@ async def create_pos_order(
     with source='pos' and status='fulfilled'.
     """
     db, tenant_id = db_tenant
+    await require_role("cashier", db, tenant_id, user)
 
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one()
