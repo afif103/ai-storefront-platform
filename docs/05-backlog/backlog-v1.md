@@ -338,13 +338,13 @@ V1 (MVP): ordered epics M1–M9. V2 (POS + Merchant-Ready): M10–M13 with two p
 
 V2 runs two parallel tracks that converge in M13:
 - **M10A / Merchant-Ready Core**: real auth, onboarding, roles/permissions
-- **M10B / POS Omnichannel**: cashier role, POS sales domain, POS foundation
+- **M10B / POS Omnichannel**: cashier role, POS order foundation, permission scoping
 
 Key design decisions:
-- POS uses a separate `pos_sales` + `pos_sale_items` domain, NOT the existing `orders` table
+- POS uses the shared `orders` table with `source='pos'`. A separate POS Sales Domain (`pos_sales` + `pos_sale_items`) was originally planned but deferred — revisit only if future POS lifecycle needs (e.g., register sessions, split tenders) justify separate tables.
 - Online orders keep current JSONB line item storage; `order_items` normalization is an optional follow-up, not a POS prerequisite
 - Shared customer records ship in M11 and do NOT block first POS MVP
-- Both tracks share products table, inventory (`record_stock_movement`), and reporting
+- Both tracks share products table, inventory, and reporting
 
 ---
 
@@ -411,19 +411,19 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.1a | POS sell screen UI: product grid/search → cart → cash checkout | Claude | Not started | Dashboard page (inside auth). Product search/browse, add to cart, cash payment. |
+| 11.1a | POS sell screen UI: product grid/search → cart → cash checkout | Claude | **Shipped in M10B.2** | `/dashboard/pos` page shipped with product search, cart, stock clamping, checkout. Further enhancements (barcode, hold/resume) are M11 scope. |
 
 ### M11.2 — POS Inventory Integration
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.2a | POS sale decrements shared stock via `record_stock_movement(reason="pos_sale")` | Claude | Not started | Stock updated atomically. Insufficient stock → error. Untracked products bypass. |
+| 11.2a | POS sale decrements shared stock via `record_stock_movement(reason="pos_sale")` | Claude | **Partially shipped in M10B.2** | Atomic stock decrement on POS order creation shipped. Does NOT yet use `record_stock_movement` — uses direct SQL decrement in shared order service. Migration to `record_stock_movement(reason="pos_sale")` is optional follow-up. |
 
 ### M11.3 — POS Receipt
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.3a | POS receipt: print-friendly HTML layout, thermal-friendly CSS | Claude | Not started | Receipt renders with sale details, print button triggers browser print. |
+| 11.3a | POS receipt: print-friendly HTML layout, thermal-friendly CSS | Claude | **Pulled forward to next M10B packet** | Browser-print receipt pulled forward from M11 into next M10B POS packet. Thermal printer integration remains M11 scope if needed. |
 
 ### M11.4 — Product SKU/Barcode
 
@@ -590,7 +590,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 
 | Milestone | Packets | Status |
 |-----------|---------|--------|
-| M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | M10A.1 Planning next |
+| M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | Core auth/onboarding shipped; role matrix + test fixture follow-ups remain |
 | M10B — Foundations: POS Domain | 3 shipped + POS Sales Domain deferred | M10B.3 Cashier role + permission scoping shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
 | M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
