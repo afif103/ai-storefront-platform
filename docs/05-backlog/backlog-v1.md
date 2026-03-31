@@ -401,7 +401,16 @@ Key design decisions:
 | 10B.3c | Cashier permission boundary tests | Claude | **DONE** | 9 tests: allow POS + product list, deny product detail/CRUD/orders/categories/members, role update to cashier, owner regression. |
 | 10B.3d | Frontend dashboard scoping for cashier role | Claude | **DONE** | Role derived from `bootstrap.memberships`. Cashier nav shows POS only. Centralized redirect to `/dashboard/pos`. |
 
-> **Deferred**: The originally planned POS Sales Domain work (`pos_sales` + `pos_sale_items` tables, POS sales service layer, separate POS sales integration tests) was deferred to a later POS packet. Current POS orders use the shared `orders` table with `source='pos'`.
+### M10B.4 — POS Sale Receipt (complete)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10B.4a | Add `customer_name` to `OrderCreateResponse` schema | Claude | **DONE** | Additive field, `from_attributes=True` reads from existing model column. All POS + cashier tests pass. |
+| 10B.4b | Frontend POS receipt view with print support | Claude | **DONE** | Success screen renders store name (from bootstrap), order number, date/time, customer name (fallback to "Walk-in"), line items from JSONB snapshot, total. Print button calls `window.print()`. Dashboard shell hides sidebar/top bar and removes margin offset on print. en/ar receipt strings added. |
+
+> **Architecture**: No new endpoints or tables. Shared orders with `source='pos'` continue. Receipt data comes entirely from `OrderCreateResponse` + existing bootstrap membership.
+
+> **Deferred**: POS Sales Domain (`pos_sales` + `pos_sale_items` tables, POS sales service layer, separate integration tests) remains deferred to a later POS packet. Current POS orders use the shared `orders` table with `source='pos'`.
 
 ---
 
@@ -423,7 +432,7 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.3a | POS receipt: print-friendly HTML layout, thermal-friendly CSS | Claude | **Pulled forward to next M10B packet** | Browser-print receipt pulled forward from M11 into next M10B POS packet. Thermal printer integration remains M11 scope if needed. |
+| 11.3a | POS receipt: print-friendly HTML layout, thermal-friendly CSS | Claude | **Shipped in M10B.4** | Browser-print receipt shipped in M10B.4. Thermal printer integration remains M11 scope if needed. |
 
 ### M11.4 — Product SKU/Barcode
 
@@ -591,8 +600,8 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Packets | Status |
 |-----------|---------|--------|
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | Core auth/onboarding shipped; role matrix + test fixture follow-ups remain |
-| M10B — Foundations: POS Domain | 3 shipped + POS Sales Domain deferred | M10B.3 Cashier role + permission scoping shipped |
+| M10B — Foundations: POS Domain | 4 shipped + POS Sales Domain deferred | M10B.4 POS sale receipt shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
 | M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
-| **V2 Total** | **25 packets** | |
+| **V2 Total** | Packet count evolves as work ships and scope adjusts | |
