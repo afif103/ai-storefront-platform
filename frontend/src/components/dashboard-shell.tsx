@@ -181,7 +181,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r bg-white lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r bg-white lg:block print:hidden">
         <SidebarContent
           pathname={pathname}
           email={user?.email}
@@ -192,7 +192,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-20 flex items-center border-b bg-white px-4 py-3 shadow-sm lg:hidden">
+      <div className="sticky top-0 z-20 flex items-center border-b bg-white px-4 py-3 shadow-sm lg:hidden print:hidden">
         <button
           onClick={() => setMobileOpen(true)}
           aria-expanded={mobileOpen}
@@ -245,7 +245,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Content area */}
-      <div className="flex min-h-screen flex-col lg:ml-60">{children}</div>
+      <div className="flex min-h-screen flex-col lg:ml-60 print:ml-0 print:min-h-0">{children}</div>
     </div>
   );
 }

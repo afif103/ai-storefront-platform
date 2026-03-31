@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,13 +32,24 @@ interface CartLine {
   qty: number;
 }
 
+interface OrderItem {
+  name: string;
+  qty: number;
+  unit_price: string;
+  currency: string;
+  subtotal: string;
+}
+
 interface OrderResponse {
   id: string;
   order_number: string;
+  customer_name: string;
+  items: OrderItem[];
   total_amount: string;
   currency: string;
   status: string;
   source: string;
+  created_at: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +73,8 @@ function maxQty(p: Product): number {
 
 function POSContent() {
   const t = useTranslations("pos");
+  const { bootstrap } = useAuth();
+  const storeName = bootstrap?.memberships?.[0]?.tenant_name;
 
   // Product catalog
   const [products, setProducts] = useState<Product[]>([]);
@@ -200,29 +214,82 @@ function POSContent() {
 
   if (lastOrder) {
     return (
-      <main className="mx-auto max-w-md px-6 py-16 text-center">
+      <main className="mx-auto max-w-md px-6 py-16">
         <div className="rounded-lg border bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-green-700">
+          {storeName && (
+            <p className="text-center text-sm font-medium text-gray-900">
+              {storeName}
+            </p>
+          )}
+          <h2 className="mt-1 text-center text-xl font-semibold text-green-700">
             {t("saleComplete")}
           </h2>
-          <p className="mt-3 text-sm text-gray-700">
+          <p className="mt-3 text-center text-sm text-gray-700">
             {t("orderNumber", { number: lastOrder.order_number })}
           </p>
-          <p className="mt-1 text-sm text-gray-700">
+          <p className="mt-1 text-center text-sm text-gray-700">
+            {t("receiptCustomer", {
+              name: lastOrder.customer_name || t("customerNamePlaceholder"),
+            })}
+          </p>
+          <p className="mt-1 text-center text-xs text-gray-500">
+            {new Date(lastOrder.created_at).toLocaleString()}
+          </p>
+
+          {/* Line items */}
+          <table className="mt-4 w-full text-sm">
+            <thead className="border-b text-left text-xs font-medium uppercase text-gray-500">
+              <tr>
+                <th className="py-1">{t("name")}</th>
+                <th className="py-1 text-center">{t("qty")}</th>
+                <th className="py-1 text-right">{t("receiptUnitPrice")}</th>
+                <th className="py-1 text-right">{t("subtotal")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {lastOrder.items.map((item, i) => (
+                <tr key={i}>
+                  <td className="py-1 text-gray-900">{item.name}</td>
+                  <td className="py-1 text-center text-gray-700">
+                    {item.qty}
+                  </td>
+                  <td className="py-1 text-right text-gray-700">
+                    {item.unit_price}
+                  </td>
+                  <td className="py-1 text-right text-gray-700">
+                    {item.subtotal}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Total */}
+          <div className="mt-3 border-t pt-2 text-right text-sm font-semibold text-gray-900">
             {t("saleTotal", {
               total: lastOrder.total_amount,
               currency: lastOrder.currency,
             })}
-          </p>
-          <button
-            onClick={() => {
-              setLastOrder(null);
-              refreshProducts();
-            }}
-            className="mt-6 rounded bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            {t("newSale")}
-          </button>
+          </div>
+
+          {/* Actions (hidden on print) */}
+          <div className="mt-6 flex gap-3 print:hidden">
+            <button
+              onClick={() => window.print()}
+              className="flex-1 rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              {t("printReceipt")}
+            </button>
+            <button
+              onClick={() => {
+                setLastOrder(null);
+                refreshProducts();
+              }}
+              className="flex-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              {t("newSale")}
+            </button>
+          </div>
         </div>
       </main>
     );

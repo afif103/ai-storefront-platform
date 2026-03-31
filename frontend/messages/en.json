@@ -484,6 +484,9 @@
     "saleComplete": "Sale Complete",
     "orderNumber": "Order: {number}",
     "saleTotal": "Total: {total} {currency}",
-    "newSale": "New Sale"
+    "newSale": "New Sale",
+    "receiptCustomer": "Customer: {name}",
+    "receiptUnitPrice": "Unit Price",
+    "printReceipt": "Print Receipt"
   }
 }
