@@ -41,6 +41,7 @@ class OrderListItem(BaseModel):
 class OrderCreateResponse(BaseModel):
     id: uuid.UUID
     order_number: str
+    customer_name: str
     items: list[Any]
     total_amount: Decimal
     currency: str
