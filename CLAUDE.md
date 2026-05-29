@@ -85,3 +85,14 @@ cd frontend && npm run build                          # Production build
 # Workers
 cd backend && celery -A app.workers.celery_app worker --loglevel=info
 ```
+
+## Workflow Commands
+
+Reusable Claude Code slash commands in `.claude/commands/`:
+
+| Command | Purpose |
+|---------|---------|
+| `/resync-project` | Project state snapshot for ChatGPT handoff/review |
+| `/plan-packet` | Structured packet plan — investigate only, no coding |
+| `/review-ready` | Pre-commit checks, diff summary, proposed commit message |
+| `/final-verify` | Post-implementation validation across backend, frontend, docs |
