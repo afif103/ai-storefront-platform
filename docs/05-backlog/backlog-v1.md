@@ -419,6 +419,16 @@ Key design decisions:
 
 > **Architecture**: No new tables or migrations. Shared orders with `source='pos'` continue. History endpoints reuse `OrderListItem` and `OrderCreateResponse` schemas.
 
+### M10B.6 — POS Inventory via `record_stock_movement` (complete)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10B.6a | Migration + model: add `pos_sale` to `ck_stock_movements_reason` | Claude | **DONE** | Reversible Alembic migration drops and recreates CHECK constraint with `pos_sale` added. `StockMovement` model updated to match. |
+| 10B.6b | POS order creation records auditable stock movement | Claude | **DONE** | `record_stock_movement` extended with `prevent_negative_stock` and `insufficient_stock_detail` params. POS path creates `StockMovement(reason='pos_sale', delta_qty=-qty, order_id=order.id, actor_user_id=...)` after order flush. Atomic guard still prevents negative stock. Storefront stock path unchanged. No frontend changes. No new tables. |
+| 10B.6c | Backend test: POS order creates stock movement row | Claude | **DONE** | `test_pos_order_records_stock_movement` in `test_pos.py`: verifies `reason`, `delta_qty`, `order_id`, and `actor_user_id` on the committed movement row. |
+
+> **Architecture**: No new tables. `stock_movements` table already existed. POS orders now generate an auditable stock movement row alongside the existing atomic stock decrement guard. Storefront order stock behavior unchanged.
+
 > **Deferred**: POS Sales Domain (`pos_sales` + `pos_sale_items` tables, POS sales service layer, separate integration tests) remains deferred to a later POS packet. Current POS orders use the shared `orders` table with `source='pos'`.
 
 ---
@@ -435,7 +445,7 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.2a | POS sale decrements shared stock via `record_stock_movement(reason="pos_sale")` | Claude | **Partially shipped in M10B.2** | Atomic stock decrement on POS order creation shipped. Does NOT yet use `record_stock_movement` — uses direct SQL decrement in shared order service. Migration to `record_stock_movement(reason="pos_sale")` is optional follow-up. |
+| 11.2a | POS sale decrements shared stock via `record_stock_movement(reason="pos_sale")` | Claude | **Shipped in M10B.6** | POS order creation now calls `record_stock_movement(reason="pos_sale")` with atomic guard, `order_id`, and `actor_user_id`. Storefront stock path unchanged. |
 
 ### M11.3 — POS Receipt
 
@@ -609,7 +619,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Packets | Status |
 |-----------|---------|--------|
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | Core auth/onboarding shipped; role matrix + test fixture follow-ups remain |
-| M10B — Foundations: POS Domain | 5 shipped + POS Sales Domain deferred | M10B.5 POS order history + receipt reprint shipped |
+| M10B — Foundations: POS Domain | 6 shipped + POS Sales Domain deferred | M10B.6 POS inventory audit trail shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
 | M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
