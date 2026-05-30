@@ -4,7 +4,10 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.stock_movement import StockMovement
 from tests.conftest import auth_headers
 
 pytestmark = pytest.mark.pos
@@ -319,3 +322,31 @@ async def test_pos_detail_404_for_storefront_order(client: AsyncClient):
         headers=owner_headers,
     )
     assert r.status_code == 404
+
+
+async def test_pos_order_records_stock_movement(
+    client: AsyncClient, db: AsyncSession
+):
+    # POS order writes a pos_sale stock_movements row linked to the order.
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+    cashier_headers = await _invite_cashier(client, owner_headers)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 3}]},
+        headers=cashier_headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    result = await db.execute(
+        select(StockMovement).where(
+            StockMovement.order_id == uuid.UUID(order_id),
+        )
+    )
+    movement = result.scalar_one_or_none()
+    assert movement is not None
+    assert movement.reason == "pos_sale"
+    assert movement.delta_qty == -3
+    assert str(movement.order_id) == order_id
+    assert movement.actor_user_id is not None
