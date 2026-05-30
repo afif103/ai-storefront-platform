@@ -410,6 +410,15 @@ Key design decisions:
 
 > **Architecture**: No new endpoints or tables. Shared orders with `source='pos'` continue. Receipt data comes entirely from `OrderCreateResponse` + existing bootstrap membership.
 
+### M10B.5 — POS Order History + Receipt Reprint (complete)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10B.5a | Backend: POS order list + detail endpoints | Claude | **DONE** | `GET /api/v1/tenants/me/pos/orders` (cursor-paginated, `source='pos'` filter, tenant-scoped, `require_role("cashier")`). `GET /api/v1/tenants/me/pos/orders/{id}` (tenant-scoped, returns 404 for non-POS orders and cross-tenant misses). Tests: list, source filter, detail happy path, storefront 404. |
+| 10B.5b | Frontend: POS order history view + receipt reprint | Claude | **DONE** | "Order History" button on POS page header. History table shows order #, customer, total, date. Clicking "View" fetches order detail and reuses existing M10B.4 receipt screen — no receipt markup duplicated. "New Sale" clears history state. en/ar strings added. |
+
+> **Architecture**: No new tables or migrations. Shared orders with `source='pos'` continue. History endpoints reuse `OrderListItem` and `OrderCreateResponse` schemas.
+
 > **Deferred**: POS Sales Domain (`pos_sales` + `pos_sale_items` tables, POS sales service layer, separate integration tests) remains deferred to a later POS packet. Current POS orders use the shared `orders` table with `source='pos'`.
 
 ---
@@ -600,7 +609,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Packets | Status |
 |-----------|---------|--------|
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | Core auth/onboarding shipped; role matrix + test fixture follow-ups remain |
-| M10B — Foundations: POS Domain | 4 shipped + POS Sales Domain deferred | M10B.4 POS sale receipt shipped |
+| M10B — Foundations: POS Domain | 5 shipped + POS Sales Domain deferred | M10B.5 POS order history + receipt reprint shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
 | M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
