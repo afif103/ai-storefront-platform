@@ -1,19 +1,21 @@
 """POS (point-of-sale) endpoints — tenant-authenticated."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
+from app.models.audit_event import AuditEvent
 from app.models.order import Order
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.order import OrderCreateResponse, OrderListItem
 from app.schemas.pos import PosOrderCreateRequest
+from app.services.inventory import restore_stock_for_cancelled_order
 from app.services.order_create import create_order
 
 router = APIRouter()
@@ -119,6 +121,65 @@ async def create_pos_order(
         source="pos",
         status="fulfilled",
         actor_user_id=user.id,
+    )
+
+    await db.commit()
+
+    return OrderCreateResponse.model_validate(order)
+
+
+@router.patch("/orders/{order_id}/cancel", response_model=OrderCreateResponse)
+async def cancel_pos_order(
+    order_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> OrderCreateResponse:
+    """Cancel a fulfilled POS order and restore stock.
+
+    Only fulfilled -> cancelled is allowed. This rule is local to the POS
+    endpoint and does not touch ORDER_TRANSITIONS.
+    Returns 404 for missing, cross-tenant, or non-POS orders.
+    """
+    db, tenant_id = db_tenant
+    await require_role("cashier", db, tenant_id, user)
+
+    result = await db.execute(
+        select(Order).where(
+            Order.id == order_id,
+            Order.tenant_id == tenant_id,
+            Order.source == "pos",
+        )
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.status == "cancelled":
+        raise HTTPException(status_code=409, detail="Order already cancelled")
+    if order.status != "fulfilled":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot cancel order in status '{order.status}'",
+        )
+
+    order.status = "cancelled"
+    order.updated_at = datetime.now(UTC)
+    await db.flush()
+
+    await restore_stock_for_cancelled_order(
+        db, tenant_id=tenant_id, order=order, actor_user_id=user.id
+    )
+
+    db.add(
+        AuditEvent(
+            tenant_id=tenant_id,
+            actor_user_id=user.id,
+            entity_type="order",
+            entity_id=order.id,
+            action="status_transition",
+            from_status="fulfilled",
+            to_status="cancelled",
+        )
     )
 
     await db.commit()
