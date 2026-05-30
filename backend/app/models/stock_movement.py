@@ -21,7 +21,8 @@ class StockMovement(TenantScopedBase):
     __tablename__ = "stock_movements"
     __table_args__ = (
         CheckConstraint(
-            "reason IN ('manual_restock', 'manual_adjustment', 'order_cancel_restore')",
+            "reason IN ('manual_restock', 'manual_adjustment', "
+            "'order_cancel_restore', 'pos_sale')",
             name="ck_stock_movements_reason",
         ),
     )
