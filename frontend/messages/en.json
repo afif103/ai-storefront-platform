@@ -487,6 +487,14 @@
     "newSale": "New Sale",
     "receiptCustomer": "Customer: {name}",
     "receiptUnitPrice": "Unit Price",
-    "printReceipt": "Print Receipt"
+    "printReceipt": "Print Receipt",
+    "historyTitle": "Order History",
+    "historyBack": "Back",
+    "historyEmpty": "No orders yet.",
+    "historyLoading": "Loading orders...",
+    "historyOrderNum": "Order #",
+    "historyCustomer": "Customer",
+    "historyDate": "Date",
+    "historyView": "View"
   }
 }

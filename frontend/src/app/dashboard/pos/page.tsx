@@ -52,6 +52,21 @@ interface OrderResponse {
   created_at: string;
 }
 
+interface HistoryOrder {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  total_amount: string;
+  currency: string;
+  created_at: string;
+}
+
+interface PaginatedHistory {
+  items: HistoryOrder[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -91,6 +106,12 @@ function POSContent() {
 
   // Success
   const [lastOrder, setLastOrder] = useState<OrderResponse | null>(null);
+
+  // History
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyOrders, setHistoryOrders] = useState<HistoryOrder[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
 
   // ------ Fetch products ------
 
@@ -210,6 +231,32 @@ function POSContent() {
     setSubmitting(false);
   }
 
+  // ------ History ------
+
+  async function openHistory() {
+    setShowHistory(true);
+    setHistoryLoading(true);
+    setHistoryError("");
+    const result = await apiFetch<PaginatedHistory>(
+      "/api/v1/tenants/me/pos/orders",
+    );
+    if (result.ok) {
+      setHistoryOrders(result.data.items);
+    } else {
+      setHistoryError(result.detail);
+    }
+    setHistoryLoading(false);
+  }
+
+  async function viewHistoryOrder(id: string) {
+    const result = await apiFetch<OrderResponse>(
+      `/api/v1/tenants/me/pos/orders/${id}`,
+    );
+    if (result.ok) {
+      setLastOrder(result.data);
+    }
+  }
+
   // ------ Success screen ------
 
   if (lastOrder) {
@@ -283,6 +330,7 @@ function POSContent() {
             <button
               onClick={() => {
                 setLastOrder(null);
+                setShowHistory(false);
                 refreshProducts();
               }}
               className="flex-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -295,11 +343,89 @@ function POSContent() {
     );
   }
 
+  // ------ History view ------
+
+  if (showHistory) {
+    return (
+      <main className="mx-auto max-w-4xl px-6 py-8">
+        <div className="mb-6 flex items-center gap-4 print:hidden">
+          <button
+            onClick={() => setShowHistory(false)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            {t("historyBack")}
+          </button>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {t("historyTitle")}
+          </h2>
+        </div>
+
+        {historyLoading ? (
+          <p className="text-sm text-gray-400">{t("historyLoading")}</p>
+        ) : historyError ? (
+          <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+            {historyError}
+          </div>
+        ) : historyOrders.length === 0 ? (
+          <p className="text-sm text-gray-500">{t("historyEmpty")}</p>
+        ) : (
+          <div className="overflow-hidden rounded-lg border bg-white">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2">{t("historyOrderNum")}</th>
+                  <th className="px-4 py-2">{t("historyCustomer")}</th>
+                  <th className="px-4 py-2">{t("total")}</th>
+                  <th className="px-4 py-2">{t("historyDate")}</th>
+                  <th className="px-4 py-2" />
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {historyOrders.map((o) => (
+                  <tr key={o.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 font-medium text-gray-900">
+                      {o.order_number}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">
+                      {o.customer_name}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">
+                      {o.total_amount} {o.currency}
+                    </td>
+                    <td className="px-4 py-2 text-gray-500">
+                      {new Date(o.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        onClick={() => viewHistoryOrder(o.id)}
+                        className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                      >
+                        {t("historyView")}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
+    );
+  }
+
   // ------ Main layout ------
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="mb-6 text-lg font-semibold text-gray-900">{t("title")}</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-gray-900">{t("title")}</h1>
+        <button
+          onClick={openHistory}
+          className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 print:hidden"
+        >
+          {t("historyTitle")}
+        </button>
+      </div>
 
       {error && (
         <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
