@@ -350,3 +350,157 @@ async def test_pos_order_records_stock_movement(
     assert movement.delta_qty == -3
     assert str(movement.order_id) == order_id
     assert movement.actor_user_id is not None
+
+
+async def test_cashier_can_cancel_pos_order(client: AsyncClient):
+    # Cashier can cancel a fulfilled POS order; response shows status cancelled.
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+    cashier_headers = await _invite_cashier(client, owner_headers)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 2}]},
+        headers=cashier_headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        headers=cashier_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "cancelled"
+
+
+async def test_pos_cancel_restores_stock(client: AsyncClient):
+    # Cancelling a POS order returns stock to original level.
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 4}]},
+        headers=owner_headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    # Stock should be 46 (50 - 4)
+    r2 = await client.get("/api/v1/tenants/me/products", headers=owner_headers)
+    product = next(p for p in r2.json()["items"] if p["id"] == product_id)
+    assert product["stock_qty"] == 46
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+
+    # Stock should be restored to 50
+    r2 = await client.get("/api/v1/tenants/me/products", headers=owner_headers)
+    product = next(p for p in r2.json()["items"] if p["id"] == product_id)
+    assert product["stock_qty"] == 50
+
+
+async def test_pos_cancel_writes_restore_movement(
+    client: AsyncClient, db: AsyncSession
+):
+    # Cancelling a POS order creates an order_cancel_restore movement row.
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 3}]},
+        headers=owner_headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+
+    result = await db.execute(
+        select(StockMovement).where(
+            StockMovement.order_id == uuid.UUID(order_id),
+            StockMovement.reason == "order_cancel_restore",
+        )
+    )
+    movement = result.scalar_one_or_none()
+    assert movement is not None
+    assert movement.delta_qty == 3
+    assert str(movement.order_id) == order_id
+    assert movement.actor_user_id is not None
+
+
+async def test_pos_double_cancel_returns_409(client: AsyncClient):
+    # Second cancel returns 409 and does not restore stock a second time.
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 2}]},
+        headers=owner_headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        headers=owner_headers,
+    )
+    assert r.status_code == 409
+
+    # Stock restored exactly once: 50 - 2 + 2 = 50
+    r2 = await client.get("/api/v1/tenants/me/products", headers=owner_headers)
+    product = next(p for p in r2.json()["items"] if p["id"] == product_id)
+    assert product["stock_qty"] == 50
+
+
+async def test_pos_cancel_404_for_storefront_order(client: AsyncClient):
+    # POS cancel returns 404 for a real storefront order id.
+    owner_headers, product_id, slug = await _setup_with_slug(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Walk-in",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    sf_id = r.json()["id"]
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{sf_id}/cancel",
+        headers=owner_headers,
+    )
+    assert r.status_code == 404
+
+
+async def test_pos_cancel_cross_tenant_404(client: AsyncClient):
+    # Tenant B cannot cancel tenant A's POS order.
+    owner_a, product_a, _ = await _setup_with_slug(client)
+    owner_b, _, _ = await _setup_with_slug(client)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_a, "qty": 1}]},
+        headers=owner_a,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        headers=owner_b,
+    )
+    assert r.status_code == 404
