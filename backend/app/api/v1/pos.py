@@ -118,6 +118,7 @@ async def create_pos_order(
         customer_name=body.customer_name or "Walk-in",
         source="pos",
         status="fulfilled",
+        actor_user_id=user.id,
     )
 
     await db.commit()

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.order import Order
 from app.models.product import Product
 from app.schemas.order import OrderItemRequest
+from app.services.inventory import record_stock_movement
 from app.services.numbering import get_next_order_number
 
 
@@ -29,6 +30,7 @@ async def create_order(
     payment_notes: str | None = None,
     notes: str | None = None,
     visit_id: uuid.UUID | None = None,
+    actor_user_id: uuid.UUID | None = None,
 ) -> Order:
     """Validate products, decrement stock, and create an Order row.
 
@@ -87,31 +89,32 @@ async def create_order(
         )
         total += subtotal
 
-    # Atomic stock decrement
-    for item in items:
-        product = products_by_id[item.catalog_item_id]
-        if not product.track_inventory:
-            continue
-        result_stock = await db.execute(
-            text(
-                "UPDATE products "
-                "SET stock_qty = stock_qty - :qty "
-                "WHERE tenant_id = :tenant_id "
-                "  AND id = :product_id "
-                "  AND track_inventory = true "
-                "  AND stock_qty >= :qty"
-            ),
-            {
-                "qty": item.qty,
-                "tenant_id": str(tenant_id),
-                "product_id": str(item.catalog_item_id),
-            },
-        )
-        if result_stock.rowcount == 0:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Insufficient stock for product '{product.name}'",
+    # Storefront: atomic raw-SQL decrement (original behaviour, unchanged)
+    if source != "pos":
+        for item in items:
+            product = products_by_id[item.catalog_item_id]
+            if not product.track_inventory:
+                continue
+            result_stock = await db.execute(
+                text(
+                    "UPDATE products "
+                    "SET stock_qty = stock_qty - :qty "
+                    "WHERE tenant_id = :tenant_id "
+                    "  AND id = :product_id "
+                    "  AND track_inventory = true "
+                    "  AND stock_qty >= :qty"
+                ),
+                {
+                    "qty": item.qty,
+                    "tenant_id": str(tenant_id),
+                    "product_id": str(item.catalog_item_id),
+                },
             )
+            if result_stock.rowcount == 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Insufficient stock for product '{product.name}'",
+                )
 
     order_number = await get_next_order_number(db, str(tenant_id))
 
@@ -132,4 +135,25 @@ async def create_order(
     )
     db.add(order)
     await db.flush()
+
+    # POS: auditable decrement via record_stock_movement (order.id now available)
+    if source == "pos":
+        for item in items:
+            product = products_by_id[item.catalog_item_id]
+            if not product.track_inventory:
+                continue
+            await record_stock_movement(
+                db,
+                tenant_id=tenant_id,
+                product_id=item.catalog_item_id,
+                delta_qty=-item.qty,
+                reason="pos_sale",
+                order_id=order.id,
+                actor_user_id=actor_user_id,
+                prevent_negative_stock=True,
+                insufficient_stock_detail=(
+                    f"Insufficient stock for product '{product.name}'"
+                ),
+            )
+
     return order

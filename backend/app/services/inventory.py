@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 
+from fastapi import HTTPException
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,11 +22,17 @@ async def record_stock_movement(
     note: str | None = None,
     order_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
+    prevent_negative_stock: bool = False,
+    insufficient_stock_detail: str = "Insufficient stock",
 ) -> StockMovement:
     """Insert a stock movement row and atomically update products.stock_qty.
 
     Both the INSERT and UPDATE happen in the caller's transaction —
     they commit or roll back together.
+
+    When prevent_negative_stock=True and delta_qty < 0, the UPDATE includes
+    an atomic guard (stock_qty >= abs(delta_qty)). If the guard fails (rowcount 0),
+    HTTPException 409 is raised and no movement row is written.
     """
     movement = StockMovement(
         tenant_id=tenant_id,
@@ -36,20 +43,37 @@ async def record_stock_movement(
         order_id=order_id,
         actor_user_id=actor_user_id,
     )
-    db.add(movement)
 
-    # Atomic stock_qty update in the same transaction
-    await db.execute(
-        text(
-            "UPDATE products SET stock_qty = stock_qty + :delta "
-            "WHERE id = :product_id AND tenant_id = :tenant_id"
-        ),
-        {
-            "delta": delta_qty,
-            "product_id": str(product_id),
-            "tenant_id": str(tenant_id),
-        },
-    )
+    if prevent_negative_stock and delta_qty < 0:
+        result = await db.execute(
+            text(
+                "UPDATE products SET stock_qty = stock_qty + :delta "
+                "WHERE id = :product_id AND tenant_id = :tenant_id "
+                "AND stock_qty >= :required"
+            ),
+            {
+                "delta": delta_qty,
+                "product_id": str(product_id),
+                "tenant_id": str(tenant_id),
+                "required": -delta_qty,
+            },
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=409, detail=insufficient_stock_detail)
+    else:
+        await db.execute(
+            text(
+                "UPDATE products SET stock_qty = stock_qty + :delta "
+                "WHERE id = :product_id AND tenant_id = :tenant_id"
+            ),
+            {
+                "delta": delta_qty,
+                "product_id": str(product_id),
+                "tenant_id": str(tenant_id),
+            },
+        )
+
+    db.add(movement)
     await db.flush()
     return movement
 
