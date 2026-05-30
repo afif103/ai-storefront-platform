@@ -59,6 +59,7 @@ interface HistoryOrder {
   total_amount: string;
   currency: string;
   created_at: string;
+  status: string;
 }
 
 interface PaginatedHistory {
@@ -112,6 +113,10 @@ function POSContent() {
   const [historyOrders, setHistoryOrders] = useState<HistoryOrder[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
+
+  // Cancel
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   // ------ Fetch products ------
 
@@ -257,6 +262,25 @@ function POSContent() {
     }
   }
 
+  async function cancelOrder(id: string) {
+    if (!window.confirm(t("cancelConfirm"))) return;
+    setCancelling(true);
+    setCancelError("");
+    const result = await apiFetch<OrderResponse>(
+      `/api/v1/tenants/me/pos/orders/${id}/cancel`,
+      { method: "PATCH" },
+    );
+    if (result.ok) {
+      setLastOrder(result.data);
+      setHistoryOrders((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: "cancelled" } : o)),
+      );
+    } else {
+      setCancelError(result.detail || t("cancelFailed"));
+    }
+    setCancelling(false);
+  }
+
   // ------ Success screen ------
 
   if (lastOrder) {
@@ -319,6 +343,12 @@ function POSContent() {
             })}
           </div>
 
+          {lastOrder.status === "cancelled" && (
+            <p className="mt-2 text-center text-xs font-medium uppercase text-red-600 print:hidden">
+              {t("cancelledBadge")}
+            </p>
+          )}
+
           {/* Actions (hidden on print) */}
           <div className="mt-6 flex gap-3 print:hidden">
             <button
@@ -327,6 +357,15 @@ function POSContent() {
             >
               {t("printReceipt")}
             </button>
+            {lastOrder.status !== "cancelled" && (
+              <button
+                onClick={() => cancelOrder(lastOrder.id)}
+                disabled={cancelling}
+                className="flex-1 rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                {cancelling ? t("cancelling") : t("cancelOrder")}
+              </button>
+            )}
             <button
               onClick={() => {
                 setLastOrder(null);
@@ -338,6 +377,11 @@ function POSContent() {
               {t("newSale")}
             </button>
           </div>
+          {cancelError && (
+            <p className="mt-2 text-center text-xs text-red-600 print:hidden">
+              {cancelError}
+            </p>
+          )}
         </div>
       </main>
     );
@@ -385,6 +429,11 @@ function POSContent() {
                   <tr key={o.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 font-medium text-gray-900">
                       {o.order_number}
+                      {o.status === "cancelled" && (
+                        <span className="ml-2 text-xs font-medium uppercase text-red-500">
+                          {t("cancelledBadge")}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2 text-gray-700">
                       {o.customer_name}

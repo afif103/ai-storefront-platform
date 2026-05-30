@@ -495,6 +495,11 @@
     "historyOrderNum": "Order #",
     "historyCustomer": "Customer",
     "historyDate": "Date",
-    "historyView": "View"
+    "historyView": "View",
+    "cancelOrder": "Cancel Order",
+    "cancelling": "Cancelling...",
+    "cancelFailed": "Failed to cancel order",
+    "cancelConfirm": "Cancel this order? Stock will be restored.",
+    "cancelledBadge": "Cancelled"
   }
 }
