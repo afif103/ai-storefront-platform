@@ -8,8 +8,9 @@ Revises: p0q1r2s3t4u5
 Create Date: 2026-03-29
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "q1r2s3t4u5v6"
 down_revision = "p0q1r2s3t4u5"

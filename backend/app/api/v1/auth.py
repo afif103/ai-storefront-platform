@@ -164,7 +164,7 @@ async def _provision_or_update_user(
             except IntegrityError:
                 # Email update collided with another user's email
                 await db.rollback()
-                raise HTTPException(status_code=409, detail=_EMAIL_CONFLICT_DETAIL)
+                raise HTTPException(status_code=409, detail=_EMAIL_CONFLICT_DETAIL) from None
 
         if not user.is_active:
             raise HTTPException(status_code=403, detail="User account is deactivated")
@@ -191,10 +191,10 @@ async def _provision_or_update_user(
             if not user.is_active:
                 raise HTTPException(
                     status_code=403, detail="User account is deactivated"
-                )
+                ) from None
             return user
         # Not found by sub — the collision was on email
-        raise HTTPException(status_code=409, detail=_EMAIL_CONFLICT_DETAIL)
+        raise HTTPException(status_code=409, detail=_EMAIL_CONFLICT_DETAIL) from None
 
     if not user.is_active:
         raise HTTPException(status_code=403, detail="User account is deactivated")

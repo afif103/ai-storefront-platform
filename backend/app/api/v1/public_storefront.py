@@ -7,8 +7,9 @@ All in the same DB session. No tenant_id exposed in responses.
 import logging
 import uuid
 from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select, text, tuple_
+from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db_with_slug

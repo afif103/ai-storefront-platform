@@ -18,7 +18,10 @@ class TenantMember(TenantScopedBase):
     __tablename__ = "tenant_members"
     __table_args__ = (
         UniqueConstraint("tenant_id", "user_id", name="uq_tenant_members_tenant_user"),
-        CheckConstraint("role IN ('owner', 'admin', 'member', 'cashier')", name="ck_tenant_members_role"),
+        CheckConstraint(
+            "role IN ('owner', 'admin', 'member', 'cashier')",
+            name="ck_tenant_members_role",
+        ),
         CheckConstraint(
             "status IN ('active', 'invited', 'removed')", name="ck_tenant_members_status"
         ),

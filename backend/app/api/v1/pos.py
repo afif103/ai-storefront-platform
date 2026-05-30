@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
-from app.models.user import User
 from app.models.tenant import Tenant
+from app.models.user import User
 from app.schemas.order import OrderCreateResponse
 from app.schemas.pos import PosOrderCreateRequest
 from app.services.order_create import create_order
