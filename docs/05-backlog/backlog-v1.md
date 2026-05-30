@@ -429,6 +429,16 @@ Key design decisions:
 
 > **Architecture**: No new tables. `stock_movements` table already existed. POS orders now generate an auditable stock movement row alongside the existing atomic stock decrement guard. Storefront order stock behavior unchanged.
 
+### M10B.7 — POS Order Cancel for Cashier (complete)
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 10B.7a | Backend: POS cancel endpoint with stock restore | Claude | **DONE** | `PATCH /api/v1/tenants/me/pos/orders/{id}/cancel`. Cashier-accessible, tenant + `source='pos'` scoped. `fulfilled → cancelled` only; 409 for already-cancelled or invalid status. Calls `restore_stock_for_cancelled_order`. Writes `AuditEvent(action='status_transition')`. No new tables or migrations. |
+| 10B.7b | Backend tests: POS cancel coverage | Claude | **DONE** | 6 tests in `test_pos.py`: cashier cancel, stock restore, `order_cancel_restore` movement row, double-cancel 409, storefront 404, cross-tenant 404. |
+| 10B.7c | Frontend: Cancel Order action from receipt screen | Claude | **DONE** | Cancel button on receipt re-view (hidden when already cancelled). `window.confirm` before call. On success: `lastOrder` updated, history row badge updated. Cancelled badge on receipt and history list. Print remains available for cancelled orders. en/ar strings added. |
+
+> **Architecture**: No new tables or migrations. POS cancel reuses `restore_stock_for_cancelled_order` from M5c inventory service. `ORDER_TRANSITIONS` (storefront) unchanged.
+
 > **Deferred**: POS Sales Domain (`pos_sales` + `pos_sale_items` tables, POS sales service layer, separate integration tests) remains deferred to a later POS packet. Current POS orders use the shared `orders` table with `source='pos'`.
 
 ---
@@ -619,7 +629,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Packets | Status |
 |-----------|---------|--------|
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | Core auth/onboarding shipped; role matrix + test fixture follow-ups remain |
-| M10B — Foundations: POS Domain | 6 shipped + POS Sales Domain deferred | M10B.6 POS inventory audit trail shipped |
+| M10B — Foundations: POS Domain | 7 shipped + POS Sales Domain deferred | M10B.7 POS order cancel shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
 | M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |

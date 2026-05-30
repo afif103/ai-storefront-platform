@@ -314,13 +314,14 @@ Note: M10A and M10B start with planning-only packets (M10A.1, M10B.1) before any
 | POS sales service layer (create sale, calculate totals) |
 | POS domain does NOT depend on `order_items` normalization — online orders keep current JSONB storage |
 
-**Status**: M10B.6 POS inventory audit trail shipped.
+**Status**: M10B.7 POS order cancel for cashier shipped.
 - M10B.1: POS planning memo accepted
 - M10B.2: shared order service, `source` column, POS order endpoint, frontend cashier page
 - M10B.3: cashier role at hierarchy level 0, backend allow/deny by hierarchy, invite/update schemas, frontend nav scoping + redirect. No new endpoint added — role sourced from existing bootstrap memberships.
 - M10B.4: `customer_name` added to `OrderCreateResponse`. Frontend receipt with store name, order number, date/time, customer name, line items, total, print button. Dashboard shell print-specific layout tweaks. No new endpoints or tables.
 - M10B.5: `GET /pos/orders` (cursor-paginated, `source='pos'`, tenant-scoped, cashier role) and `GET /pos/orders/{id}` (404 for non-POS/cross-tenant misses). Frontend POS history view with receipt reprint via existing receipt screen. No new tables or migrations.
 - M10B.6: `pos_sale` reason added to `ck_stock_movements_reason` (reversible migration + model update). `record_stock_movement` extended with `prevent_negative_stock`. POS order creation writes `StockMovement(reason='pos_sale', delta_qty=-qty, order_id, actor_user_id)`. Storefront stock path unchanged. No new tables.
+- M10B.7: `PATCH /pos/orders/{id}/cancel` (cashier role, `source='pos'`, `fulfilled→cancelled`, 409 guards, stock restore, audit event). Frontend cancel action on receipt with confirmation, cancelled badge, print preserved. No new tables or migrations.
 - Deferred: POS Sales Domain (`pos_sales` + `pos_sale_items` tables, separate POS sales service/tests) moved to a later POS packet. Current POS orders use shared `orders` table with `source='pos'`.
 
 ---
@@ -414,7 +415,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | Milestone | Track | Status |
 |-----------|-------|--------|
 | M10A — Foundations: Auth & Onboarding | Merchant-Ready Core | M10A.1 Planning next |
-| M10B — Foundations: POS Domain | POS / Omnichannel | M10B.6 POS inventory audit trail shipped |
+| M10B — Foundations: POS Domain | POS / Omnichannel | M10B.7 POS order cancel shipped |
 | M11 — Selling & Payments MVP | Both tracks | Not started |
 | M12 — Operations & Variants | Both tracks | Not started |
 | M13 — Omnichannel Reporting & Polish | Both tracks (convergence) | Not started |
