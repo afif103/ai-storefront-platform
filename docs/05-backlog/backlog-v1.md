@@ -467,7 +467,7 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.4a | SKU/barcode field on products (optional text field) | Claude | Not started | Product create/edit schema includes `sku`. POS sell screen supports lookup by SKU. |
+| 11.4a | SKU/barcode field on products (optional text field) | Claude | **Shipped** | `products.sku` and `products.barcode` nullable String(64), tenant-scoped partial unique indexes. `ProductCreate`/`ProductUpdate`/`ProductResponse` include both fields; empty strings normalize to null; 409 on name/SKU/barcode uniqueness conflicts. Public storefront unchanged. Dashboard product new/edit forms include SKU/barcode inputs. POS search matches name, SKU, or barcode — barcode scanner works as keyboard input into existing POS search box. Dedicated backend SKU/barcode tests remain a follow-up (Write preview corruption prevented test file creation). |
 
 ### M11.5 — Payment Method Config
 
