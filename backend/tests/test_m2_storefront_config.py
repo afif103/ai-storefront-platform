@@ -106,3 +106,51 @@ async def test_public_config_404_for_bad_slug(client: AsyncClient):
     """GET /storefront/{slug}/config returns 404 for unknown slug."""
     resp = await client.get("/api/v1/storefront/nonexistent-slug-xyz/config")
     assert resp.status_code == 404
+
+
+async def test_put_config_saves_payment_methods(client: AsyncClient):
+    headers, _slug = await create_tenant_get_headers(client, slug_prefix="cfg-pm-save")
+    body = {"payment_methods": {"pos": ["cash", "knet"], "online": ["knet"]}}
+    resp = await client.put("/api/v1/tenants/me/storefront", json=body, headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["payment_methods"]["pos"] == ["cash", "knet"]
+    assert data["payment_methods"]["online"] == ["knet"]
+
+
+async def test_get_config_returns_saved_payment_methods(client: AsyncClient):
+    headers, _slug = await create_tenant_get_headers(client, slug_prefix="cfg-pm-get")
+    await client.put(
+        "/api/v1/tenants/me/storefront",
+        json={"payment_methods": {"pos": ["cash"], "online": ["knet"]}},
+        headers=headers,
+    )
+    resp = await client.get("/api/v1/tenants/me/storefront", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["payment_methods"]["pos"] == ["cash"]
+    assert data["payment_methods"]["online"] == ["knet"]
+
+
+async def test_put_config_rejects_invalid_payment_method(client: AsyncClient):
+    headers, _slug = await create_tenant_get_headers(client, slug_prefix="cfg-pm-inv")
+    resp = await client.put(
+        "/api/v1/tenants/me/storefront",
+        json={"payment_methods": {"pos": ["bitcoin"], "online": []}},
+        headers=headers,
+    )
+    assert resp.status_code == 422
+
+
+async def test_public_config_exposes_online_only(client: AsyncClient):
+    headers, slug = await create_tenant_get_headers(client, slug_prefix="cfg-pm-pub")
+    await client.put(
+        "/api/v1/tenants/me/storefront",
+        json={"payment_methods": {"pos": ["cash", "knet"], "online": ["knet"]}},
+        headers=headers,
+    )
+    resp = await client.get(f"/api/v1/storefront/{slug}/config")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["payment_methods"] == ["knet"]
+    assert "pos" not in data

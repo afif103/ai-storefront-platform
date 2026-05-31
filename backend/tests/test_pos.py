@@ -498,3 +498,106 @@ async def test_pos_cancel_cross_tenant_404(client: AsyncClient):
         headers=owner_b,
     )
     assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# M11.5 payment method tests
+# ---------------------------------------------------------------------------
+
+
+async def test_pos_payment_methods_returns_configured(client: AsyncClient):
+    # Owner configures POS methods; cashier reads them back.
+    owner_headers, _, _ = await _setup_with_slug(client)
+    cashier_headers = await _invite_cashier(client, owner_headers)
+
+    await client.put(
+        "/api/v1/tenants/me/storefront",
+        json={"payment_methods": {"pos": ["cash", "knet"], "online": []}},
+        headers=owner_headers,
+    )
+
+    r = await client.get("/api/v1/tenants/me/pos/payment-methods", headers=cashier_headers)
+    assert r.status_code == 200
+    assert r.json()["payment_methods"] == ["cash", "knet"]
+
+
+async def test_pos_payment_methods_fallback_when_no_config(client: AsyncClient):
+    # No storefront config at all → fallback to ["cash"].
+    owner_headers, _, _ = await _setup_with_slug(client)
+    cashier_headers = await _invite_cashier(client, owner_headers)
+
+    r = await client.get("/api/v1/tenants/me/pos/payment-methods", headers=cashier_headers)
+    assert r.status_code == 200
+    assert r.json()["payment_methods"] == ["cash"]
+
+
+async def test_pos_payment_methods_fallback_when_pos_empty(client: AsyncClient):
+    # pos list is empty → fallback to ["cash"].
+    owner_headers, _, _ = await _setup_with_slug(client)
+    cashier_headers = await _invite_cashier(client, owner_headers)
+
+    await client.put(
+        "/api/v1/tenants/me/storefront",
+        json={"payment_methods": {"pos": [], "online": ["knet"]}},
+        headers=owner_headers,
+    )
+
+    r = await client.get("/api/v1/tenants/me/pos/payment-methods", headers=cashier_headers)
+    assert r.status_code == 200
+    assert r.json()["payment_methods"] == ["cash"]
+
+
+async def test_pos_order_stores_payment_method(client: AsyncClient):
+    # POS order with payment_method is persisted and returned in the response.
+    headers, product_id = await _setup(client)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 1}], "payment_method": "cash"},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    assert r.json()["payment_method"] == "cash"
+
+
+async def test_storefront_order_stores_payment_method(client: AsyncClient):
+    # Storefront order with payment_method is persisted and returned.
+    _, product_id, slug = await _setup_with_slug(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Test Customer",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+            "payment_method": "knet",
+        },
+    )
+    assert r.status_code == 201
+    assert r.json()["payment_method"] == "knet"
+
+
+async def test_pos_order_invalid_payment_method_returns_422(client: AsyncClient):
+    # POS order with unknown payment method code is rejected.
+    headers, product_id = await _setup(client)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 1}], "payment_method": "bitcoin"},
+        headers=headers,
+    )
+    assert r.status_code == 422
+
+
+async def test_storefront_order_invalid_payment_method_returns_422(client: AsyncClient):
+    # Storefront order with unknown payment method code is rejected.
+    _, product_id, slug = await _setup_with_slug(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Test Customer",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+            "payment_method": "bitcoin",
+        },
+    )
+    assert r.status_code == 422
