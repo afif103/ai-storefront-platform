@@ -151,9 +151,7 @@ async def create_order(
                 order_id=order.id,
                 actor_user_id=actor_user_id,
                 prevent_negative_stock=True,
-                insufficient_stock_detail=(
-                    f"Insufficient stock for product '{product.name}'"
-                ),
+                insufficient_stock_detail=(f"Insufficient stock for product '{product.name}'"),
             )
 
     return order

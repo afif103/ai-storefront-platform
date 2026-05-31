@@ -18,8 +18,7 @@ def upgrade() -> None:
     op.create_check_constraint(
         "ck_stock_movements_reason",
         "stock_movements",
-        "reason IN ('manual_restock', 'manual_adjustment', "
-        "'order_cancel_restore', 'pos_sale')",
+        "reason IN ('manual_restock', 'manual_adjustment', " "'order_cancel_restore', 'pos_sale')",
     )
 
 

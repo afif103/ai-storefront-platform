@@ -69,9 +69,7 @@ async def test_invited_row_visible_via_email_guc(rls_db: AsyncSession):
     await db.execute(text("RESET app.current_tenant"))
 
     # Without email GUC — invited row should be invisible
-    result = await db.execute(
-        select(TenantMember).where(TenantMember.id == invitation.id)
-    )
+    result = await db.execute(select(TenantMember).where(TenantMember.id == invitation.id))
     assert result.scalar_one_or_none() is None
 
     # Set email GUC — invited row should now be visible
@@ -79,9 +77,7 @@ async def test_invited_row_visible_via_email_guc(rls_db: AsyncSession):
         text("SELECT set_config('app.current_user_email', :email, true)"),
         {"email": email},
     )
-    result = await db.execute(
-        select(TenantMember).where(TenantMember.id == invitation.id)
-    )
+    result = await db.execute(select(TenantMember).where(TenantMember.id == invitation.id))
     row = result.scalar_one_or_none()
     assert row is not None
     assert row.invited_email == email
@@ -107,9 +103,7 @@ async def test_invited_row_not_visible_to_wrong_email(rls_db: AsyncSession):
         {"email": wrong_email},
     )
 
-    result = await db.execute(
-        select(TenantMember).where(TenantMember.id == invitation.id)
-    )
+    result = await db.execute(select(TenantMember).where(TenantMember.id == invitation.id))
     assert result.scalar_one_or_none() is None
 
 
@@ -120,9 +114,7 @@ async def test_invited_row_case_insensitive(rls_db: AsyncSession):
     email = f"CaSe-{_uid()}@Example.COM"
     normalized = email.strip().lower()
 
-    _, invitation = await _seed_invitation(
-        db, tenant_name="Case Test", invited_email=email
-    )
+    _, invitation = await _seed_invitation(db, tenant_name="Case Test", invited_email=email)
     # _seed_invitation lowercases, so invited_email is stored normalized
     assert invitation.invited_email == normalized
 
@@ -133,9 +125,7 @@ async def test_invited_row_case_insensitive(rls_db: AsyncSession):
         {"email": normalized},
     )
 
-    result = await db.execute(
-        select(TenantMember).where(TenantMember.id == invitation.id)
-    )
+    result = await db.execute(select(TenantMember).where(TenantMember.id == invitation.id))
     assert result.scalar_one_or_none() is not None
 
 
@@ -161,9 +151,7 @@ async def test_bootstrap_pending_invitation_count_under_rls(rls_db: AsyncSession
     await db.flush()
 
     # Create a pending invitation for this email
-    tenant, _ = await _seed_invitation(
-        db, tenant_name=f"Boot Tenant {uid}", invited_email=email
-    )
+    tenant, _ = await _seed_invitation(db, tenant_name=f"Boot Tenant {uid}", invited_email=email)
 
     # Simulate bootstrap context: set user GUCs only, no tenant context
     await db.execute(text("RESET app.current_tenant"))

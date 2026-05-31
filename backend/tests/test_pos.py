@@ -204,9 +204,7 @@ async def _invite_cashier(
     )
     assert r.status_code == 201
 
-    cashier_headers = auth_headers(
-        sub=f"cashier-{uid}", email=cashier_email
-    )
+    cashier_headers = auth_headers(sub=f"cashier-{uid}", email=cashier_email)
     cashier_headers["Content-Type"] = "application/json"
 
     r = await client.post(
@@ -324,9 +322,7 @@ async def test_pos_detail_404_for_storefront_order(client: AsyncClient):
     assert r.status_code == 404
 
 
-async def test_pos_order_records_stock_movement(
-    client: AsyncClient, db: AsyncSession
-):
+async def test_pos_order_records_stock_movement(client: AsyncClient, db: AsyncSession):
     # POS order writes a pos_sale stock_movements row linked to the order.
     owner_headers, product_id, _ = await _setup_with_slug(client)
     cashier_headers = await _invite_cashier(client, owner_headers)
@@ -402,9 +398,7 @@ async def test_pos_cancel_restores_stock(client: AsyncClient):
     assert product["stock_qty"] == 50
 
 
-async def test_pos_cancel_writes_restore_movement(
-    client: AsyncClient, db: AsyncSession
-):
+async def test_pos_cancel_writes_restore_movement(client: AsyncClient, db: AsyncSession):
     # Cancelling a POS order creates an order_cancel_restore movement row.
     owner_headers, product_id, _ = await _setup_with_slug(client)
 

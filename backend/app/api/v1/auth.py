@@ -34,6 +34,7 @@ _EMAIL_CONFLICT_DETAIL = "Email already associated with a different account"
 # Origin validation helpers
 # ---------------------------------------------------------------------------
 
+
 def _resolve_origin(request: Request) -> str | None:
     """Extract origin from Origin header, falling back to Referer."""
     origin = request.headers.get("origin")
@@ -67,6 +68,7 @@ def _validate_origin(request: Request) -> None:
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 async def _build_bootstrap(user: User, db: AsyncSession) -> dict:
     """Query memberships and pending invitations for bootstrap payload.
@@ -204,6 +206,7 @@ async def _provision_or_update_user(
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post("/login", response_model=LoginResponse)
 async def login(
