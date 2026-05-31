@@ -128,7 +128,10 @@ jobs:
 
   image-push:
     name: Push to ECR
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.ENABLE_ECR_PUSH == 'true'
     needs: [backend-lint, backend-test, frontend-check, docker-build]
     runs-on: ubuntu-latest
     permissions:
