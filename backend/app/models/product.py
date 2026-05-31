@@ -7,12 +7,14 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,6 +29,20 @@ class Product(TenantScopedBase):
         CheckConstraint(
             "currency IS NULL OR currency ~ '^[A-Z]{3}$'",
             name="ck_products_currency",
+        ),
+        Index(
+            "uq_products_tenant_sku",
+            "tenant_id",
+            "sku",
+            unique=True,
+            postgresql_where=text("sku IS NOT NULL"),
+        ),
+        Index(
+            "uq_products_tenant_barcode",
+            "tenant_id",
+            "barcode",
+            unique=True,
+            postgresql_where=text("barcode IS NOT NULL"),
         ),
     )
 
@@ -48,6 +64,8 @@ class Product(TenantScopedBase):
     low_stock_threshold: Mapped[int | None] = mapped_column(
         Integer, nullable=True, server_default="5"
     )
+    sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    barcode: Mapped[str | None] = mapped_column(String(64), nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
