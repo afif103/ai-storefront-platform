@@ -8,3 +8,4 @@ class PublicStorefrontConfigResponse(BaseModel):
     primary_color: str | None = None
     secondary_color: str | None = None
     logo_url: str | None = None
+    payment_methods: list[str] | None = None

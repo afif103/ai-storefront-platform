@@ -5,6 +5,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.payment import PaymentMethodsConfig
+
 _HEX_COLOR_PATTERN = r"^#[0-9a-fA-F]{6}$"
 
 
@@ -16,6 +18,7 @@ class StorefrontConfigUpdate(BaseModel):
     secondary_color: str | None = Field(None, max_length=7, pattern=_HEX_COLOR_PATTERN)
     hero_text: str | None = None
     custom_css: dict | None = None
+    payment_methods: PaymentMethodsConfig | None = None
 
 
 class StorefrontConfigResponse(BaseModel):
@@ -25,6 +28,7 @@ class StorefrontConfigResponse(BaseModel):
     secondary_color: str | None = None
     hero_text: str | None = None
     custom_css: dict | None = None
+    payment_methods: PaymentMethodsConfig | None = None
     created_at: datetime
     updated_at: datetime | None = None
 
