@@ -430,7 +430,9 @@
     "imagesInvalidType": "\"{name}\" skipped \u2014 only JPEG, PNG, and WebP are allowed.",
     "imagesTooLarge": "\"{name}\" skipped \u2014 file size must be under 10 MB.",
     "formNameAr": "Name (Arabic)",
-    "formDescriptionAr": "Description (Arabic)"
+    "formDescriptionAr": "Description (Arabic)",
+    "formSku": "SKU (optional)",
+    "formBarcode": "Barcode (optional)"
   },
   "dashboardStorefront": {
     "title": "Storefront Settings",

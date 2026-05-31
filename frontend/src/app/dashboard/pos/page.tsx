@@ -19,6 +19,8 @@ interface Product {
   is_active: boolean;
   track_inventory: boolean;
   stock_qty: number | null;
+  sku: string | null;
+  barcode: string | null;
 }
 
 interface PaginatedProducts {
@@ -147,11 +149,16 @@ function POSContent() {
 
   // ------ Filtered products ------
 
-  const filtered = search
-    ? products.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()),
-      )
-    : products;
+  const filtered = (() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.sku ?? "").toLowerCase().includes(q) ||
+        (p.barcode ?? "").toLowerCase().includes(q),
+    );
+  })();
 
   // ------ Cart helpers ------
 

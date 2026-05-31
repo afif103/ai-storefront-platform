@@ -32,6 +32,8 @@ function CreateProductContent() {
   const [trackInventory, setTrackInventory] = useState(true);
   const [stockQty, setStockQty] = useState(0);
   const [lowStockThreshold, setLowStockThreshold] = useState("5");
+  const [sku, setSku] = useState("");
+  const [barcode, setBarcode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -67,6 +69,8 @@ function CreateProductContent() {
         low_stock_threshold: trackInventory && lowStockThreshold
           ? parseInt(lowStockThreshold)
           : null,
+        sku: sku.trim() || null,
+        barcode: barcode.trim() || null,
       }),
     });
 
@@ -196,6 +200,33 @@ function CreateProductContent() {
                 placeholder={t("tenantDefault")}
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                {t("formSku")}
+              </label>
+              <input
+                type="text"
+                maxLength={64}
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                {t("formBarcode")}
+              </label>
+              <input
+                type="text"
+                maxLength={64}
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
                 className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
