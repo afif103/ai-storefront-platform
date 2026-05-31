@@ -216,6 +216,7 @@ async def get_public_storefront_config(
         primary_color=config.primary_color,
         secondary_color=config.secondary_color,
         logo_url=logo_url,
+        payment_methods=(config.payment_methods or {}).get("online") or None,
     )
 
 

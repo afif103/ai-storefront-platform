@@ -10,10 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
 from app.models.audit_event import AuditEvent
 from app.models.order import Order
+from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.order import OrderCreateResponse, OrderListItem
+from app.schemas.payment import DEFAULT_POS_PAYMENT_METHODS, PosPaymentMethodsResponse
 from app.schemas.pos import PosOrderCreateRequest
 from app.services.inventory import restore_stock_for_cancelled_order
 from app.services.order_create import create_order
@@ -93,6 +95,34 @@ async def get_pos_order(
         raise HTTPException(status_code=404, detail="Order not found")
 
     return OrderCreateResponse.model_validate(order)
+
+
+@router.get("/payment-methods", response_model=PosPaymentMethodsResponse)
+async def get_pos_payment_methods(
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> PosPaymentMethodsResponse:
+    """Return enabled POS payment methods for the tenant (cashier-readable).
+
+    Falls back to DEFAULT_POS_PAYMENT_METHODS when no config exists or no POS
+    methods are configured.
+    """
+    db, tenant_id = db_tenant
+    await require_role("cashier", db, tenant_id, user)
+
+    result = await db.execute(
+        select(StorefrontConfig).where(StorefrontConfig.tenant_id == tenant_id)
+    )
+    config = result.scalar_one_or_none()
+
+    methods: list[str] = []
+    if config and config.payment_methods:
+        methods = config.payment_methods.get("pos") or []
+
+    if not methods:
+        methods = list(DEFAULT_POS_PAYMENT_METHODS)
+
+    return PosPaymentMethodsResponse(payment_methods=methods)
 
 
 @router.post("/orders", response_model=OrderCreateResponse, status_code=201)
