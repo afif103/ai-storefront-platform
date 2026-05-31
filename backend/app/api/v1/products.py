@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import select, tuple_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
@@ -62,6 +63,8 @@ def _product_response(product: Product, tenant: Tenant) -> ProductResponse:
         stock_qty=product.stock_qty,
         low_stock_threshold=product.low_stock_threshold,
         is_low_stock=is_low_stock,
+        sku=product.sku,
+        barcode=product.barcode,
         created_at=product.created_at,
         updated_at=product.updated_at,
     )
@@ -143,9 +146,18 @@ async def create_product(
         track_inventory=body.track_inventory,
         stock_qty=body.stock_qty,
         low_stock_threshold=body.low_stock_threshold,
+        sku=body.sku,
+        barcode=body.barcode,
     )
     db.add(product)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Product name, SKU, or barcode already exists",
+        ) from None
     await db.refresh(product)
     return _product_response(product, tenant)
 
@@ -191,7 +203,14 @@ async def update_product(
         attr = "metadata_" if field == "metadata" else field
         setattr(product, attr, value)
 
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Product name, SKU, or barcode already exists",
+        ) from None
     await db.refresh(product)
     return _product_response(product, tenant)
 

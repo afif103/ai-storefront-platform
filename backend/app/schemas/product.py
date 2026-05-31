@@ -24,6 +24,8 @@ class ProductCreate(BaseModel):
     track_inventory: bool = True
     stock_qty: int | None = Field(None, ge=0)
     low_stock_threshold: int | None = Field(5, ge=0)
+    sku: str | None = Field(None, max_length=64)
+    barcode: str | None = Field(None, max_length=64)
 
     @field_validator("currency")
     @classmethod
@@ -31,6 +33,14 @@ class ProductCreate(BaseModel):
         if v is not None and not CURRENCY_PATTERN.match(v):
             raise ValueError("Currency must be a 3-letter uppercase ISO 4217 code")
         return v
+
+    @field_validator("sku", "barcode", mode="before")
+    @classmethod
+    def normalize_code_field(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped if stripped else None
 
     @model_validator(mode="after")
     def default_stock_qty(self) -> "ProductCreate":
@@ -53,6 +63,8 @@ class ProductUpdate(BaseModel):
     track_inventory: bool | None = None
     stock_qty: int | None = Field(None, ge=0)
     low_stock_threshold: int | None = Field(None, ge=0)
+    sku: str | None = Field(None, max_length=64)
+    barcode: str | None = Field(None, max_length=64)
 
     @field_validator("currency")
     @classmethod
@@ -60,6 +72,14 @@ class ProductUpdate(BaseModel):
         if v is not None and not CURRENCY_PATTERN.match(v):
             raise ValueError("Currency must be a 3-letter uppercase ISO 4217 code")
         return v
+
+    @field_validator("sku", "barcode", mode="before")
+    @classmethod
+    def normalize_code_field(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped if stripped else None
 
 
 class ProductResponse(BaseModel):
@@ -79,6 +99,8 @@ class ProductResponse(BaseModel):
     stock_qty: int | None = None
     low_stock_threshold: int | None = None
     is_low_stock: bool = False
+    sku: str | None = None
+    barcode: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
 
