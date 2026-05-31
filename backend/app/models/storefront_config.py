@@ -19,6 +19,7 @@ class StorefrontConfig(TenantScopedBase):
     secondary_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     hero_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     custom_css: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    payment_methods: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

@@ -29,6 +29,11 @@ class Order(TenantScopedBase):
             "source IN ('storefront', 'pos')",
             name="ck_orders_source",
         ),
+        CheckConstraint(
+            "payment_method IS NULL OR payment_method IN "
+            "('cash', 'knet', 'bank_transfer', 'cod', 'manual')",
+            name="ck_orders_payment_method",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
@@ -44,6 +49,7 @@ class Order(TenantScopedBase):
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="'KWD'")
     source: Mapped[str] = mapped_column(Text, nullable=False, server_default="'storefront'")
+    payment_method: Mapped[str | None] = mapped_column(Text, nullable=True)
     payment_link: Mapped[str | None] = mapped_column(Text, nullable=True)
     payment_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
