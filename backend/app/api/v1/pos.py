@@ -121,6 +121,7 @@ async def create_pos_order(
         source="pos",
         status="fulfilled",
         actor_user_id=user.id,
+        payment_method=body.payment_method,
     )
 
     await db.commit()

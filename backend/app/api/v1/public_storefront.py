@@ -328,6 +328,7 @@ async def submit_order(
         payment_notes=body.payment_notes,
         notes=body.notes,
         visit_id=body.visit_id,
+        payment_method=body.payment_method,
     )
 
     # Create UTM event if visit_id was provided

@@ -5,7 +5,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.schemas.payment import normalize_optional_payment_method
 
 
 class OrderItemRequest(BaseModel):
@@ -21,6 +23,12 @@ class OrderCreateRequest(BaseModel):
     payment_notes: str | None = Field(None, max_length=2000)
     notes: str | None = Field(None, max_length=2000)
     visit_id: uuid.UUID | None = None
+    payment_method: str | None = None
+
+    @field_validator("payment_method")
+    @classmethod
+    def _normalize_payment_method(cls, v: str | None) -> str | None:
+        return normalize_optional_payment_method(v)
 
 
 class OrderListItem(BaseModel):
@@ -47,6 +55,7 @@ class OrderCreateResponse(BaseModel):
     currency: str
     status: str
     source: str
+    payment_method: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

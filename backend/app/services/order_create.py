@@ -31,6 +31,7 @@ async def create_order(
     notes: str | None = None,
     visit_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
+    payment_method: str | None = None,
 ) -> Order:
     """Validate products, decrement stock, and create an Order row.
 
@@ -128,6 +129,7 @@ async def create_order(
         total_amount=total,
         currency=order_currency,
         payment_notes=payment_notes,
+        payment_method=payment_method,
         notes=notes,
         status=status,
         source=source,
