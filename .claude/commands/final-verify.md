@@ -8,6 +8,7 @@ Do not modify any files. Run checks and report only.
 
 1. Run backend checks:
    - `cd backend && ruff check .`
+   - `cd backend && black --check .`
    - `cd backend && pytest` (if database is available; note if skipped)
 
 2. Run frontend checks:
@@ -29,7 +30,8 @@ Do not modify any files. Run checks and report only.
    - Flag any mismatches
 
 6. Report pass/fail for each check:
-   - Backend lint: PASS/FAIL/SKIPPED
+   - Backend lint (ruff): PASS/FAIL/SKIPPED
+   - Backend black: PASS/FAIL/SKIPPED
    - Backend tests: PASS/FAIL/SKIPPED
    - Frontend lint: PASS/FAIL
    - Frontend build: PASS/FAIL

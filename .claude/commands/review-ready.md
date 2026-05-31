@@ -8,6 +8,7 @@ Do not commit. Wait for user/ChatGPT approval before committing.
 
 1. Run backend checks (if backend files changed):
    - `cd backend && ruff check .`
+   - `cd backend && black --check .`
    - `cd backend && pytest` (if database is available)
 
 2. Run frontend checks (if frontend files changed):
