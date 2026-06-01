@@ -51,6 +51,7 @@ interface OrderResponse {
   currency: string;
   status: string;
   source: string;
+  payment_method: string | null;
   created_at: string;
 }
 
@@ -91,6 +92,14 @@ function maxQty(p: Product): number {
 
 function POSContent() {
   const t = useTranslations("pos");
+  const tPayment = useTranslations("paymentMethods");
+  const paymentMethodLabels: Record<string, string> = {
+    cash: tPayment("cash"),
+    knet: tPayment("knet"),
+    bank_transfer: tPayment("bank_transfer"),
+    cod: tPayment("cod"),
+    manual: tPayment("manual"),
+  };
   const { bootstrap } = useAuth();
   const storeName = bootstrap?.memberships?.[0]?.tenant_name;
 
@@ -105,6 +114,8 @@ function POSContent() {
 
   // Checkout
   const [customerName, setCustomerName] = useState("");
+  const [paymentMethods, setPaymentMethods] = useState<string[]>(["cash"]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("cash");
   const [submitting, setSubmitting] = useState(false);
 
   // Success
@@ -146,6 +157,21 @@ function POSContent() {
     })();
     return () => { cancelled = true; };
   }, [refreshKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await apiFetch<{ payment_methods: string[] }>(
+        "/api/v1/tenants/me/pos/payment-methods",
+      );
+      if (cancelled) return;
+      if (result.ok && result.data.payment_methods.length > 0) {
+        setPaymentMethods(result.data.payment_methods);
+        setSelectedPaymentMethod(result.data.payment_methods[0]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // ------ Filtered products ------
 
@@ -225,6 +251,7 @@ function POSContent() {
             qty: l.qty,
           })),
           customer_name: customerName || undefined,
+          payment_method: selectedPaymentMethod || undefined,
         }),
       },
     );
@@ -349,6 +376,14 @@ function POSContent() {
               currency: lastOrder.currency,
             })}
           </div>
+
+          {lastOrder.payment_method && (
+            <div className="mt-1 text-right text-sm text-gray-700">
+              {tPayment("fieldLabel")}:{" "}
+              {paymentMethodLabels[lastOrder.payment_method] ??
+                lastOrder.payment_method}
+            </div>
+          )}
 
           {lastOrder.status === "cancelled" && (
             <p className="mt-2 text-center text-xs font-medium uppercase text-red-600 print:hidden">
@@ -623,6 +658,22 @@ function POSContent() {
                       placeholder={t("customerNamePlaceholder")}
                       className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-600">
+                      {tPayment("fieldLabel")}
+                    </label>
+                    <select
+                      value={selectedPaymentMethod}
+                      onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      {paymentMethods.map((code) => (
+                        <option key={code} value={code}>
+                          {paymentMethodLabels[code] ?? code}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <button
                     type="submit"
