@@ -6,6 +6,7 @@ from app.api.v1.admin_lists import router as admin_lists_router
 from app.api.v1.ai_chat import router as ai_chat_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.categories import router as categories_router
+from app.api.v1.customers import router as customers_router
 from app.api.v1.dashboard_analytics import router as dashboard_analytics_router
 from app.api.v1.health import router as health_router
 from app.api.v1.media import router as media_router
@@ -29,6 +30,7 @@ api_v1_router.include_router(
     categories_router, prefix="/tenants/me/categories", tags=["categories"]
 )
 api_v1_router.include_router(products_router, prefix="/tenants/me/products", tags=["products"])
+api_v1_router.include_router(customers_router, prefix="/tenants/me/customers", tags=["customers"])
 api_v1_router.include_router(media_router, prefix="/tenants/me/media", tags=["media"])
 api_v1_router.include_router(
     storefront_config_router, prefix="/tenants/me/storefront", tags=["storefront-config"]
