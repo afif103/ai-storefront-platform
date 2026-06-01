@@ -5,6 +5,7 @@ from app.models.attribution_session import AttributionSession
 from app.models.attribution_visitor import AttributionVisitor
 from app.models.audit_event import AuditEvent
 from app.models.category import Category
+from app.models.customer import Customer
 from app.models.donation import Donation
 from app.models.media_asset import MediaAsset
 from app.models.notification_preference import NotificationPreference
@@ -30,6 +31,7 @@ __all__ = [
     "AttributionVisitor",
     "AuditEvent",
     "Category",
+    "Customer",
     "Donation",
     "MediaAsset",
     "NotificationPreference",
