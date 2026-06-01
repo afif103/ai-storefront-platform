@@ -9,12 +9,23 @@ import { initAnalytics, track, flush, getOrCreateSessionId } from "@/lib/analyti
 import { useVisit } from "@/hooks/use-visit";
 import { useCart } from "@/hooks/use-cart";
 
+interface OrderItem {
+  name: string;
+  qty: number;
+  unit_price: string;
+  currency: string;
+  subtotal: string;
+}
+
 interface OrderResponse {
   id: string;
   order_number: string;
+  customer_name: string;
+  items: OrderItem[];
   total_amount: string;
   currency: string;
   status: string;
+  payment_method: string | null;
   created_at: string;
 }
 
@@ -125,22 +136,80 @@ export default function CheckoutPage() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md rounded-lg border border-green-300 bg-green-50 p-8 text-center">
-          <h2 className="text-lg font-bold text-green-800">{t("orderPlaced")}</h2>
-          <p className="mt-2 text-sm text-green-700">
-            {t("orderNumber")} <span className="font-mono font-bold">{success.order_number}</span>
-          </p>
-          <p className="mt-1 text-sm text-green-700">
-            {t("totalConfirm")} {success.total_amount} {success.currency}
-          </p>
-          <p className="mt-1 text-sm text-green-700">{t("status")} {success.status}</p>
-          <Link
-            href={`/storefront/${slug}`}
-            className="mt-6 inline-block rounded-lg bg-green-700 px-6 py-2 text-sm font-medium text-white hover:bg-green-800"
-          >
-            {t("backToStore")}
-          </Link>
+      <div className="min-h-screen bg-gray-50 px-4 py-8">
+        <div className="mx-auto max-w-md">
+          <div className="rounded-lg border bg-white p-6 shadow-sm">
+            <h2 className="text-center text-xl font-bold text-green-700">
+              {t("orderPlaced")}
+            </h2>
+            <p className="mt-1 text-center text-sm font-medium text-gray-900">
+              {t("orderNumber")}{" "}
+              <span className="font-mono">{success.order_number}</span>
+            </p>
+            <p className="mt-1 text-center text-xs text-gray-500">
+              {new Date(success.created_at).toLocaleString()}
+            </p>
+            <p className="mt-1 text-center text-sm text-gray-700">
+              {t("receiptCustomer")} {success.customer_name}
+            </p>
+
+            {success.items.length > 0 && (
+              <table className="mt-4 w-full text-sm">
+                <thead className="border-b text-left text-xs font-medium uppercase text-gray-500">
+                  <tr>
+                    <th className="py-1">{t("item")}</th>
+                    <th className="py-1 text-center">{t("qty")}</th>
+                    <th className="py-1 text-right">{t("unitPrice")}</th>
+                    <th className="py-1 text-right">{t("subtotal")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {success.items.map((lineItem, i) => (
+                    <tr key={i}>
+                      <td className="py-1 text-gray-900">{lineItem.name}</td>
+                      <td className="py-1 text-center text-gray-700">
+                        {lineItem.qty}
+                      </td>
+                      <td className="py-1 text-right text-gray-700">
+                        {lineItem.unit_price}
+                      </td>
+                      <td className="py-1 text-right text-gray-700">
+                        {lineItem.subtotal}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <div className="mt-3 border-t pt-2 text-right text-sm font-semibold text-gray-900">
+              {t("totalConfirm")} {success.total_amount} {success.currency}
+            </div>
+
+            {success.payment_method && (
+              <div className="mt-1 text-right text-sm text-gray-700">
+                {tPayment("fieldLabel")}:{" "}
+                {paymentMethodLabels[success.payment_method] ??
+                  success.payment_method}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 flex gap-3 print:hidden">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex-1 rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              {t("printReceipt")}
+            </button>
+            <Link
+              href={`/storefront/${slug}`}
+              className="flex-1 rounded-lg bg-green-700 px-4 py-2 text-center text-sm font-medium text-white hover:bg-green-800"
+            >
+              {t("backToStore")}
+            </Link>
+          </div>
         </div>
       </div>
     );

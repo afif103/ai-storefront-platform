@@ -41,7 +41,10 @@
     "email": "Email",
     "paymentNotes": "Payment Notes",
     "placingOrder": "Placing Order...",
-    "placeOrder": "Place Order"
+    "placeOrder": "Place Order",
+    "printReceipt": "Print Receipt",
+    "receiptCustomer": "Customer:",
+    "unitPrice": "Unit Price"
   },
   "donate": {
     "invalidAmount": "Please enter a valid amount greater than 0.",
