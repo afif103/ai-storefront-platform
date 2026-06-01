@@ -13,7 +13,7 @@ Role: member+ for lists, admin+ for exports.
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +24,7 @@ from app.models.order import Order
 from app.models.pledge import Pledge
 from app.models.user import User
 from app.schemas.donation import DonationListItem
-from app.schemas.order import OrderListItem
+from app.schemas.order import OrderDetailResponse, OrderListItem
 from app.schemas.pledge import PledgeListItem
 from app.services.csv_export import rows_to_csv_bytes
 
@@ -171,6 +171,24 @@ async def export_orders(
         for o in orders
     ]
     return _csv_response(rows_to_csv_bytes(headers, rows), "orders.csv")
+
+
+@router.get("/orders/{order_id}", response_model=OrderDetailResponse)
+async def get_order(
+    order_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> OrderDetailResponse:
+    db, tenant_id = db_tenant
+    await require_role("member", db, tenant_id, user)
+
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.tenant_id == tenant_id)
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return OrderDetailResponse.model_validate(order)
 
 
 @router.get("/donations/export")

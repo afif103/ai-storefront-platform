@@ -437,3 +437,100 @@ async def test_cancellation_transitions(client: AsyncClient):
     )
     assert r.status_code == 200
     assert r.json()["status"] == "lapsed"
+
+
+# ---------------------------------------------------------------------------
+# Order detail endpoint (M11.6)
+# ---------------------------------------------------------------------------
+
+
+async def test_order_detail_happy_path(client: AsyncClient):
+    # GET /tenants/me/orders/{id} returns correct order for the owning tenant.
+    headers, slug, product_id, _visit, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Detail Test",
+            "items": [{"catalog_item_id": product_id, "qty": 2}],
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/tenants/me/orders/{order_id}", headers=headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["id"] == order_id
+    assert data["customer_name"] == "Detail Test"
+    assert data["order_number"].startswith("ORD-")
+    assert data["status"] == "pending"
+    assert data["source"] == "storefront"
+
+
+async def test_order_detail_includes_items_and_payment_fields(client: AsyncClient):
+    # Response includes JSONB items and payment_method / payment_notes.
+    headers, slug, product_id, _visit, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Payment Test",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+            "payment_method": "knet",
+            "payment_notes": "Please use ref 123",
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/tenants/me/orders/{order_id}", headers=headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["payment_method"] == "knet"
+    assert data["payment_notes"] == "Please use ref 123"
+    assert len(data["items"]) == 1
+    item = data["items"][0]
+    assert "name" in item
+    assert "qty" in item
+    assert "unit_price" in item
+    assert "subtotal" in item
+
+
+async def test_order_detail_cross_tenant_404(client: AsyncClient):
+    # Tenant B cannot fetch Tenant A's order.
+    _headers_a, slug_a, product_a, _, _ = await _setup_tenant_product_visit(client)
+    headers_b, _, _, _, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug_a}/orders",
+        json={
+            "customer_name": "Tenant A Customer",
+            "items": [{"catalog_item_id": product_a, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/tenants/me/orders/{order_id}", headers=headers_b)
+    assert r.status_code == 404
+
+
+async def test_order_detail_missing_404(client: AsyncClient):
+    # Random UUID returns 404.
+    headers, _, _, _, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.get(
+        f"/api/v1/tenants/me/orders/{uuid.uuid4()}",
+        headers=headers,
+    )
+    assert r.status_code == 404
+
+
+async def test_orders_export_not_shadowed_by_detail_route(client: AsyncClient):
+    # GET /orders/export returns CSV, not captured by /orders/{order_id}.
+    headers, _, _, _, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.get("/api/v1/tenants/me/orders/export", headers=headers)
+    assert r.status_code == 200
+    assert "text/csv" in r.headers.get("content-type", "")

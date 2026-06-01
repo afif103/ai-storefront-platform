@@ -46,6 +46,26 @@ class OrderListItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OrderDetailResponse(BaseModel):
+    id: uuid.UUID
+    order_number: str
+    customer_name: str
+    customer_phone: str | None
+    customer_email: str | None
+    items: list[Any]
+    total_amount: Decimal
+    currency: str
+    status: str
+    source: str
+    payment_method: str | None
+    payment_notes: str | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
 class OrderCreateResponse(BaseModel):
     id: uuid.UUID
     order_number: str
