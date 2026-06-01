@@ -479,8 +479,8 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.6a | Payment status tracking on online orders | Claude | Not started | Orders track payment method and payment status. |
-| 11.6b | Receipt generation for online orders (HTML, print button) | Claude | Not started | Dashboard can view/print order receipt. |
+| 11.6a | Payment status tracking on online orders | Claude | **Deferred** | Intentionally deferred — no `payment_status` column, no payment capture, no gateway. `orders.payment_method` records the selected method (shipped in M11.5). Full payment status lifecycle deferred until a real gateway integration is planned. |
+| 11.6b | Receipt generation for online orders (HTML, print button) | Claude | **Shipped** | Public checkout success screen replaced with printable receipt: order number, date/time, customer name, line items (name/qty/unit price/subtotal), total, payment method (localized). Dashboard order detail endpoint `GET /api/v1/tenants/me/orders/{id}` (member+ role, tenant-scoped, 404 on missing/cross-tenant); returns full order incl. items JSONB, customer contact, payment_method, payment_notes, notes. Dashboard orders page: per-row View action fetches and renders printable receipt/detail view with print button. `window.print()` on both surfaces; dashboard chrome hidden via existing `print:hidden` shell layout. 5 backend tests added. No payment gateway, no payment capture, no payment_status. |
 
 ### M11.7 — Customer Records Foundation
 
