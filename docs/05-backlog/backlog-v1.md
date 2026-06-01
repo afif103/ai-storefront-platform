@@ -486,7 +486,7 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.7a | Shared customer records table + RLS + model + CRUD service + tests | Claude | Not started | Customer records with tenant_id, name, phone, email, notes. RLS-isolated. |
+| 11.7a | Shared customer records table + RLS + model + CRUD service + tests | Claude | **Shipped** | `customers` table (tenant_id, name, phone, email, notes, timestamps) with RLS (SELECT/INSERT/UPDATE/DELETE tenant-isolation policies) and tenant-scoped partial unique indexes on phone and email (`WHERE … IS NOT NULL`). `Customer` ORM model. `CustomerCreate`/`CustomerUpdate`/`CustomerResponse` schemas (lenient email normalize, name trimmed, `tenant_id` excluded from responses). CRUD API `GET/POST/GET{id}/PATCH{id}/DELETE{id}` under `/api/v1/tenants/me/customers` — list/get require member, create/update/delete require admin. Duplicate phone/email within a tenant → 409; same values across tenants allowed; cross-tenant access → 404. 13 backend tests passing. CRUD logic inline in route handlers (no separate service layer), matching the products pattern. **Customer linking is NOT included** — order/POS/storefront/donation linking and `orders.customer_id` remain M11.8. |
 
 ### M11.8 — Customer Linking
 
