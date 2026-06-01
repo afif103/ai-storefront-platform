@@ -458,7 +458,11 @@
     "secondaryColor": "Secondary Color",
     "saving": "Saving...",
     "saveBranding": "Save Branding",
-    "settingsSaved": "Storefront settings saved."
+    "settingsSaved": "Storefront settings saved.",
+    "sectionPayments": "Payment Methods",
+    "posMethods": "POS payment methods",
+    "onlineMethods": "Online payment methods",
+    "savePayments": "Save Payment Methods"
   },
   "pos": {
     "title": "Point of Sale",
@@ -503,5 +507,14 @@
     "cancelFailed": "Failed to cancel order",
     "cancelConfirm": "Cancel this order? Stock will be restored.",
     "cancelledBadge": "Cancelled"
+  },
+  "paymentMethods": {
+    "cash": "Cash",
+    "knet": "KNET",
+    "bank_transfer": "Bank transfer",
+    "cod": "Cash on delivery",
+    "manual": "Manual",
+    "fieldLabel": "Payment method",
+    "selectPlaceholder": "Select payment method"
   }
 }

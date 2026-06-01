@@ -8,6 +8,14 @@ import { apiFetch } from "@/lib/api-client";
 import { uploadFile } from "@/lib/upload";
 import type { UploadProgress } from "@/lib/upload";
 
+const PAYMENT_METHOD_CATALOG = [
+  "cash",
+  "knet",
+  "bank_transfer",
+  "cod",
+  "manual",
+] as const;
+
 interface StorefrontConfig {
   id: string;
   logo_s3_key: string | null;
@@ -15,6 +23,7 @@ interface StorefrontConfig {
   secondary_color: string | null;
   hero_text: string | null;
   custom_css: Record<string, unknown> | null;
+  payment_methods: { pos: string[]; online: string[] } | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -32,6 +41,14 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 function StorefrontSettingsContent() {
   const t = useTranslations("dashboardStorefront");
+  const tPayment = useTranslations("paymentMethods");
+  const paymentMethodLabels: Record<string, string> = {
+    cash: tPayment("cash"),
+    knet: tPayment("knet"),
+    bank_transfer: tPayment("bank_transfer"),
+    cod: tPayment("cod"),
+    manual: tPayment("manual"),
+  };
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
   const [heroText, setHeroText] = useState("");
   const [primaryColor, setPrimaryColor] = useState("");
@@ -42,6 +59,10 @@ function StorefrontSettingsContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Payment methods
+  const [posMethods, setPosMethods] = useState<string[]>([]);
+  const [onlineMethods, setOnlineMethods] = useState<string[]>([]);
 
   // Logo upload state
   const [uploading, setUploading] = useState(false);
@@ -65,6 +86,8 @@ function StorefrontSettingsContent() {
         setHeroText(c.hero_text ?? "");
         setPrimaryColor(c.primary_color ?? "");
         setSecondaryColor(c.secondary_color ?? "");
+        setPosMethods(c.payment_methods?.pos ?? []);
+        setOnlineMethods(c.payment_methods?.online ?? []);
 
         // Load existing logo via public config endpoint (returns presigned URL)
         if (c.logo_s3_key && tenantResult.ok) {
@@ -158,6 +181,7 @@ function StorefrontSettingsContent() {
     body.hero_text = heroText || null;
     body.primary_color = primaryColor || null;
     body.secondary_color = secondaryColor || null;
+    body.payment_methods = { pos: posMethods, online: onlineMethods };
 
     const result = await apiFetch<StorefrontConfig>(
       "/api/v1/tenants/me/storefront",
@@ -329,6 +353,69 @@ function StorefrontSettingsContent() {
                       style={{ backgroundColor: secondaryColor }}
                     />
                   )}
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Methods */}
+          <div className="border-t pt-4">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              {t("sectionPayments")}
+            </p>
+
+            <div className="mb-4">
+              <p className="mb-2 text-sm font-medium text-gray-700">
+                {t("posMethods")}
+              </p>
+              <div className="flex flex-wrap gap-4">
+                {PAYMENT_METHOD_CATALOG.map((code) => (
+                  <label
+                    key={code}
+                    className="flex items-center gap-1.5 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={posMethods.includes(code)}
+                      onChange={(e) =>
+                        setPosMethods((prev) =>
+                          e.target.checked
+                            ? [...prev, code]
+                            : prev.filter((m) => m !== code)
+                        )
+                      }
+                      className="rounded border-gray-300"
+                    />
+                    {paymentMethodLabels[code] ?? code}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-700">
+                {t("onlineMethods")}
+              </p>
+              <div className="flex flex-wrap gap-4">
+                {PAYMENT_METHOD_CATALOG.map((code) => (
+                  <label
+                    key={code}
+                    className="flex items-center gap-1.5 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={onlineMethods.includes(code)}
+                      onChange={(e) =>
+                        setOnlineMethods((prev) =>
+                          e.target.checked
+                            ? [...prev, code]
+                            : prev.filter((m) => m !== code)
+                        )
+                      }
+                      className="rounded border-gray-300"
+                    />
+                    {paymentMethodLabels[code] ?? code}
+                  </label>
+                ))}
               </div>
             </div>
           </div>
