@@ -45,6 +45,9 @@ class Order(TenantScopedBase):
     customer_name: Mapped[str] = mapped_column(Text, nullable=False)
     customer_phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     customer_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"), nullable=True
+    )
     items: Mapped[list] = mapped_column(JSONB, nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="'KWD'")
