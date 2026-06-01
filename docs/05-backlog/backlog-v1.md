@@ -473,7 +473,7 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.5a | Payment method config per tenant (cash, bank transfer, manual external, gateway placeholder) | Claude | Not started | Tenant can configure accepted payment methods. POS and online orders reference payment method. |
+| 11.5a | Payment method config per tenant (cash, bank transfer, manual external, gateway placeholder) | Claude | **Shipped** | Catalog: `cash`, `knet`, `bank_transfer`, `cod`, `manual`. Config stored in `storefront_config.payment_methods` JSONB as `{"pos": [], "online": []}`. `orders.payment_method` nullable TEXT with DB CHECK. Dashboard storefront settings page: checkbox groups to configure POS and Online methods (saved via existing config PUT). `GET /pos/payment-methods` endpoint (cashier role, fallback `["cash"]`). Public storefront config exposes online methods only — POS methods are never exposed publicly. POS and public checkout pickers both send `payment_method` on order create. 11 backend integration tests added and passing. No real payment gateway, payment capture, or payment status tracking. |
 
 ### M11.6 — Online Order Payment + Receipts
 

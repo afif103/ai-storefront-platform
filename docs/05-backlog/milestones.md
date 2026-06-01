@@ -343,7 +343,7 @@ Note: M10A and M10B start with planning-only packets (M10A.1, M10B.1) before any
 | Shared customer records foundation across channels (does not block first POS MVP) |
 | Customer linking on order/donation/POS sale create with dedup by phone/email |
 
-**Status**: M11.4 SKU/barcode implementation shipped; M11.1–M11.3 shipped via M10B; M11.5–M11.8 not started. Dedicated SKU/barcode backend tests remain follow-up.
+**Status**: M11.5 payment method config shipped; M11.4 SKU/barcode shipped; M11.1–M11.3 shipped via M10B; M11.6–M11.8 not started. Dedicated SKU/barcode backend tests remain follow-up.
 
 ---
 
@@ -418,7 +418,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 |-----------|-------|--------|
 | M10A — Foundations: Auth & Onboarding | Merchant-Ready Core | M10A.1 Planning next |
 | M10B — Foundations: POS Domain | POS / Omnichannel | M10B.7 POS order cancel shipped |
-| M11 — Selling & Payments MVP | Both tracks | M11.4 SKU/barcode implementation shipped; M11.1–M11.3 shipped via M10B; remainder not started |
+| M11 — Selling & Payments MVP | Both tracks | M11.5 payment method config shipped; M11.4 SKU/barcode shipped; M11.1–M11.3 shipped via M10B; remainder not started |
 | M12 — Operations & Variants | Both tracks | Not started |
 | M13 — Omnichannel Reporting & Polish | Both tracks (convergence) | Not started |
 
