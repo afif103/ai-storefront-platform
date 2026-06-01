@@ -18,10 +18,22 @@ interface OrderResponse {
   created_at: string;
 }
 
+interface PublicConfig {
+  payment_methods: string[] | null;
+}
+
 export default function CheckoutPage() {
   const params = useParams();
   const slug = params.slug as string;
   const t = useTranslations("checkout");
+  const tPayment = useTranslations("paymentMethods");
+  const paymentMethodLabels: Record<string, string> = {
+    cash: tPayment("cash"),
+    knet: tPayment("knet"),
+    bank_transfer: tPayment("bank_transfer"),
+    cod: tPayment("cod"),
+    manual: tPayment("manual"),
+  };
   const { visitId } = useVisit(slug);
   const cart = useCart(slug);
 
@@ -29,6 +41,8 @@ export default function CheckoutPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [onlineMethods, setOnlineMethods] = useState<string[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<OrderResponse | null>(null);
@@ -52,6 +66,25 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await apiFetch<PublicConfig>(
+        `/api/v1/storefront/${slug}/config`
+      );
+      if (cancelled) return;
+      if (
+        result.ok &&
+        result.data.payment_methods &&
+        result.data.payment_methods.length > 0
+      ) {
+        setOnlineMethods(result.data.payment_methods);
+        setPaymentMethod(result.data.payment_methods[0]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -70,6 +103,7 @@ export default function CheckoutPage() {
             qty: i.qty,
           })),
           payment_notes: paymentNotes || undefined,
+          payment_method: paymentMethod || undefined,
           visit_id: visitId || undefined,
         }),
       }
@@ -277,6 +311,25 @@ export default function CheckoutPage() {
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
+
+          {onlineMethods.length > 0 && (
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                {tPayment("fieldLabel")}
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              >
+                {onlineMethods.map((code) => (
+                  <option key={code} value={code}>
+                    {paymentMethodLabels[code] ?? code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <button
             type="submit"
