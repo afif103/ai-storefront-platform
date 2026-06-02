@@ -13,6 +13,7 @@ from app.models.order import Order
 from app.models.plan import Plan
 from app.models.pledge import Pledge
 from app.models.product import Product
+from app.models.product_variant import ProductVariant
 from app.models.stock_movement import StockMovement
 from app.models.storefront_ai_conversation import StorefrontAIConversation
 from app.models.storefront_ai_usage_log import StorefrontAIUsageLog
@@ -39,6 +40,7 @@ __all__ = [
     "Plan",
     "Pledge",
     "Product",
+    "ProductVariant",
     "StockMovement",
     "StorefrontAIConversation",
     "StorefrontAIUsageLog",
