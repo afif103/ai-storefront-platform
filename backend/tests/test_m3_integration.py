@@ -702,3 +702,53 @@ async def test_storefront_same_email_distinct_per_tenant(client: AsyncClient, db
     cb = result.scalar_one()
     assert ca.tenant_id == uuid.UUID(tenant_a)
     assert cb.tenant_id == uuid.UUID(tenant_b)
+
+
+# ---------------------------------------------------------------------------
+# customer_id exposure in order responses (M11.8 Phase 4)
+# ---------------------------------------------------------------------------
+
+
+async def test_storefront_create_response_includes_customer_id(
+    client: AsyncClient, db: AsyncSession
+):
+    # Storefront create response exposes the linked customer_id (matches persisted row).
+    _headers, slug, product_id, _vid, _tid = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "RespCid",
+            "customer_email": "respcid@example.com",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["customer_id"] is not None
+
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(body["id"])))
+    order = result.scalar_one()
+    assert body["customer_id"] == str(order.customer_id)
+
+
+async def test_storefront_order_detail_response_includes_customer_id(client: AsyncClient):
+    # Dashboard order detail response exposes the same customer_id as the create response.
+    headers, slug, product_id, _vid, _tid = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "DetailCid",
+            "customer_email": "detailcid@example.com",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    created = r.json()
+    assert created["customer_id"] is not None
+
+    r = await client.get(f"/api/v1/tenants/me/orders/{created['id']}", headers=headers)
+    assert r.status_code == 200
+    detail = r.json()
+    assert detail["customer_id"] == created["customer_id"]

@@ -630,3 +630,18 @@ async def test_pos_order_no_customer_link(client: AsyncClient, db: AsyncSession)
         select(func.count()).select_from(Customer).where(Customer.tenant_id == order.tenant_id)
     )
     assert result.scalar_one() == 0
+
+
+async def test_pos_create_response_customer_id_null(client: AsyncClient):
+    # POS create response exposes customer_id and it is null (no contact -> no link).
+    headers, product_id = await _setup(client)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 1}]},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert "customer_id" in body
+    assert body["customer_id"] is None

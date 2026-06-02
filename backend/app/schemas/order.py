@@ -52,6 +52,7 @@ class OrderDetailResponse(BaseModel):
     customer_name: str
     customer_phone: str | None
     customer_email: str | None
+    customer_id: uuid.UUID | None
     items: list[Any]
     total_amount: Decimal
     currency: str
@@ -70,6 +71,7 @@ class OrderCreateResponse(BaseModel):
     id: uuid.UUID
     order_number: str
     customer_name: str
+    customer_id: uuid.UUID | None = None
     items: list[Any]
     total_amount: Decimal
     currency: str
