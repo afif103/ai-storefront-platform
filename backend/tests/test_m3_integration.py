@@ -9,6 +9,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.customer import Customer
+from app.models.donation import Donation
 from app.models.order import Order
 from app.models.utm_event import UtmEvent
 from tests.conftest import auth_headers
@@ -752,3 +753,165 @@ async def test_storefront_order_detail_response_includes_customer_id(client: Asy
     assert r.status_code == 200
     detail = r.json()
     assert detail["customer_id"] == created["customer_id"]
+
+
+# ---------------------------------------------------------------------------
+# Donation customer linking on create (M11.8 Phase 5)
+# ---------------------------------------------------------------------------
+
+
+async def test_donation_with_email_creates_and_links_customer(
+    client: AsyncClient, db: AsyncSession
+):
+    # Donation with email creates a customer and sets donations.customer_id.
+    _headers, slug, _pid, _vid, tenant_id = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/donations",
+        json={"donor_name": "Fatima", "donor_email": "fatima@example.com", "amount": "10.000"},
+    )
+    assert r.status_code == 201
+    donation_id = r.json()["id"]
+
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(donation_id)))
+    donation = result.scalar_one()
+    assert donation.customer_id is not None
+
+    result = await db.execute(select(Customer).where(Customer.id == donation.customer_id))
+    customer = result.scalar_one()
+    assert customer.email == "fatima@example.com"
+    assert customer.tenant_id == uuid.UUID(tenant_id)
+
+
+async def test_donation_repeat_email_links_same_customer(client: AsyncClient, db: AsyncSession):
+    # Second donation with the same email links the existing customer (count stays 1).
+    _headers, slug, _pid, _vid, tenant_id = await _setup_tenant_product_visit(client)
+    tid = uuid.UUID(tenant_id)
+
+    async def _submit(name: str) -> str:
+        r = await client.post(
+            f"/api/v1/storefront/{slug}/donations",
+            json={"donor_name": name, "donor_email": "donrepeat@example.com", "amount": "5.000"},
+        )
+        assert r.status_code == 201
+        return r.json()["id"]
+
+    first_id = await _submit("First")
+    second_id = await _submit("Second")
+
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(first_id)))
+    first = result.scalar_one()
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(second_id)))
+    second = result.scalar_one()
+    assert first.customer_id is not None
+    assert first.customer_id == second.customer_id
+
+    result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.tenant_id == tid)
+    )
+    assert result.scalar_one() == 1
+
+
+async def test_donation_repeat_phone_links_same_customer(client: AsyncClient, db: AsyncSession):
+    # Second donation with the same phone (no email) links the existing customer.
+    _headers, slug, _pid, _vid, tenant_id = await _setup_tenant_product_visit(client)
+    tid = uuid.UUID(tenant_id)
+
+    async def _submit(name: str) -> str:
+        r = await client.post(
+            f"/api/v1/storefront/{slug}/donations",
+            json={"donor_name": name, "donor_phone": "+96577776666", "amount": "5.000"},
+        )
+        assert r.status_code == 201
+        return r.json()["id"]
+
+    first_id = await _submit("First")
+    second_id = await _submit("Second")
+
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(first_id)))
+    first = result.scalar_one()
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(second_id)))
+    second = result.scalar_one()
+    assert first.customer_id is not None
+    assert first.customer_id == second.customer_id
+
+    result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.tenant_id == tid)
+    )
+    assert result.scalar_one() == 1
+
+
+async def test_donation_without_contact_no_customer(client: AsyncClient, db: AsyncSession):
+    # Donation with no phone/email creates no customer; customer_id stays NULL.
+    _headers, slug, _pid, _vid, tenant_id = await _setup_tenant_product_visit(client)
+    tid = uuid.UUID(tenant_id)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/donations",
+        json={"donor_name": "NoContact", "amount": "3.000"},
+    )
+    assert r.status_code == 201
+    donation_id = r.json()["id"]
+
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(donation_id)))
+    donation = result.scalar_one()
+    assert donation.customer_id is None
+
+    result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.tenant_id == tid)
+    )
+    assert result.scalar_one() == 0
+
+
+async def test_donation_same_email_distinct_per_tenant(client: AsyncClient, db: AsyncSession):
+    # Same donor email across two tenants creates two distinct, tenant-scoped customers.
+    _ha, slug_a, _pa, _va, tenant_a = await _setup_tenant_product_visit(client)
+    _hb, slug_b, _pb, _vb, tenant_b = await _setup_tenant_product_visit(client)
+
+    ra = await client.post(
+        f"/api/v1/storefront/{slug_a}/donations",
+        json={"donor_name": "Shared", "donor_email": "dshared@example.com", "amount": "1.000"},
+    )
+    assert ra.status_code == 201
+    donation_a = ra.json()["id"]
+
+    rb = await client.post(
+        f"/api/v1/storefront/{slug_b}/donations",
+        json={"donor_name": "Shared", "donor_email": "dshared@example.com", "amount": "1.000"},
+    )
+    assert rb.status_code == 201
+    donation_b = rb.json()["id"]
+
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(donation_a)))
+    da = result.scalar_one()
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(donation_b)))
+    db_donation = result.scalar_one()
+    assert da.customer_id is not None
+    assert db_donation.customer_id is not None
+    assert da.customer_id != db_donation.customer_id
+
+    result = await db.execute(select(Customer).where(Customer.id == da.customer_id))
+    ca = result.scalar_one()
+    result = await db.execute(select(Customer).where(Customer.id == db_donation.customer_id))
+    cb = result.scalar_one()
+    assert ca.tenant_id == uuid.UUID(tenant_a)
+    assert cb.tenant_id == uuid.UUID(tenant_b)
+
+
+async def test_donation_create_response_includes_customer_id(
+    client: AsyncClient, db: AsyncSession
+):
+    # Donation create response exposes customer_id (matches persisted row).
+    _headers, slug, _pid, _vid, _tid = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/donations",
+        json={"donor_name": "RespDon", "donor_email": "respdon@example.com", "amount": "2.000"},
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["customer_id"] is not None
+
+    result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(body["id"])))
+    donation = result.scalar_one()
+    assert body["customer_id"] == str(donation.customer_id)

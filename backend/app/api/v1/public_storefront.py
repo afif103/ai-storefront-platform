@@ -37,6 +37,7 @@ from app.schemas.storefront_ai_chat import (
 )
 from app.schemas.visit import VisitCreateRequest, VisitCreateResponse
 from app.services.analytics_ingest import handle_analytics_ingest
+from app.services.customer_link import find_or_create_customer
 from app.services.ip_hash import hash_ip
 from app.services.numbering import get_next_donation_number, get_next_pledge_number
 from app.services.order_create import create_order
@@ -379,6 +380,16 @@ async def submit_donation(
                 status_code=422, detail=f"Product {body.product_id} not found or inactive"
             )
 
+    # Link to (or create) a tenant customer by contact info (email-then-phone dedup).
+    # Returns None for contactless donations — no customer row created.
+    customer = await find_or_create_customer(
+        db,
+        tenant_id=tenant.id,
+        name=body.donor_name,
+        phone=body.donor_phone,
+        email=body.donor_email,
+    )
+
     donation_number = await get_next_donation_number(db, str(tenant.id))
 
     donation = Donation(
@@ -388,6 +399,7 @@ async def submit_donation(
         donor_name=body.donor_name,
         donor_phone=body.donor_phone,
         donor_email=body.donor_email,
+        customer_id=customer.id if customer is not None else None,
         amount=body.amount,
         currency=body.currency,
         campaign=body.campaign,

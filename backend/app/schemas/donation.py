@@ -39,6 +39,7 @@ class DonationListItem(BaseModel):
 class DonationCreateResponse(BaseModel):
     id: uuid.UUID
     donation_number: str
+    customer_id: uuid.UUID | None = None
     amount: Decimal
     currency: str
     status: str
