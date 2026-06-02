@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.order import Order
 from app.models.product import Product
 from app.schemas.order import OrderItemRequest
+from app.services.customer_link import find_or_create_customer
 from app.services.inventory import record_stock_movement
 from app.services.numbering import get_next_order_number
 
@@ -117,6 +118,16 @@ async def create_order(
                     detail=f"Insufficient stock for product '{product.name}'",
                 )
 
+    # Link to (or create) a tenant customer by contact info (email-then-phone dedup).
+    # Returns None for contactless orders (e.g. POS "Walk-in") — no row created.
+    customer = await find_or_create_customer(
+        db,
+        tenant_id=tenant_id,
+        name=customer_name,
+        phone=customer_phone,
+        email=customer_email,
+    )
+
     order_number = await get_next_order_number(db, str(tenant_id))
 
     order = Order(
@@ -125,6 +136,7 @@ async def create_order(
         customer_name=customer_name,
         customer_phone=customer_phone,
         customer_email=customer_email,
+        customer_id=customer.id if customer is not None else None,
         items=items_jsonb,
         total_amount=total,
         currency=order_currency,

@@ -4,9 +4,11 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.customer import Customer
+from app.models.order import Order
 from app.models.stock_movement import StockMovement
 from tests.conftest import auth_headers
 
@@ -601,3 +603,30 @@ async def test_storefront_order_invalid_payment_method_returns_422(client: Async
         },
     )
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Customer linking no-op for POS (M11.8)
+# ---------------------------------------------------------------------------
+
+
+async def test_pos_order_no_customer_link(client: AsyncClient, db: AsyncSession):
+    # POS order has no phone/email -> no customer row, customer_id stays NULL.
+    headers, product_id = await _setup(client)
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 1}]},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
+    order = result.scalar_one()
+    assert order.customer_id is None
+
+    result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.tenant_id == order.tenant_id)
+    )
+    assert result.scalar_one() == 0

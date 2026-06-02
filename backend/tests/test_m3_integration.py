@@ -5,9 +5,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.customer import Customer
+from app.models.order import Order
 from app.models.utm_event import UtmEvent
 from tests.conftest import auth_headers
 
@@ -534,3 +536,169 @@ async def test_orders_export_not_shadowed_by_detail_route(client: AsyncClient):
     r = await client.get("/api/v1/tenants/me/orders/export", headers=headers)
     assert r.status_code == 200
     assert "text/csv" in r.headers.get("content-type", "")
+
+
+# ---------------------------------------------------------------------------
+# Customer linking on order create (M11.8)
+# ---------------------------------------------------------------------------
+
+
+async def test_storefront_order_with_email_creates_and_links_customer(
+    client: AsyncClient, db: AsyncSession
+):
+    # Storefront order with email creates a customer and sets orders.customer_id.
+    _headers, slug, product_id, _vid, tenant_id = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Ahmad",
+            "customer_email": "ahmad@example.com",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
+    order = result.scalar_one()
+    assert order.customer_id is not None
+
+    result = await db.execute(select(Customer).where(Customer.id == order.customer_id))
+    customer = result.scalar_one()
+    assert customer.email == "ahmad@example.com"
+    assert customer.tenant_id == uuid.UUID(tenant_id)
+
+
+async def test_storefront_repeat_email_links_same_customer(client: AsyncClient, db: AsyncSession):
+    # Second order with the same email links the existing customer (count stays 1).
+    _headers, slug, product_id, _vid, tenant_id = await _setup_tenant_product_visit(client)
+    tid = uuid.UUID(tenant_id)
+
+    async def _submit(name: str) -> str:
+        r = await client.post(
+            f"/api/v1/storefront/{slug}/orders",
+            json={
+                "customer_name": name,
+                "customer_email": "repeat@example.com",
+                "items": [{"catalog_item_id": product_id, "qty": 1}],
+            },
+        )
+        assert r.status_code == 201
+        return r.json()["id"]
+
+    first_id = await _submit("First")
+    second_id = await _submit("Second")
+
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(first_id)))
+    first = result.scalar_one()
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(second_id)))
+    second = result.scalar_one()
+    assert first.customer_id is not None
+    assert first.customer_id == second.customer_id
+
+    result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.tenant_id == tid)
+    )
+    assert result.scalar_one() == 1
+
+
+async def test_storefront_repeat_phone_links_same_customer(client: AsyncClient, db: AsyncSession):
+    # Second order with the same phone (no email) links the existing customer.
+    _headers, slug, product_id, _vid, tenant_id = await _setup_tenant_product_visit(client)
+    tid = uuid.UUID(tenant_id)
+
+    async def _submit(name: str) -> str:
+        r = await client.post(
+            f"/api/v1/storefront/{slug}/orders",
+            json={
+                "customer_name": name,
+                "customer_phone": "+96599998888",
+                "items": [{"catalog_item_id": product_id, "qty": 1}],
+            },
+        )
+        assert r.status_code == 201
+        return r.json()["id"]
+
+    first_id = await _submit("First")
+    second_id = await _submit("Second")
+
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(first_id)))
+    first = result.scalar_one()
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(second_id)))
+    second = result.scalar_one()
+    assert first.customer_id is not None
+    assert first.customer_id == second.customer_id
+
+    result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.tenant_id == tid)
+    )
+    assert result.scalar_one() == 1
+
+
+async def test_storefront_order_without_contact_no_customer(client: AsyncClient, db: AsyncSession):
+    # Order with no phone/email creates no customer; customer_id stays NULL.
+    _headers, slug, product_id, _vid, tenant_id = await _setup_tenant_product_visit(client)
+    tid = uuid.UUID(tenant_id)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "NoContact",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
+    order = result.scalar_one()
+    assert order.customer_id is None
+
+    result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.tenant_id == tid)
+    )
+    assert result.scalar_one() == 0
+
+
+async def test_storefront_same_email_distinct_per_tenant(client: AsyncClient, db: AsyncSession):
+    # Same email across two tenants creates two distinct, tenant-scoped customers.
+    _ha, slug_a, prod_a, _va, tenant_a = await _setup_tenant_product_visit(client)
+    _hb, slug_b, prod_b, _vb, tenant_b = await _setup_tenant_product_visit(client)
+
+    ra = await client.post(
+        f"/api/v1/storefront/{slug_a}/orders",
+        json={
+            "customer_name": "Shared",
+            "customer_email": "shared@example.com",
+            "items": [{"catalog_item_id": prod_a, "qty": 1}],
+        },
+    )
+    assert ra.status_code == 201
+    order_a = ra.json()["id"]
+
+    rb = await client.post(
+        f"/api/v1/storefront/{slug_b}/orders",
+        json={
+            "customer_name": "Shared",
+            "customer_email": "shared@example.com",
+            "items": [{"catalog_item_id": prod_b, "qty": 1}],
+        },
+    )
+    assert rb.status_code == 201
+    order_b = rb.json()["id"]
+
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(order_a)))
+    oa = result.scalar_one()
+    result = await db.execute(select(Order).where(Order.id == uuid.UUID(order_b)))
+    ob = result.scalar_one()
+    assert oa.customer_id is not None
+    assert ob.customer_id is not None
+    assert oa.customer_id != ob.customer_id
+
+    result = await db.execute(select(Customer).where(Customer.id == oa.customer_id))
+    ca = result.scalar_one()
+    result = await db.execute(select(Customer).where(Customer.id == ob.customer_id))
+    cb = result.scalar_one()
+    assert ca.tenant_id == uuid.UUID(tenant_a)
+    assert cb.tenant_id == uuid.UUID(tenant_b)
