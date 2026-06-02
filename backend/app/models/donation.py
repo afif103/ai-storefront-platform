@@ -40,6 +40,9 @@ class Donation(TenantScopedBase):
     donor_name: Mapped[str] = mapped_column(Text, nullable=False)
     donor_phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     donor_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"), nullable=True
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="'KWD'")
     campaign: Mapped[str | None] = mapped_column(Text, nullable=True)
