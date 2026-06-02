@@ -492,7 +492,7 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 11.8a | Customer linking on order/donation/POS sale create (dedup by phone/email) | Claude | Not started | New sale/order auto-links or creates customer record. Dedup prevents duplicates. |
+| 11.8a | Customer linking on order/donation/POS sale create (dedup by phone/email) | Claude | **Shipped** | `orders.customer_id` and `donations.customer_id` nullable UUID FKs to `customers(id)` (`ON DELETE SET NULL`, indexed). Shared `find_or_create_customer` service dedups by email first then phone, scoped per tenant; returns None for contactless input so no Walk-in/contactless customer rows are created. Storefront order create links/creates by `customer_email`/`customer_phone`; donation create links/creates by `donor_email`/`donor_phone`; POS verified no-op (no phone/email → no link). Order/donation snapshot contact fields preserved. `customer_id` exposed in `OrderCreateResponse`, `OrderDetailResponse`, and `DonationCreateResponse`. Tenant-scoped dedup and cross-tenant isolation covered by backend tests (order + donation linking + response exposure). Pledge linking intentionally excluded (M11.8 backlog names order/donation/POS only). No frontend customer UI and no backfill of historical records. |
 
 ---
 
@@ -630,7 +630,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 |-----------|---------|--------|
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | Core auth/onboarding shipped; role matrix + test fixture follow-ups remain |
 | M10B — Foundations: POS Domain | 7 shipped + POS Sales Domain deferred | M10B.7 POS order cancel shipped |
-| M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Not started |
+| M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Complete — M11.1–M11.8 shipped (M11.6a payment status deferred) |
 | M12 — Operations & Variants | 7 packets (M12.1–M12.7) | Not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
 | **V2 Total** | Packet count evolves as work ships and scope adjusts | |
