@@ -645,3 +645,25 @@ async def test_pos_create_response_customer_id_null(client: AsyncClient):
     body = r.json()
     assert "customer_id" in body
     assert body["customer_id"] is None
+
+
+async def test_pos_order_with_variant_snapshots_variant(client: AsyncClient):
+    # POS order with a variant_id snapshots variant_id/variant_name in the response items.
+    headers, product_id = await _setup(client)
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/variants",
+        json={"name": "POS-Var"},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    variant_id = r.json()["id"]
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "variant_id": variant_id, "qty": 1}]},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    item = r.json()["items"][0]
+    assert item["variant_id"] == variant_id
+    assert item["variant_name"] == "POS-Var"

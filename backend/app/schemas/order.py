@@ -12,6 +12,7 @@ from app.schemas.payment import normalize_optional_payment_method
 
 class OrderItemRequest(BaseModel):
     catalog_item_id: uuid.UUID
+    variant_id: uuid.UUID | None = None
     qty: int = Field(..., ge=1)
 
 

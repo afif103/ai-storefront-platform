@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.order import Order
 from app.models.product import Product
+from app.models.product_variant import ProductVariant
 from app.schemas.order import OrderItemRequest
 from app.services.customer_link import find_or_create_customer
 from app.services.inventory import record_stock_movement
@@ -71,17 +72,43 @@ async def create_order(
                 detail=f"Product {item.catalog_item_id} has no price",
             )
 
+    # Validate optional variants (C2): exist, active, same tenant, belong to the product.
+    variant_ids = [item.variant_id for item in items if item.variant_id is not None]
+    variants_by_id: dict[uuid.UUID, ProductVariant] = {}
+    if variant_ids:
+        result = await db.execute(
+            select(ProductVariant).where(
+                ProductVariant.id.in_(variant_ids),
+                ProductVariant.tenant_id == tenant_id,
+                ProductVariant.is_active.is_(True),
+            )
+        )
+        variants_by_id = {v.id: v for v in result.scalars().all()}
+
+    for item in items:
+        if item.variant_id is None:
+            continue
+        variant = variants_by_id.get(item.variant_id)
+        if variant is None or variant.product_id != item.catalog_item_id:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Variant {item.variant_id} not found for product {item.catalog_item_id}",
+            )
+
     # Build JSONB snapshot and compute total
     order_currency = tenant_currency
     items_jsonb: list[dict] = []
     total = Decimal("0.000")
     for item in items:
         product = products_by_id[item.catalog_item_id]
+        variant = variants_by_id.get(item.variant_id) if item.variant_id else None
         unit_price = product.price_amount
         subtotal = unit_price * item.qty
         items_jsonb.append(
             {
                 "catalog_item_id": str(item.catalog_item_id),
+                "variant_id": str(item.variant_id) if item.variant_id else None,
+                "variant_name": variant.name if variant else None,
                 "name": product.name,
                 "qty": item.qty,
                 "unit_price": str(unit_price),

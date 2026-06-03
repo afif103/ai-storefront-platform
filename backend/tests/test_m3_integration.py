@@ -915,3 +915,123 @@ async def test_donation_create_response_includes_customer_id(
     result = await db.execute(select(Donation).where(Donation.id == uuid.UUID(body["id"])))
     donation = result.scalar_one()
     assert body["customer_id"] == str(donation.customer_id)
+
+
+# ---------------------------------------------------------------------------
+# Order item variant validation + snapshot (M12.1 Step C2)
+# ---------------------------------------------------------------------------
+
+
+async def _create_variant(
+    client: AsyncClient, headers: dict, product_id: str, **fields: str
+) -> str:
+    payload = {"name": "Variant"}
+    payload.update(fields)
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/variants",
+        json=payload,
+        headers=headers,
+    )
+    assert r.status_code == 201
+    return r.json()["id"]
+
+
+async def test_storefront_order_with_variant_snapshots_variant(client: AsyncClient):
+    headers, slug, product_id, _vid, _tid = await _setup_tenant_product_visit(client)
+    variant_id = await _create_variant(client, headers, product_id, name="Large / Red")
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Ahmad",
+            "items": [{"catalog_item_id": product_id, "variant_id": variant_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    item = r.json()["items"][0]
+    assert item["variant_id"] == variant_id
+    assert item["variant_name"] == "Large / Red"
+
+
+async def test_storefront_order_variant_wrong_product_422(client: AsyncClient):
+    headers, slug, product_a, _vid, _tid = await _setup_tenant_product_visit(client)
+    r = await client.post(
+        "/api/v1/tenants/me/products",
+        json={"name": f"ProdB-{_uid()}", "price_amount": "3.000", "is_active": True},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    product_b = r.json()["id"]
+    variant_b = await _create_variant(client, headers, product_b, name="B-Var")
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "X",
+            "items": [{"catalog_item_id": product_a, "variant_id": variant_b, "qty": 1}],
+        },
+    )
+    assert r.status_code == 422
+
+
+async def test_storefront_order_inactive_variant_422(client: AsyncClient):
+    headers, slug, product_id, _vid, _tid = await _setup_tenant_product_visit(client)
+    variant_id = await _create_variant(client, headers, product_id, name="Inactive")
+    r = await client.patch(
+        f"/api/v1/tenants/me/products/{product_id}/variants/{variant_id}",
+        json={"is_active": False},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "X",
+            "items": [{"catalog_item_id": product_id, "variant_id": variant_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 422
+
+
+async def test_storefront_order_nonexistent_variant_422(client: AsyncClient):
+    _headers, slug, product_id, _vid, _tid = await _setup_tenant_product_visit(client)
+    fake_variant = str(uuid.uuid4())
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "X",
+            "items": [{"catalog_item_id": product_id, "variant_id": fake_variant, "qty": 1}],
+        },
+    )
+    assert r.status_code == 422
+
+
+async def test_storefront_order_cross_tenant_variant_422(client: AsyncClient):
+    _ha, slug_a, product_a, _va, _ta = await _setup_tenant_product_visit(client)
+    hb, _slug_b, product_b, _vb, _tb = await _setup_tenant_product_visit(client)
+    variant_b = await _create_variant(client, hb, product_b, name="B-Var")
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug_a}/orders",
+        json={
+            "customer_name": "X",
+            "items": [{"catalog_item_id": product_a, "variant_id": variant_b, "qty": 1}],
+        },
+    )
+    assert r.status_code == 422
+
+
+async def test_storefront_order_without_variant_id_null_snapshot(client: AsyncClient):
+    _headers, slug, product_id, _vid, _tid = await _setup_tenant_product_visit(client)
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "NoVar",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    item = r.json()["items"][0]
+    assert item["variant_id"] is None
+    assert item["variant_name"] is None
