@@ -115,6 +115,7 @@ class RestockRequest(BaseModel):
 class StockMovementResponse(BaseModel):
     id: uuid.UUID
     product_id: uuid.UUID
+    variant_id: uuid.UUID | None = None
     delta_qty: int
     reason: str
     note: str | None = None

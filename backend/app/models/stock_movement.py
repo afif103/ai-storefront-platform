@@ -33,6 +33,9 @@ class StockMovement(TenantScopedBase):
     product_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("products.id"), nullable=False
     )
+    variant_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product_variants.id"), nullable=True
+    )
     delta_qty: Mapped[int] = mapped_column(Integer, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
