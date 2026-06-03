@@ -102,7 +102,10 @@ async def create_order(
     for item in items:
         product = products_by_id[item.catalog_item_id]
         variant = variants_by_id.get(item.variant_id) if item.variant_id else None
-        unit_price = product.price_amount
+        if variant is not None and variant.price_amount is not None:
+            unit_price = variant.price_amount
+        else:
+            unit_price = product.price_amount
         subtotal = unit_price * item.qty
         items_jsonb.append(
             {
@@ -118,32 +121,48 @@ async def create_order(
         )
         total += subtotal
 
-    # Storefront: atomic raw-SQL decrement (original behaviour, unchanged)
+    # Storefront: atomic raw-SQL decrement (variant-aware).
     if source != "pos":
         for item in items:
             product = products_by_id[item.catalog_item_id]
             if not product.track_inventory:
                 continue
-            result_stock = await db.execute(
-                text(
-                    "UPDATE products "
-                    "SET stock_qty = stock_qty - :qty "
-                    "WHERE tenant_id = :tenant_id "
-                    "  AND id = :product_id "
-                    "  AND track_inventory = true "
-                    "  AND stock_qty >= :qty"
-                ),
-                {
-                    "qty": item.qty,
-                    "tenant_id": str(tenant_id),
-                    "product_id": str(item.catalog_item_id),
-                },
-            )
-            if result_stock.rowcount == 0:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Insufficient stock for product '{product.name}'",
+            variant = variants_by_id.get(item.variant_id) if item.variant_id else None
+            if variant is not None:
+                result_stock = await db.execute(
+                    text(
+                        "UPDATE product_variants "
+                        "SET stock_qty = stock_qty - :qty "
+                        "WHERE tenant_id = :tenant_id "
+                        "  AND id = :variant_id "
+                        "  AND stock_qty >= :qty"
+                    ),
+                    {
+                        "qty": item.qty,
+                        "tenant_id": str(tenant_id),
+                        "variant_id": str(item.variant_id),
+                    },
                 )
+                detail = f"Insufficient stock for variant '{variant.name}'"
+            else:
+                result_stock = await db.execute(
+                    text(
+                        "UPDATE products "
+                        "SET stock_qty = stock_qty - :qty "
+                        "WHERE tenant_id = :tenant_id "
+                        "  AND id = :product_id "
+                        "  AND track_inventory = true "
+                        "  AND stock_qty >= :qty"
+                    ),
+                    {
+                        "qty": item.qty,
+                        "tenant_id": str(tenant_id),
+                        "product_id": str(item.catalog_item_id),
+                    },
+                )
+                detail = f"Insufficient stock for product '{product.name}'"
+            if result_stock.rowcount == 0:
+                raise HTTPException(status_code=409, detail=detail)
 
     # Link to (or create) a tenant customer by contact info (email-then-phone dedup).
     # Returns None for contactless orders (e.g. POS "Walk-in") — no row created.
@@ -183,16 +202,22 @@ async def create_order(
             product = products_by_id[item.catalog_item_id]
             if not product.track_inventory:
                 continue
+            variant = variants_by_id.get(item.variant_id) if item.variant_id else None
+            if variant is not None:
+                detail = f"Insufficient stock for variant '{variant.name}'"
+            else:
+                detail = f"Insufficient stock for product '{product.name}'"
             await record_stock_movement(
                 db,
                 tenant_id=tenant_id,
                 product_id=item.catalog_item_id,
+                variant_id=item.variant_id,
                 delta_qty=-item.qty,
                 reason="pos_sale",
                 order_id=order.id,
                 actor_user_id=actor_user_id,
                 prevent_negative_stock=True,
-                insufficient_stock_detail=(f"Insufficient stock for product '{product.name}'"),
+                insufficient_stock_detail=detail,
             )
 
     return order

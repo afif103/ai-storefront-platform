@@ -652,7 +652,7 @@ async def test_pos_order_with_variant_snapshots_variant(client: AsyncClient):
     headers, product_id = await _setup(client)
     r = await client.post(
         f"/api/v1/tenants/me/products/{product_id}/variants",
-        json={"name": "POS-Var"},
+        json={"name": "POS-Var", "stock_qty": 5},
         headers=headers,
     )
     assert r.status_code == 201
@@ -667,3 +667,59 @@ async def test_pos_order_with_variant_snapshots_variant(client: AsyncClient):
     item = r.json()["items"][0]
     assert item["variant_id"] == variant_id
     assert item["variant_name"] == "POS-Var"
+
+
+async def test_pos_variant_sale_decrements_variant_and_writes_movement(
+    client: AsyncClient, db: AsyncSession
+):
+    headers, product_id = await _setup(client, stock_qty=10)
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/variants",
+        json={"name": "PV", "stock_qty": 5},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    variant_id = r.json()["id"]
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "variant_id": variant_id, "qty": 2}]},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    # variant stock 5 -> 3; product stock untouched (10)
+    r = await client.get(
+        f"/api/v1/tenants/me/products/{product_id}/variants/{variant_id}", headers=headers
+    )
+    assert r.json()["stock_qty"] == 3
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.json()["stock_qty"] == 10
+
+    result = await db.execute(
+        select(StockMovement).where(StockMovement.order_id == uuid.UUID(order_id))
+    )
+    movement = result.scalar_one()
+    assert str(movement.variant_id) == variant_id
+    assert str(movement.product_id) == product_id
+    assert movement.reason == "pos_sale"
+    assert movement.delta_qty == -2
+
+
+async def test_pos_variant_insufficient_stock_409(client: AsyncClient):
+    headers, product_id = await _setup(client, stock_qty=10)
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/variants",
+        json={"name": "PV", "stock_qty": 1},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    variant_id = r.json()["id"]
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "variant_id": variant_id, "qty": 2}]},
+        headers=headers,
+    )
+    assert r.status_code == 409
