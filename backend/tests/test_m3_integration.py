@@ -1127,3 +1127,35 @@ async def test_storefront_variant_null_price_inherits_product(client: AsyncClien
     )
     assert r.status_code == 201
     assert r.json()["items"][0]["unit_price"] == "5.250"
+
+
+# ---------------------------------------------------------------------------
+# Variant-aware cancel/restore on storefront orders (M12.1 Step C4)
+# ---------------------------------------------------------------------------
+
+
+async def test_storefront_variant_order_cancel_restores_variant_stock(client: AsyncClient):
+    headers, slug, product_id, _vid, _tid = await _setup_tenant_product_visit(client)
+    variant_id = await _create_variant(client, headers, product_id, name="V", stock_qty=5)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "X",
+            "items": [{"catalog_item_id": product_id, "variant_id": variant_id, "qty": 2}],
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    vurl = f"/api/v1/tenants/me/products/{product_id}/variants/{variant_id}"
+    assert (await client.get(vurl, headers=headers)).json()["stock_qty"] == 3
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/orders/{order_id}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+    assert (await client.get(vurl, headers=headers)).json()["stock_qty"] == 5

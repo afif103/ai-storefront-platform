@@ -118,28 +118,32 @@ async def restore_stock_for_cancelled_order(
 ) -> list[StockMovement]:
     """Restore stock for tracked items in a cancelled order.
 
-    Idempotent: skips items that already have an ``order_cancel_restore``
-    movement for this order.  A partial unique index on
-    ``(order_id, product_id) WHERE reason = 'order_cancel_restore'``
-    acts as a DB-level safety net.
+    Variant-aware: a line carrying ``variant_id`` restores ``product_variants``
+    stock; otherwise product stock. Idempotent: skips items already restored
+    for this order. A partial unique index on
+    ``(order_id, product_id, variant_id) WHERE reason = 'order_cancel_restore'``
+    (NULLS NOT DISTINCT) acts as a DB-level safety net.
     """
     movements: list[StockMovement] = []
 
     for item in order.items:  # type: ignore[attr-defined]
         product_id = uuid.UUID(item["catalog_item_id"])
         qty: int = item["qty"]
+        variant_id_str = item.get("variant_id")
+        variant_id = uuid.UUID(variant_id_str) if variant_id_str else None
 
-        # Only restore tracked-inventory products
+        # Only restore tracked-inventory products (gate on the parent product)
         result = await db.execute(select(Product).where(Product.id == product_id))
         product = result.scalar_one_or_none()
         if product is None or not product.track_inventory:
             continue
 
-        # Idempotency: skip if already restored for this order + product
+        # Idempotency: skip if already restored for this order + product + variant
         existing = await db.execute(
             select(StockMovement.id).where(
                 StockMovement.order_id == order.id,  # type: ignore[attr-defined]
                 StockMovement.product_id == product_id,
+                StockMovement.variant_id.is_not_distinct_from(variant_id),
                 StockMovement.reason == "order_cancel_restore",
             )
         )
@@ -150,6 +154,7 @@ async def restore_stock_for_cancelled_order(
             db,
             tenant_id=tenant_id,
             product_id=product_id,
+            variant_id=variant_id,
             delta_qty=qty,
             reason="order_cancel_restore",
             note=f"Restored from cancelled order {order.order_number}",  # type: ignore[attr-defined]

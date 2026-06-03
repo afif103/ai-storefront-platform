@@ -723,3 +723,109 @@ async def test_pos_variant_insufficient_stock_409(client: AsyncClient):
         headers=headers,
     )
     assert r.status_code == 409
+
+
+async def test_pos_cancel_restores_variant_stock(client: AsyncClient, db: AsyncSession):
+    headers, product_id = await _setup(client, stock_qty=10)
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/variants",
+        json={"name": "PV", "stock_qty": 5},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    variant_id = r.json()["id"]
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "variant_id": variant_id, "qty": 2}]},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    vurl = f"/api/v1/tenants/me/products/{product_id}/variants/{variant_id}"
+    assert (await client.get(vurl, headers=headers)).json()["stock_qty"] == 3
+
+    r = await client.patch(f"/api/v1/tenants/me/pos/orders/{order_id}/cancel", headers=headers)
+    assert r.status_code == 200
+
+    assert (await client.get(vurl, headers=headers)).json()["stock_qty"] == 5
+    r = await client.get(f"/api/v1/tenants/me/products/{product_id}", headers=headers)
+    assert r.json()["stock_qty"] == 10
+
+    result = await db.execute(
+        select(StockMovement).where(
+            StockMovement.order_id == uuid.UUID(order_id),
+            StockMovement.reason == "order_cancel_restore",
+        )
+    )
+    movement = result.scalar_one()
+    assert str(movement.variant_id) == variant_id
+    assert str(movement.product_id) == product_id
+    assert movement.delta_qty == 2
+
+
+async def test_pos_cancel_two_variants_same_product_both_restore(client: AsyncClient):
+    headers, product_id = await _setup(client, stock_qty=20)
+    ra = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/variants",
+        json={"name": "A", "stock_qty": 5},
+        headers=headers,
+    )
+    variant_a = ra.json()["id"]
+    rb = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/variants",
+        json={"name": "B", "stock_qty": 7},
+        headers=headers,
+    )
+    variant_b = rb.json()["id"]
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={
+            "items": [
+                {"catalog_item_id": product_id, "variant_id": variant_a, "qty": 2},
+                {"catalog_item_id": product_id, "variant_id": variant_b, "qty": 3},
+            ]
+        },
+        headers=headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    va_url = f"/api/v1/tenants/me/products/{product_id}/variants/{variant_a}"
+    vb_url = f"/api/v1/tenants/me/products/{product_id}/variants/{variant_b}"
+    assert (await client.get(va_url, headers=headers)).json()["stock_qty"] == 3
+    assert (await client.get(vb_url, headers=headers)).json()["stock_qty"] == 4
+
+    r = await client.patch(f"/api/v1/tenants/me/pos/orders/{order_id}/cancel", headers=headers)
+    assert r.status_code == 200
+
+    assert (await client.get(va_url, headers=headers)).json()["stock_qty"] == 5
+    assert (await client.get(vb_url, headers=headers)).json()["stock_qty"] == 7
+
+
+async def test_pos_variant_double_cancel_no_double_restore(client: AsyncClient):
+    headers, product_id = await _setup(client, stock_qty=10)
+    r = await client.post(
+        f"/api/v1/tenants/me/products/{product_id}/variants",
+        json={"name": "PV", "stock_qty": 5},
+        headers=headers,
+    )
+    variant_id = r.json()["id"]
+
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "variant_id": variant_id, "qty": 2}]},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.patch(f"/api/v1/tenants/me/pos/orders/{order_id}/cancel", headers=headers)
+    assert r.status_code == 200
+    r = await client.patch(f"/api/v1/tenants/me/pos/orders/{order_id}/cancel", headers=headers)
+    assert r.status_code == 409
+
+    vurl = f"/api/v1/tenants/me/products/{product_id}/variants/{variant_id}"
+    assert (await client.get(vurl, headers=headers)).json()["stock_qty"] == 5
