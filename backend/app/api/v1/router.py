@@ -14,6 +14,7 @@ from app.api.v1.members import router as members_router
 from app.api.v1.notification_preferences import router as notification_prefs_router
 from app.api.v1.platform_admin import router as platform_admin_router
 from app.api.v1.pos import router as pos_router
+from app.api.v1.product_variants import router as product_variants_router
 from app.api.v1.products import router as products_router
 from app.api.v1.public_storefront import router as public_storefront_router
 from app.api.v1.status_transitions import router as status_transitions_router
@@ -30,6 +31,9 @@ api_v1_router.include_router(
     categories_router, prefix="/tenants/me/categories", tags=["categories"]
 )
 api_v1_router.include_router(products_router, prefix="/tenants/me/products", tags=["products"])
+api_v1_router.include_router(
+    product_variants_router, prefix="/tenants/me/products", tags=["product-variants"]
+)
 api_v1_router.include_router(customers_router, prefix="/tenants/me/customers", tags=["customers"])
 api_v1_router.include_router(media_router, prefix="/tenants/me/media", tags=["media"])
 api_v1_router.include_router(

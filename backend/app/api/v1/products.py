@@ -22,6 +22,7 @@ from app.schemas.product import (
     RestockRequest,
     StockMovementResponse,
 )
+from app.services.catalog_codes import assert_catalog_code_available
 from app.services.inventory import record_stock_movement
 
 router = APIRouter()
@@ -149,6 +150,8 @@ async def create_product(
         sku=body.sku,
         barcode=body.barcode,
     )
+    await assert_catalog_code_available(db, tenant_id, sku=body.sku, barcode=body.barcode)
+
     db.add(product)
     try:
         await db.flush()
@@ -199,6 +202,11 @@ async def update_product(
         raise HTTPException(status_code=404, detail="Product not found")
 
     update_data = body.model_dump(exclude_unset=True)
+    sku_to_check = update_data.get("sku")
+    barcode_to_check = update_data.get("barcode")
+    await assert_catalog_code_available(
+        db, tenant_id, sku=sku_to_check, barcode=barcode_to_check, exclude_product_id=product.id
+    )
     for field, value in update_data.items():
         attr = "metadata_" if field == "metadata" else field
         setattr(product, attr, value)
