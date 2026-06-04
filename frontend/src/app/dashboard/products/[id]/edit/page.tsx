@@ -8,6 +8,7 @@ import { RequireAuth } from "@/components/require-auth";
 import { apiFetch } from "@/lib/api-client";
 import { uploadFile, getMediaDownloadUrl } from "@/lib/upload";
 import type { UploadProgress } from "@/lib/upload";
+import { ProductVariants } from "@/components/product-variants";
 
 interface Category {
   id: string;
@@ -627,6 +628,9 @@ function EditProductContent() {
             </button>
           </div>
         </form>
+
+        {/* Variants Section */}
+        <ProductVariants productId={productId} />
 
         {/* Restock Section — only for tracked-inventory products */}
         {trackInventory && (
