@@ -29,13 +29,40 @@ interface PaginatedProducts {
   has_more: boolean;
 }
 
+interface Variant {
+  id: string;
+  name: string;
+  size: string | null;
+  color: string | null;
+  sku: string | null;
+  barcode: string | null;
+  price_amount: string | null;
+  stock_qty: number | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+interface PaginatedVariants {
+  items: Variant[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
 interface CartLine {
+  key: string;
   productId: string;
+  variantId: string | null;
+  name: string;
+  variantName: string | null;
+  unitPrice: string;
+  currency: string;
+  maxQty: number | null;
   qty: number;
 }
 
 interface OrderItem {
   name: string;
+  variant_name?: string | null;
   qty: number;
   unit_price: string;
   currency: string;
@@ -81,9 +108,16 @@ function canSell(p: Product): boolean {
   return true;
 }
 
-function maxQty(p: Product): number {
-  if (!p.track_inventory) return Infinity;
+/** Max sellable qty for a product line, or null when stock is not tracked (unlimited). */
+function productMax(p: Product): number | null {
+  if (!p.track_inventory) return null;
   return p.stock_qty ?? 0;
+}
+
+/** Max sellable qty for a variant line, gated on the parent product's track_inventory. */
+function variantMax(p: Product, v: Variant): number | null {
+  if (!p.track_inventory) return null;
+  return v.stock_qty ?? 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +145,15 @@ function POSContent() {
 
   // Cart
   const [cart, setCart] = useState<CartLine[]>([]);
+
+  // Variants (lazy-fetched + cached per product)
+  const [variantsByProduct, setVariantsByProduct] = useState<
+    Record<string, Variant[]>
+  >({});
+  const [loadingVariantsFor, setLoadingVariantsFor] = useState<string | null>(
+    null,
+  );
+  const [pickerProduct, setPickerProduct] = useState<Product | null>(null);
 
   // Checkout
   const [customerName, setCustomerName] = useState("");
@@ -188,47 +231,101 @@ function POSContent() {
 
   // ------ Cart helpers ------
 
-  function cartQty(productId: string): number {
-    return cart.find((l) => l.productId === productId)?.qty ?? 0;
+  /** Qty of the no-variant line for a product (used for the catalog button state). */
+  function baseCartQty(productId: string): number {
+    return cart.find((l) => l.key === productId)?.qty ?? 0;
   }
 
-  function addToCart(productId: string) {
-    const p = products.find((pr) => pr.id === productId);
-    if (!p) return;
-    const current = cartQty(productId);
-    if (current >= maxQty(p)) return;
-
+  /** Add one unit of a snapshot line, respecting its maxQty; merges by key. */
+  function addLine(line: Omit<CartLine, "qty">) {
     setCart((prev) => {
-      const idx = prev.findIndex((l) => l.productId === productId);
+      const idx = prev.findIndex((l) => l.key === line.key);
       if (idx >= 0) {
+        const existing = prev[idx];
+        if (existing.maxQty != null && existing.qty >= existing.maxQty) {
+          return prev;
+        }
         const next = [...prev];
-        next[idx] = { ...next[idx], qty: next[idx].qty + 1 };
+        next[idx] = { ...existing, qty: existing.qty + 1 };
         return next;
       }
-      return [...prev, { productId, qty: 1 }];
+      return [...prev, { ...line, qty: 1 }];
     });
   }
 
-  function updateQty(productId: string, qty: number) {
-    if (qty < 1) return removeFromCart(productId);
-    const p = products.find((pr) => pr.id === productId);
-    const clamped = p ? Math.min(qty, maxQty(p)) : qty;
+  function addBaseProduct(p: Product) {
+    addLine({
+      key: p.id,
+      productId: p.id,
+      variantId: null,
+      name: p.name,
+      variantName: null,
+      unitPrice: p.price_amount,
+      currency: p.effective_currency,
+      maxQty: productMax(p),
+    });
+  }
+
+  function addVariant(p: Product, v: Variant) {
+    addLine({
+      key: `${p.id}:${v.id}`,
+      productId: p.id,
+      variantId: v.id,
+      name: p.name,
+      variantName: v.name,
+      unitPrice: v.price_amount ?? p.price_amount,
+      currency: p.effective_currency,
+      maxQty: variantMax(p, v),
+    });
+    setPickerProduct(null);
+  }
+
+  /** Add click: lazy-load + cache variants, then open the picker or add the base product. */
+  async function handleAddClick(p: Product) {
+    const cached = variantsByProduct[p.id];
+    if (cached) {
+      if (cached.some((v) => v.is_active)) setPickerProduct(p);
+      else addBaseProduct(p);
+      return;
+    }
+
+    setLoadingVariantsFor(p.id);
+    const result = await apiFetch<PaginatedVariants>(
+      `/api/v1/tenants/me/products/${p.id}/variants?limit=100`,
+    );
+    setLoadingVariantsFor(null);
+
+    if (!result.ok) {
+      setError(result.detail);
+      return;
+    }
+
+    const items = result.data.items;
+    setVariantsByProduct((prev) => ({ ...prev, [p.id]: items }));
+    if (items.some((v) => v.is_active)) setPickerProduct(p);
+    else addBaseProduct(p);
+  }
+
+  function updateQty(key: string, qty: number) {
+    if (qty < 1) return removeFromCart(key);
     setCart((prev) =>
       prev.map((l) =>
-        l.productId === productId ? { ...l, qty: clamped } : l,
+        l.key === key
+          ? { ...l, qty: l.maxQty != null ? Math.min(qty, l.maxQty) : qty }
+          : l,
       ),
     );
   }
 
-  function removeFromCart(productId: string) {
-    setCart((prev) => prev.filter((l) => l.productId !== productId));
+  function removeFromCart(key: string) {
+    setCart((prev) => prev.filter((l) => l.key !== key));
   }
 
   function cartTotal(): number {
-    return cart.reduce((sum, line) => {
-      const p = products.find((pr) => pr.id === line.productId);
-      return sum + (p ? parseFloat(p.price_amount) * line.qty : 0);
-    }, 0);
+    return cart.reduce(
+      (sum, line) => sum + parseFloat(line.unitPrice) * line.qty,
+      0,
+    );
   }
 
   const currency = products[0]?.effective_currency ?? "KWD";
@@ -248,6 +345,7 @@ function POSContent() {
         body: JSON.stringify({
           items: cart.map((l) => ({
             catalog_item_id: l.productId,
+            ...(l.variantId ? { variant_id: l.variantId } : {}),
             qty: l.qty,
           })),
           customer_name: customerName || undefined,
@@ -354,7 +452,14 @@ function POSContent() {
             <tbody className="divide-y">
               {lastOrder.items.map((item, i) => (
                 <tr key={i}>
-                  <td className="py-1 text-gray-900">{item.name}</td>
+                  <td className="py-1 text-gray-900">
+                    {item.name}
+                    {item.variant_name && (
+                      <span className="block text-xs text-gray-500">
+                        {t("variant")}: {item.variant_name}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-1 text-center text-gray-700">
                     {item.qty}
                   </td>
@@ -412,6 +517,9 @@ function POSContent() {
               onClick={() => {
                 setLastOrder(null);
                 setShowHistory(false);
+                setVariantsByProduct({});
+                setPickerProduct(null);
+                setLoadingVariantsFor(null);
                 refreshProducts();
               }}
               className="flex-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -552,7 +660,9 @@ function POSContent() {
                 </thead>
                 <tbody className="divide-y">
                   {filtered.map((p) => {
-                    const atMax = cartQty(p.id) >= maxQty(p);
+                    const pMax = productMax(p);
+                    const atMax = pMax != null && baseCartQty(p.id) >= pMax;
+                    const isLoading = loadingVariantsFor === p.id;
                     return (
                       <tr key={p.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 font-medium text-gray-900">
@@ -566,11 +676,11 @@ function POSContent() {
                         </td>
                         <td className="px-4 py-2 text-right">
                           <button
-                            onClick={() => addToCart(p.id)}
-                            disabled={atMax}
+                            onClick={() => handleAddClick(p)}
+                            disabled={atMax || isLoading}
                             className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                           >
-                            {t("add")}
+                            {isLoading ? t("loadingVariants") : t("add")}
                           </button>
                         </td>
                       </tr>
@@ -594,19 +704,23 @@ function POSContent() {
             <>
               <div className="mb-4 max-h-72 space-y-3 overflow-y-auto">
                 {cart.map((line) => {
-                  const p = products.find((pr) => pr.id === line.productId);
-                  if (!p) return null;
-                  const sub = parseFloat(p.price_amount) * line.qty;
-                  const max = maxQty(p);
+                  const sub = parseFloat(line.unitPrice) * line.qty;
                   return (
-                    <div key={line.productId} className="border-b pb-2">
+                    <div key={line.key} className="border-b pb-2">
                       <div className="flex items-start justify-between">
-                        <p className="text-sm font-medium text-gray-900">
-                          {p.name}
-                        </p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900">
+                            {line.name}
+                          </p>
+                          {line.variantName && (
+                            <p className="text-xs text-gray-500">
+                              {t("variant")}: {line.variantName}
+                            </p>
+                          )}
+                        </div>
                         <button
-                          onClick={() => removeFromCart(line.productId)}
-                          className="text-xs text-red-500 hover:text-red-700"
+                          onClick={() => removeFromCart(line.key)}
+                          className="ml-2 shrink-0 text-xs text-red-500 hover:text-red-700"
                         >
                           {t("remove")}
                         </button>
@@ -617,11 +731,11 @@ function POSContent() {
                           <input
                             type="number"
                             min={1}
-                            max={max === Infinity ? undefined : max}
+                            max={line.maxQty ?? undefined}
                             value={line.qty}
                             onChange={(e) =>
                               updateQty(
-                                line.productId,
+                                line.key,
                                 parseInt(e.target.value, 10) || 1,
                               )
                             }
@@ -629,7 +743,7 @@ function POSContent() {
                           />
                         </div>
                         <span>
-                          {t("subtotal")}: {sub.toFixed(3)} {currency}
+                          {t("subtotal")}: {sub.toFixed(3)} {line.currency}
                         </span>
                       </div>
                     </div>
@@ -688,6 +802,75 @@ function POSContent() {
           )}
         </div>
       </div>
+
+      {pickerProduct && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 print:hidden"
+          onClick={() => setPickerProduct(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                  {t("selectVariant")}
+                </h2>
+                <p className="mt-1 text-sm font-medium text-gray-900">
+                  {pickerProduct.name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPickerProduct(null)}
+                className="ml-3 shrink-0 text-xs text-gray-500 hover:text-gray-700"
+              >
+                {t("close")}
+              </button>
+            </div>
+            <div className="max-h-80 space-y-2 overflow-y-auto">
+              {(variantsByProduct[pickerProduct.id] ?? [])
+                .filter((v) => v.is_active)
+                .map((v) => {
+                  const price = v.price_amount ?? pickerProduct.price_amount;
+                  const outOfStock =
+                    pickerProduct.track_inventory && (v.stock_qty ?? 0) <= 0;
+                  const meta = [v.size, v.color].filter(Boolean).join(" / ");
+                  return (
+                    <div
+                      key={v.id}
+                      className="flex items-center justify-between rounded border px-3 py-2"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <p className="text-sm font-medium text-gray-900">
+                          {v.name}
+                        </p>
+                        {meta && <p className="text-xs text-gray-500">{meta}</p>}
+                        <p className="mt-0.5 text-xs text-gray-600">
+                          {price} {pickerProduct.effective_currency}
+                          {pickerProduct.track_inventory && (
+                            <span className="ml-2">
+                              {t("stock")}: {v.stock_qty ?? 0}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={outOfStock}
+                        onClick={() => addVariant(pickerProduct, v)}
+                        className="shrink-0 rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {outOfStock ? t("outOfStock") : t("add")}
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -502,6 +502,10 @@
     "savePayments": "Save Payment Methods"
   },
   "pos": {
+    "selectVariant": "Select Variant",
+    "loadingVariants": "Loading variants...",
+    "close": "Close",
+    "variant": "Variant",
     "title": "Point of Sale",
     "loading": "Loading products...",
     "searchPlaceholder": "Search products...",
