@@ -502,13 +502,19 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 12.1a | Product variants table + per-variant stock tracking + migration | Claude | **Shipped** | `product_variants` table (tenant-scoped, RLS-enforced) + `ProductVariant` model: per-variant `stock_qty`, `sku`, `barcode`, optional `price_amount` override, size/color. Variant CRUD API under `/tenants/me/products/{id}/variants` (list cashier, get member, write admin) with `tenant_id` defense-in-depth. SKU/barcode unique across the combined product + variant namespace per tenant (cross-table check). Optional `OrderItemRequest.variant_id` validated (exists, active, belongs to the product, same tenant) and snapshotted with `variant_name` into `order.items`. Variant orders apply the variant `price_amount` override (else inherit product price) and decrement variant stock atomically on storefront + POS (product stock untouched); insufficient or NULL variant stock returns 409. POS `stock_movements` record `StockMovement.variant_id` (reason `pos_sale`); order cancel restores variant stock (reason `order_cancel_restore`) via a variant-aware idempotency index (`order_id, product_id, variant_id` NULLS NOT DISTINCT). Backend only, with comprehensive backend tests (CRUD, validation, price, stock, cancel/restore). Frontend variant UI (dashboard edit, storefront selector, POS picker) is M12.2 and not started; no UI emits `variant_id` yet. |
+| 12.1a | Product variants table + per-variant stock tracking + migration | Claude | **Shipped** | `product_variants` table (tenant-scoped, RLS-enforced) + `ProductVariant` model: per-variant `stock_qty`, `sku`, `barcode`, optional `price_amount` override, size/color. Variant CRUD API under `/tenants/me/products/{id}/variants` (list cashier, get member, write admin) with `tenant_id` defense-in-depth. SKU/barcode unique across the combined product + variant namespace per tenant (cross-table check). Optional `OrderItemRequest.variant_id` validated (exists, active, belongs to the product, same tenant) and snapshotted with `variant_name` into `order.items`. Variant orders apply the variant `price_amount` override (else inherit product price) and decrement variant stock atomically on storefront + POS (product stock untouched); insufficient or NULL variant stock returns 409. POS `stock_movements` record `StockMovement.variant_id` (reason `pos_sale`); order cancel restores variant stock (reason `order_cancel_restore`) via a variant-aware idempotency index (`order_id, product_id, variant_id` NULLS NOT DISTINCT). Backend only, with comprehensive backend tests (CRUD, validation, price, stock, cancel/restore). Frontend variant UI (dashboard edit, storefront selector, POS picker) shipped in M12.2. |
 
 ### M12.2 — Variant UI
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 12.2a | Variant UI: dashboard product edit, storefront selector, POS variant picker | Claude | Not started | All three surfaces support selecting and displaying variants. |
+| 12.2a | Variant UI: dashboard product edit, storefront selector, POS variant picker | Claude | **Shipped** | Dashboard variant management (`aa441b0`), POS picker (`c866cc6`), public active-variant exposure (`db083cf`), storefront selector + checkout `variant_id` (`5db91ea`), Arabic i18n (`42090e8`). All three surfaces select/display variants and emit `variant_id`. |
+
+### M12.2.1 — POS Variant Visibility Fix
+
+| # | Task | Primary Implementor | Status | DoD |
+|---|------|-------|--------|-----|
+| 12.2.1a | POS shows stock-tracked variant products when parent `stock_qty` is 0 | Claude | **Shipped** | Authed product list adds `has_variants` (batched, tenant-scoped, active-only) and an explicit `Product.tenant_id` defense-in-depth filter; POS `canSell()` lets `has_variants` products through and parent stock no longer disables them; per-variant stock still enforced in the picker. Backend tests: `has_variants` true / none / inactive-only / cross-tenant. No migration; storefront + order-creation logic unchanged. |
 
 ### M12.3 — POS Shift Management
 
@@ -631,6 +637,6 @@ The following V1 items are not started or partially complete. They are NOT succe
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | Core auth/onboarding shipped; role matrix + test fixture follow-ups remain |
 | M10B — Foundations: POS Domain | 7 shipped + POS Sales Domain deferred | M10B.7 POS order cancel shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Complete — M11.1–M11.8 shipped (M11.6a payment status deferred) |
-| M12 — Operations & Variants | 7 packets (M12.1–M12.7) | In progress — M12.1 product variants backend shipped (schema/RLS/CRUD, cross-table SKU/barcode uniqueness, order + POS variant price/stock, variant-aware cancel/restore); M12.2 variant UI and M12.3–M12.7 not started |
+| M12 — Operations & Variants | 7 packets (M12.1–M12.7) | In progress — M12.1 product variants backend shipped (schema/RLS/CRUD, cross-table SKU/barcode uniqueness, order + POS variant price/stock, variant-aware cancel/restore); M12.2 variant UI + M12.2.1 POS visibility fix shipped; M12.3–M12.7 not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
 | **V2 Total** | Packet count evolves as work ships and scope adjusts | |
