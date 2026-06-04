@@ -126,6 +126,17 @@ class StockMovementResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PublicVariantResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    size: str | None = None
+    color: str | None = None
+    price_amount: Decimal | None = None
+    in_stock: bool
+
+    model_config = {"from_attributes": True}
+
+
 class PublicProductResponse(BaseModel):
     id: uuid.UUID
     category_id: uuid.UUID | None = None
@@ -140,5 +151,6 @@ class PublicProductResponse(BaseModel):
     image_url: str | None = None
     in_stock: bool
     stock_display: str | None = None
+    variants: list[PublicVariantResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

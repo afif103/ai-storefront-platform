@@ -18,6 +18,7 @@ from app.models.donation import Donation
 from app.models.media_asset import MediaAsset
 from app.models.pledge import Pledge
 from app.models.product import Product
+from app.models.product_variant import ProductVariant
 from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
 from app.models.utm_event import UtmEvent
@@ -28,7 +29,7 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.donation import DonationCreateRequest, DonationCreateResponse
 from app.schemas.order import OrderCreateRequest, OrderCreateResponse
 from app.schemas.pledge import PledgeCreateRequest, PledgeCreateResponse
-from app.schemas.product import PublicProductResponse
+from app.schemas.product import PublicProductResponse, PublicVariantResponse
 from app.schemas.public_storefront_config import PublicStorefrontConfigResponse
 from app.schemas.storefront_ai_chat import (
     StorefrontAIChatRequest,
@@ -62,10 +63,24 @@ def _stock_display(product: Product) -> str | None:
     return f"{qty} left" if qty > 0 else "Out of stock"
 
 
+def _public_variant(variant: ProductVariant, product: Product) -> PublicVariantResponse:
+    """Build public variant response; in_stock gated on the parent product."""
+    in_stock = not product.track_inventory or (variant.stock_qty or 0) > 0
+    return PublicVariantResponse(
+        id=variant.id,
+        name=variant.name,
+        size=variant.size,
+        color=variant.color,
+        price_amount=variant.price_amount,
+        in_stock=in_stock,
+    )
+
+
 def _public_product(
     product: Product,
     tenant: Tenant,
     image_url: str | None = None,
+    variants: list[PublicVariantResponse] | None = None,
 ) -> PublicProductResponse:
     """Build public product response with effective_currency fallback."""
     return PublicProductResponse(
@@ -82,6 +97,7 @@ def _public_product(
         image_url=image_url,
         in_stock=not product.track_inventory or (product.stock_qty or 0) > 0,
         stock_display=_stock_display(product),
+        variants=variants or [],
     )
 
 
@@ -163,6 +179,7 @@ async def list_public_products(
 
     # Batch-query primary image for each product (avoids N+1 DB queries)
     image_urls: dict[uuid.UUID, str] = {}
+    variants_by_product: dict[uuid.UUID, list[PublicVariantResponse]] = {}
     if items:
         product_ids = [p.id for p in items]
         media_stmt = (
@@ -180,8 +197,35 @@ async def list_public_products(
             if asset.product_id not in image_urls:
                 image_urls[asset.product_id] = presign_get(asset.s3_key)
 
+        # Batch-query active variants. The tenant_id filter is defense-in-depth
+        # on top of RLS; variants are returned active-only, ordered by sort_order.
+        products_by_id = {p.id: p for p in items}
+        variant_stmt = (
+            select(ProductVariant)
+            .where(
+                ProductVariant.product_id.in_(product_ids),
+                ProductVariant.tenant_id == tenant.id,
+                ProductVariant.is_active.is_(True),
+            )
+            .order_by(ProductVariant.sort_order, ProductVariant.id)
+        )
+        variant_result = await db.execute(variant_stmt)
+        for variant in variant_result.scalars().all():
+            parent = products_by_id[variant.product_id]
+            variants_by_product.setdefault(variant.product_id, []).append(
+                _public_variant(variant, parent)
+            )
+
     return PaginatedResponse(
-        items=[_public_product(p, tenant, image_url=image_urls.get(p.id)) for p in items],
+        items=[
+            _public_product(
+                p,
+                tenant,
+                image_url=image_urls.get(p.id),
+                variants=variants_by_product.get(p.id, []),
+            )
+            for p in items
+        ],
         next_cursor=(
             _encode_cursor(items[-1].sort_order, items[-1].id) if has_more and items else None
         ),
