@@ -342,3 +342,74 @@ async def test_patch_variant_to_existing_product_code_409(client: AsyncClient):
         headers=headers,
     )
     assert r.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# has_variants hint on the authenticated product list (M12.2.1 — POS feed)
+# ---------------------------------------------------------------------------
+
+
+async def _list_products(client: AsyncClient, headers: dict) -> list[dict]:
+    r = await client.get("/api/v1/tenants/me/products?limit=100", headers=headers)
+    assert r.status_code == 200, r.text
+    return r.json()["items"]
+
+
+def _find_product(items: list[dict], product_id: str) -> dict | None:
+    return next((p for p in items if p["id"] == product_id), None)
+
+
+async def test_list_products_has_variants_true(client: AsyncClient):
+    headers, _slug = await _make_owner(client)
+    product_id = await _make_product(client, headers)
+    r = await client.post(_vurl(product_id), json={"name": "V1", "stock_qty": 3}, headers=headers)
+    assert r.status_code == 201
+
+    p = _find_product(await _list_products(client, headers), product_id)
+    assert p is not None
+    assert p["has_variants"] is True
+
+
+async def test_list_products_has_variants_false_when_none(client: AsyncClient):
+    headers, _slug = await _make_owner(client)
+    product_id = await _make_product(client, headers)
+
+    p = _find_product(await _list_products(client, headers), product_id)
+    assert p is not None
+    assert p["has_variants"] is False
+
+
+async def test_list_products_has_variants_false_when_only_inactive(client: AsyncClient):
+    headers, _slug = await _make_owner(client)
+    product_id = await _make_product(client, headers)
+    r = await client.post(
+        _vurl(product_id),
+        json={"name": "Inactive", "is_active": False},
+        headers=headers,
+    )
+    assert r.status_code == 201
+
+    p = _find_product(await _list_products(client, headers), product_id)
+    assert p is not None
+    assert p["has_variants"] is False
+
+
+async def test_list_products_has_variants_not_cross_tenant(client: AsyncClient):
+    owner_a, product_a = await _setup(client)
+    r = await client.post(
+        _vurl(product_a), json={"name": "A-Var", "stock_qty": 1}, headers=owner_a
+    )
+    assert r.status_code == 201
+
+    pa = _find_product(await _list_products(client, owner_a), product_a)
+    assert pa is not None
+    assert pa["has_variants"] is True
+
+    owner_b, _slug_b = await _make_owner(client)
+    product_b = await _make_product(client, owner_b)
+    items_b = await _list_products(client, owner_b)
+
+    pb = _find_product(items_b, product_b)
+    assert pb is not None
+    assert pb["has_variants"] is False
+    assert _find_product(items_b, product_a) is None

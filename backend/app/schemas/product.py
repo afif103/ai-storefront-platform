@@ -101,6 +101,7 @@ class ProductResponse(BaseModel):
     is_low_stock: bool = False
     sku: str | None = None
     barcode: str | None = None
+    has_variants: bool = False
     created_at: datetime
     updated_at: datetime | None = None
 

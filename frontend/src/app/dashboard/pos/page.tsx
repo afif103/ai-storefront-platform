@@ -21,6 +21,7 @@ interface Product {
   stock_qty: number | null;
   sku: string | null;
   barcode: string | null;
+  has_variants: boolean;
 }
 
 interface PaginatedProducts {
@@ -104,6 +105,7 @@ interface PaginatedHistory {
 
 function canSell(p: Product): boolean {
   if (!p.is_active) return false;
+  if (p.has_variants) return true;
   if (p.track_inventory && (p.stock_qty ?? 0) <= 0) return false;
   return true;
 }
@@ -661,7 +663,8 @@ function POSContent() {
                 <tbody className="divide-y">
                   {filtered.map((p) => {
                     const pMax = productMax(p);
-                    const atMax = pMax != null && baseCartQty(p.id) >= pMax;
+                    const atMax =
+                      !p.has_variants && pMax != null && baseCartQty(p.id) >= pMax;
                     const isLoading = loadingVariantsFor === p.id;
                     return (
                       <tr key={p.id} className="hover:bg-gray-50">

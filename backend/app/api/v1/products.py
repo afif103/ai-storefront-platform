@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
 from app.models.product import Product
+from app.models.product_variant import ProductVariant
 from app.models.stock_movement import StockMovement
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -38,7 +39,9 @@ async def _get_tenant(db: AsyncSession, tenant_id: uuid.UUID) -> Tenant:
     return tenant
 
 
-def _product_response(product: Product, tenant: Tenant) -> ProductResponse:
+def _product_response(
+    product: Product, tenant: Tenant, has_variants: bool = False
+) -> ProductResponse:
     """Build ProductResponse with effective_currency fallback."""
     is_low_stock = (
         product.track_inventory
@@ -66,6 +69,7 @@ def _product_response(product: Product, tenant: Tenant) -> ProductResponse:
         is_low_stock=is_low_stock,
         sku=product.sku,
         barcode=product.barcode,
+        has_variants=has_variants,
         created_at=product.created_at,
         updated_at=product.updated_at,
     )
@@ -97,7 +101,11 @@ async def list_products(
 
     tenant = await _get_tenant(db, tenant_id)
 
-    stmt = select(Product).order_by(Product.created_at.desc(), Product.id.desc())
+    stmt = (
+        select(Product)
+        .where(Product.tenant_id == tenant_id)
+        .order_by(Product.created_at.desc(), Product.id.desc())
+    )
 
     if category_id is not None:
         stmt = stmt.where(Product.category_id == category_id)
@@ -114,8 +122,23 @@ async def list_products(
     has_more = len(rows) > limit
     items = rows[:limit]
 
+    # Batched active-variant existence (tenant_id is defense-in-depth on RLS).
+    with_variants: set[uuid.UUID] = set()
+    if items:
+        product_ids = [p.id for p in items]
+        variant_rows = await db.execute(
+            select(ProductVariant.product_id)
+            .where(
+                ProductVariant.product_id.in_(product_ids),
+                ProductVariant.tenant_id == tenant_id,
+                ProductVariant.is_active.is_(True),
+            )
+            .distinct()
+        )
+        with_variants = set(variant_rows.scalars().all())
+
     return PaginatedResponse(
-        items=[_product_response(p, tenant) for p in items],
+        items=[_product_response(p, tenant, has_variants=p.id in with_variants) for p in items],
         next_cursor=_encode_cursor(items[-1]) if has_more and items else None,
         has_more=has_more,
     )
