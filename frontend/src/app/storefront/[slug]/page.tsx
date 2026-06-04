@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api-client";
 import { initAnalytics, track, flush } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
-import { useCart } from "@/hooks/use-cart";
+import { cartLineKey, useCart } from "@/hooks/use-cart";
 import { StorefrontChat } from "@/components/storefront-chat";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 
@@ -18,6 +18,15 @@ interface Category {
   name_ar: string | null;
   description_ar: string | null;
   sort_order: number;
+}
+
+interface PublicVariant {
+  id: string;
+  name: string;
+  size: string | null;
+  color: string | null;
+  price_amount: string | null;
+  in_stock: boolean;
 }
 
 interface PublicProduct {
@@ -33,6 +42,7 @@ interface PublicProduct {
   image_url: string | null;
   in_stock: boolean;
   stock_display: string | null;
+  variants: PublicVariant[];
 }
 
 interface StorefrontConfig {
@@ -50,6 +60,11 @@ interface PaginatedCategories {
 interface PaginatedProducts {
   items: PublicProduct[];
   has_more: boolean;
+}
+
+function variantLabel(v: PublicVariant): string {
+  const extra = [v.size, v.color].filter(Boolean).join(" / ");
+  return extra ? `${v.name} (${extra})` : v.name;
 }
 
 export default function StorefrontPage() {
@@ -76,6 +91,9 @@ export default function StorefrontPage() {
   const [loading, setLoading] = useState(true);
   const [filterLoading, setFilterLoading] = useState(false);
   const [addedId, setAddedId] = useState<string | null>(null);
+  const [selectedVariants, setSelectedVariants] = useState<
+    Record<string, string>
+  >({});
 
   // Initial load: fetch config, categories, and all products in parallel
   useEffect(() => {
@@ -122,19 +140,47 @@ export default function StorefrontPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory]);
 
+  function resolveVariant(product: PublicProduct): PublicVariant | null {
+    if (product.variants.length === 0) return null;
+    const chosen = product.variants.find(
+      (v) => v.id === selectedVariants[product.id]
+    );
+    if (chosen) return chosen;
+    return product.variants.find((v) => v.in_stock) ?? product.variants[0];
+  }
+
+  function isAvailable(product: PublicProduct): boolean {
+    if (product.variants.length === 0) return product.in_stock;
+    return resolveVariant(product)?.in_stock ?? false;
+  }
+
+  function currentLineKey(product: PublicProduct): string {
+    return cartLineKey({
+      catalogItemId: product.id,
+      variantId: resolveVariant(product)?.id ?? null,
+    });
+  }
+
   function handleAddToCart(product: PublicProduct) {
+    const variant = resolveVariant(product);
     cart.addItem(
       {
         catalogItemId: product.id,
+        variantId: variant?.id ?? null,
         name: (locale === "ar" && product.name_ar) ? product.name_ar : product.name,
-        priceAmount: product.price_amount,
+        variantName: variant ? variantLabel(variant) : null,
+        priceAmount: variant?.price_amount ?? product.price_amount,
         currency: product.effective_currency,
       },
       1
     );
     track("product_view", { product_id: product.id });
-    track("add_to_cart", { product_id: product.id, qty: 1 });
-    setAddedId(product.id);
+    track("add_to_cart", {
+      product_id: product.id,
+      ...(variant ? { variant_id: variant.id } : {}),
+      qty: 1,
+    });
+    setAddedId(currentLineKey(product));
     setTimeout(() => setAddedId(null), 1200);
   }
 
@@ -325,13 +371,33 @@ export default function StorefrontPage() {
                       </p>
                     ) : null;
                   })()}
+                  {product.variants.length > 0 && (
+                    <select
+                      aria-label={t("variant")}
+                      value={resolveVariant(product)?.id ?? ""}
+                      onChange={(e) =>
+                        setSelectedVariants((prev) => ({
+                          ...prev,
+                          [product.id]: e.target.value,
+                        }))
+                      }
+                      className="mt-3 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+                    >
+                      {product.variants.map((pv) => (
+                        <option key={pv.id} value={pv.id} disabled={!pv.in_stock}>
+                          {variantLabel(pv)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <p
                     className="mt-3 text-base font-bold"
                     style={{ color: secondaryColor ?? "#111827" }}
                   >
-                    {product.price_amount} {product.effective_currency}
+                    {resolveVariant(product)?.price_amount ?? product.price_amount}{" "}
+                    {product.effective_currency}
                   </p>
-                  {product.stock_display && (
+                  {product.variants.length === 0 && product.stock_display && (
                     <p
                       className={`mt-1 text-xs font-medium ${
                         product.in_stock ? "text-gray-500" : "text-red-600"
@@ -342,13 +408,13 @@ export default function StorefrontPage() {
                   )}
                   <button
                     onClick={() => handleAddToCart(product)}
-                    disabled={!product.in_stock}
+                    disabled={!isAvailable(product)}
                     className="mt-3 w-full rounded-lg py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ backgroundColor: primaryColor ?? "#2563eb" }}
                   >
-                    {!product.in_stock
+                    {!isAvailable(product)
                       ? t("outOfStock")
-                      : addedId === product.id
+                      : addedId === currentLineKey(product)
                         ? t("added")
                         : t("addToCart")}
                   </button>

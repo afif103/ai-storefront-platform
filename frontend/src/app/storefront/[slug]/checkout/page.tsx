@@ -7,10 +7,11 @@ import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api-client";
 import { initAnalytics, track, flush, getOrCreateSessionId } from "@/lib/analytics";
 import { useVisit } from "@/hooks/use-visit";
-import { useCart } from "@/hooks/use-cart";
+import { cartLineKey, useCart } from "@/hooks/use-cart";
 
 interface OrderItem {
   name: string;
+  variant_name?: string | null;
   qty: number;
   unit_price: string;
   currency: string;
@@ -111,6 +112,7 @@ export default function CheckoutPage() {
           customer_email: customerEmail || undefined,
           items: cart.items.map((i) => ({
             catalog_item_id: i.catalogItemId,
+            ...(i.variantId ? { variant_id: i.variantId } : {}),
             qty: i.qty,
           })),
           payment_notes: paymentNotes || undefined,
@@ -166,7 +168,14 @@ export default function CheckoutPage() {
                 <tbody className="divide-y">
                   {success.items.map((lineItem, i) => (
                     <tr key={i}>
-                      <td className="py-1 text-gray-900">{lineItem.name}</td>
+                      <td className="py-1 text-gray-900">
+                        {lineItem.name}
+                        {lineItem.variant_name && (
+                          <span className="block text-xs text-gray-500">
+                            {t("variant")}: {lineItem.variant_name}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-1 text-center text-gray-700">
                         {lineItem.qty}
                       </td>
@@ -257,20 +266,29 @@ export default function CheckoutPage() {
             </thead>
             <tbody>
               {cart.items.map((item) => (
-                <tr key={item.catalogItemId} className="border-b last:border-0">
-                  <td className="py-2 text-gray-900">{item.name}</td>
+                <tr key={cartLineKey(item)} className="border-b last:border-0">
+                  <td className="py-2 text-gray-900">
+                    {item.name}
+                    {item.variantName && (
+                      <span className="block text-xs text-gray-500">
+                        {t("variant")}: {item.variantName}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2 text-center">
                     <div className="inline-flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => {
                           if (item.qty <= 1) {
-                            cart.removeItem(item.catalogItemId);
+                            cart.removeItem(cartLineKey(item));
                           } else {
                             cart.addItem(
                               {
                                 catalogItemId: item.catalogItemId,
+                                variantId: item.variantId,
                                 name: item.name,
+                                variantName: item.variantName,
                                 priceAmount: item.priceAmount,
                                 currency: item.currency,
                               },
@@ -289,7 +307,9 @@ export default function CheckoutPage() {
                           cart.addItem(
                             {
                               catalogItemId: item.catalogItemId,
+                              variantId: item.variantId,
                               name: item.name,
+                              variantName: item.variantName,
                               priceAmount: item.priceAmount,
                               currency: item.currency,
                             },
@@ -308,7 +328,7 @@ export default function CheckoutPage() {
                   <td className="py-2 ps-2 text-end">
                     <button
                       type="button"
-                      onClick={() => cart.removeItem(item.catalogItemId)}
+                      onClick={() => cart.removeItem(cartLineKey(item))}
                       className="text-red-500 hover:text-red-700"
                       title={t("remove")}
                     >

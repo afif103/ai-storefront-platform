@@ -4,10 +4,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface CartItem {
   catalogItemId: string;
+  variantId?: string | null;
   name: string;
+  variantName?: string | null;
   priceAmount: string;
   currency: string;
   qty: number;
+}
+
+/** Stable per-line key: distinguishes the same product with different variants. */
+export function cartLineKey(item: {
+  catalogItemId: string;
+  variantId?: string | null;
+}): string {
+  return `${item.catalogItemId}::${item.variantId ?? ""}`;
 }
 
 function storageKey(slug: string): string {
@@ -27,7 +37,7 @@ function readStoredCart(slug: string): CartItem[] {
 /**
  * In-memory cart persisted to sessionStorage, keyed by storefront slug.
  *
- * Upserts by catalogItemId (adding an existing item increments qty).
+ * Upserts by product+variant line key (adding an existing line increments qty).
  */
 export function useCart(slug: string) {
   const [items, setItems] = useState<CartItem[]>(() => readStoredCart(slug));
@@ -46,10 +56,9 @@ export function useCart(slug: string) {
 
   const addItem = useCallback(
     (product: Omit<CartItem, "qty">, qty: number = 1) => {
+      const key = cartLineKey(product);
       setItems((prev) => {
-        const idx = prev.findIndex(
-          (i) => i.catalogItemId === product.catalogItemId
-        );
+        const idx = prev.findIndex((i) => cartLineKey(i) === key);
         if (idx >= 0) {
           const updated = [...prev];
           updated[idx] = { ...updated[idx], qty: updated[idx].qty + qty };
@@ -61,8 +70,8 @@ export function useCart(slug: string) {
     []
   );
 
-  const removeItem = useCallback((catalogItemId: string) => {
-    setItems((prev) => prev.filter((i) => i.catalogItemId !== catalogItemId));
+  const removeItem = useCallback((lineKey: string) => {
+    setItems((prev) => prev.filter((i) => cartLineKey(i) !== lineKey));
   }, []);
 
   const clearCart = useCallback(() => {

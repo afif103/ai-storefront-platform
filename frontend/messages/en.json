@@ -1,5 +1,6 @@
 {
   "storefront": {
+    "variant": "Variant",
     "donate": "Donate",
     "pledge": "Pledge",
     "addToCart": "Add to Cart",
@@ -20,6 +21,7 @@
     "send": "Send"
   },
   "checkout": {
+    "variant": "Variant",
     "orderPlaced": "Order Placed!",
     "orderNumber": "Order number:",
     "totalConfirm": "Total:",
