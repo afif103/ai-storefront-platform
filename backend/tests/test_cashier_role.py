@@ -71,6 +71,14 @@ async def _setup_with_cashier(
     )
     assert r.status_code == 200
 
+    # Hard gating: open a POS shift so POS sales can be created in these tests.
+    r = await client.post(
+        "/api/v1/tenants/me/pos/shifts/open",
+        json={"starting_cash": "0.000"},
+        headers=owner_headers,
+    )
+    assert r.status_code == 201
+
     return owner_headers, cashier_headers, product_id
 
 

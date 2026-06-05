@@ -19,6 +19,16 @@ def _uid() -> str:
     return uuid.uuid4().hex[:8]
 
 
+async def _open_shift(client: AsyncClient, headers: dict) -> None:
+    # Hard gating requires an open POS shift before any sale can be created.
+    r = await client.post(
+        "/api/v1/tenants/me/pos/shifts/open",
+        json={"starting_cash": "0.000"},
+        headers=headers,
+    )
+    assert r.status_code == 201
+
+
 async def _setup(
     client: AsyncClient,
     *,
@@ -54,6 +64,7 @@ async def _setup(
     assert r.status_code == 201
     product_id = r.json()["id"]
 
+    await _open_shift(client, headers)
     return headers, product_id
 
 
@@ -127,6 +138,7 @@ async def test_pos_order_cross_tenant_rejected(client: AsyncClient):
     )
     assert r.status_code == 201
 
+    await _open_shift(client, headers_b)
     r = await client.post(
         "/api/v1/tenants/me/pos/orders",
         json={"items": [{"catalog_item_id": product_id_a, "qty": 1}]},
@@ -188,6 +200,7 @@ async def _setup_with_slug(
     assert r.status_code == 201
     product_id = r.json()["id"]
 
+    await _open_shift(client, headers)
     return headers, product_id, slug
 
 

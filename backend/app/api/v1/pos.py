@@ -2,14 +2,17 @@
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, tuple_
+from sqlalchemy import func, select, tuple_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
 from app.models.audit_event import AuditEvent
 from app.models.order import Order
+from app.models.pos_shift import PosShift
 from app.models.storefront_config import StorefrontConfig
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -17,6 +20,12 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.order import OrderCreateResponse, OrderListItem
 from app.schemas.payment import DEFAULT_POS_PAYMENT_METHODS, PosPaymentMethodsResponse
 from app.schemas.pos import PosOrderCreateRequest
+from app.schemas.pos_shift import (
+    PosCurrentShiftResponse,
+    PosShiftCloseRequest,
+    PosShiftOpenRequest,
+    PosShiftResponse,
+)
 from app.services.inventory import restore_stock_for_cancelled_order
 from app.services.order_create import create_order
 
@@ -35,6 +44,51 @@ def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
         return datetime.fromisoformat(dt_str), uuid.UUID(id_str)
     except (ValueError, AttributeError) as exc:
         raise HTTPException(status_code=400, detail="Invalid cursor") from exc
+
+
+async def _get_open_shift(db: AsyncSession, tenant_id: uuid.UUID) -> PosShift | None:
+    result = await db.execute(
+        select(PosShift).where(
+            PosShift.tenant_id == tenant_id,
+            PosShift.status == "open",
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def _compute_cash_sales(
+    db: AsyncSession, tenant_id: uuid.UUID, shift_id: uuid.UUID
+) -> Decimal:
+    """Sum cash (non-cancelled) POS sales rung up under a shift."""
+    result = await db.execute(
+        select(func.coalesce(func.sum(Order.total_amount), 0)).where(
+            Order.tenant_id == tenant_id,
+            Order.source == "pos",
+            Order.shift_id == shift_id,
+            Order.payment_method == "cash",
+            Order.status != "cancelled",
+        )
+    )
+    return Decimal(result.scalar_one())
+
+
+def _shift_response(shift: PosShift, cash_sales: Decimal) -> PosShiftResponse:
+    expected = shift.starting_cash + cash_sales
+    variance = shift.counted_cash - expected if shift.counted_cash is not None else None
+    return PosShiftResponse(
+        id=shift.id,
+        status=shift.status,
+        starting_cash=shift.starting_cash,
+        cash_sales=cash_sales,
+        expected_cash=expected,
+        counted_cash=shift.counted_cash,
+        variance=variance,
+        opened_at=shift.opened_at,
+        opened_by=shift.opened_by,
+        closed_at=shift.closed_at,
+        closed_by=shift.closed_by,
+        notes=shift.notes,
+    )
 
 
 @router.get("/orders", response_model=PaginatedResponse[OrderListItem])
@@ -125,6 +179,79 @@ async def get_pos_payment_methods(
     return PosPaymentMethodsResponse(payment_methods=methods)
 
 
+@router.get("/shifts/current", response_model=PosCurrentShiftResponse)
+async def get_current_shift(
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> PosCurrentShiftResponse:
+    """Return the tenant's open POS shift with live cash summary, or null."""
+    db, tenant_id = db_tenant
+    await require_role("cashier", db, tenant_id, user)
+
+    shift = await _get_open_shift(db, tenant_id)
+    if shift is None:
+        return PosCurrentShiftResponse(shift=None)
+
+    cash_sales = await _compute_cash_sales(db, tenant_id, shift.id)
+    return PosCurrentShiftResponse(shift=_shift_response(shift, cash_sales))
+
+
+@router.post("/shifts/open", response_model=PosShiftResponse, status_code=201)
+async def open_shift(
+    body: PosShiftOpenRequest,
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> PosShiftResponse:
+    """Open a POS shift with a starting cash float. 409 if one is already open."""
+    db, tenant_id = db_tenant
+    await require_role("cashier", db, tenant_id, user)
+
+    if await _get_open_shift(db, tenant_id) is not None:
+        raise HTTPException(status_code=409, detail="A POS shift is already open")
+
+    shift = PosShift(
+        tenant_id=tenant_id,
+        status="open",
+        starting_cash=body.starting_cash,
+        opened_by=user.id,
+    )
+    db.add(shift)
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="A POS shift is already open") from exc
+
+    await db.refresh(shift)
+    await db.commit()
+    return _shift_response(shift, Decimal("0"))
+
+
+@router.post("/shifts/close", response_model=PosShiftResponse)
+async def close_shift(
+    body: PosShiftCloseRequest,
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> PosShiftResponse:
+    """Close the open POS shift, snapshotting cash sales. 409 if none open."""
+    db, tenant_id = db_tenant
+    await require_role("cashier", db, tenant_id, user)
+
+    shift = await _get_open_shift(db, tenant_id)
+    if shift is None:
+        raise HTTPException(status_code=409, detail="No open POS shift to close")
+
+    cash_sales = await _compute_cash_sales(db, tenant_id, shift.id)
+    shift.status = "closed"
+    shift.counted_cash = body.counted_cash
+    shift.closing_cash_sales = cash_sales
+    shift.closed_by = user.id
+    shift.closed_at = datetime.now(UTC)
+    shift.notes = body.notes
+    await db.commit()
+    return _shift_response(shift, cash_sales)
+
+
 @router.post("/orders", response_model=OrderCreateResponse, status_code=201)
 async def create_pos_order(
     body: PosOrderCreateRequest,
@@ -138,6 +265,10 @@ async def create_pos_order(
     """
     db, tenant_id = db_tenant
     await require_role("cashier", db, tenant_id, user)
+
+    shift = await _get_open_shift(db, tenant_id)
+    if shift is None:
+        raise HTTPException(status_code=409, detail="Open a POS shift before creating a sale")
 
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one()
@@ -153,6 +284,8 @@ async def create_pos_order(
         actor_user_id=user.id,
         payment_method=body.payment_method,
     )
+    order.shift_id = shift.id
+    await db.flush()
 
     await db.commit()
 

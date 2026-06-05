@@ -12,6 +12,7 @@ from app.models.notification_preference import NotificationPreference
 from app.models.order import Order
 from app.models.plan import Plan
 from app.models.pledge import Pledge
+from app.models.pos_shift import PosShift
 from app.models.product import Product
 from app.models.product_variant import ProductVariant
 from app.models.stock_movement import StockMovement
@@ -39,6 +40,7 @@ __all__ = [
     "Order",
     "Plan",
     "Pledge",
+    "PosShift",
     "Product",
     "ProductVariant",
     "StockMovement",
