@@ -504,6 +504,10 @@
     "savePayments": "Save Payment Methods"
   },
   "pos": {
+    "cancelReasonPlaceholder": "Reason (optional)",
+    "confirmCancel": "Confirm cancel",
+    "keepOrder": "Keep order",
+    "cancelReasonLabel": "Reason",
     "shiftLoading": "Loading shift...",
     "noOpenShift": "No open shift",
     "openShiftBeforeSale": "Open a shift before creating a sale",

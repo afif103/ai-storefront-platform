@@ -80,6 +80,7 @@ interface OrderResponse {
   status: string;
   source: string;
   payment_method: string | null;
+  cancel_reason: string | null;
   created_at: string;
 }
 
@@ -91,6 +92,7 @@ interface HistoryOrder {
   currency: string;
   created_at: string;
   status: string;
+  cancel_reason: string | null;
 }
 
 interface PaginatedHistory {
@@ -205,6 +207,8 @@ function POSContent() {
   // Cancel
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [showCancelForm, setShowCancelForm] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   // Shift
   const [shift, setShift] = useState<ShiftResponse | null>(null);
@@ -522,19 +526,28 @@ function POSContent() {
     }
   }
 
-  async function cancelOrder(id: string) {
-    if (!window.confirm(t("cancelConfirm"))) return;
+  async function cancelOrder(id: string, reason?: string) {
+    const trimmed = (reason ?? "").trim();
     setCancelling(true);
     setCancelError("");
     const result = await apiFetch<OrderResponse>(
       `/api/v1/tenants/me/pos/orders/${id}/cancel`,
-      { method: "PATCH" },
+      {
+        method: "PATCH",
+        ...(trimmed ? { body: JSON.stringify({ reason: trimmed }) } : {}),
+      },
     );
     if (result.ok) {
       setLastOrder(result.data);
       setHistoryOrders((prev) =>
-        prev.map((o) => (o.id === id ? { ...o, status: "cancelled" } : o)),
+        prev.map((o) =>
+          o.id === id
+            ? { ...o, status: "cancelled", cancel_reason: result.data.cancel_reason }
+            : o,
+        ),
       );
+      setShowCancelForm(false);
+      setCancelReason("");
     } else {
       setCancelError(result.detail || t("cancelFailed"));
     }
@@ -619,9 +632,16 @@ function POSContent() {
           )}
 
           {lastOrder.status === "cancelled" && (
-            <p className="mt-2 text-center text-xs font-medium uppercase text-red-600 print:hidden">
-              {t("cancelledBadge")}
-            </p>
+            <>
+              <p className="mt-2 text-center text-xs font-medium uppercase text-red-600 print:hidden">
+                {t("cancelledBadge")}
+              </p>
+              {lastOrder.cancel_reason && (
+                <p className="mt-1 text-center text-xs text-gray-600">
+                  {t("cancelReasonLabel")}: {lastOrder.cancel_reason}
+                </p>
+              )}
+            </>
           )}
 
           {/* Actions (hidden on print) */}
@@ -632,19 +652,20 @@ function POSContent() {
             >
               {t("printReceipt")}
             </button>
-            {lastOrder.status !== "cancelled" && (
+            {lastOrder.status !== "cancelled" && !showCancelForm && (
               <button
-                onClick={() => cancelOrder(lastOrder.id)}
-                disabled={cancelling}
+                onClick={() => setShowCancelForm(true)}
                 className="flex-1 rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
               >
-                {cancelling ? t("cancelling") : t("cancelOrder")}
+                {t("cancelOrder")}
               </button>
             )}
             <button
               onClick={() => {
                 setLastOrder(null);
                 setShowHistory(false);
+                setShowCancelForm(false);
+                setCancelReason("");
                 setVariantsByProduct({});
                 setPickerProduct(null);
                 setLoadingVariantsFor(null);
@@ -655,6 +676,36 @@ function POSContent() {
               {t("newSale")}
             </button>
           </div>
+          {showCancelForm && lastOrder.status !== "cancelled" && (
+            <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 print:hidden">
+              <p className="text-xs text-gray-700">{t("cancelConfirm")}</p>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder={t("cancelReasonPlaceholder")}
+                rows={2}
+                className="mt-2 w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => cancelOrder(lastOrder.id, cancelReason)}
+                  disabled={cancelling}
+                  className="flex-1 rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {cancelling ? t("cancelling") : t("confirmCancel")}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCancelForm(false);
+                    setCancelReason("");
+                  }}
+                  className="flex-1 rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                >
+                  {t("keepOrder")}
+                </button>
+              </div>
+            </div>
+          )}
           {cancelError && (
             <p className="mt-2 text-center text-xs text-red-600 print:hidden">
               {cancelError}
@@ -710,6 +761,11 @@ function POSContent() {
                       {o.status === "cancelled" && (
                         <span className="ml-2 text-xs font-medium uppercase text-red-500">
                           {t("cancelledBadge")}
+                        </span>
+                      )}
+                      {o.cancel_reason && (
+                        <span className="block text-xs font-normal text-gray-500">
+                          {t("cancelReasonLabel")}: {o.cancel_reason}
                         </span>
                       )}
                     </td>
