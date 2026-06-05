@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/components/require-auth";
 import { DashboardShell } from "@/components/dashboard-shell";
@@ -99,6 +99,25 @@ interface PaginatedHistory {
   has_more: boolean;
 }
 
+interface ShiftResponse {
+  id: string;
+  status: string;
+  starting_cash: string;
+  cash_sales: string;
+  expected_cash: string;
+  counted_cash: string | null;
+  variance: string | null;
+  opened_at: string;
+  opened_by: string | null;
+  closed_at: string | null;
+  closed_by: string | null;
+  notes: string | null;
+}
+
+interface CurrentShiftResponse {
+  shift: ShiftResponse | null;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -120,6 +139,17 @@ function productMax(p: Product): number | null {
 function variantMax(p: Product, v: Variant): number | null {
   if (!p.track_inventory) return null;
   return v.stock_qty ?? 0;
+}
+
+/** Localized timestamp, or empty string for null. */
+function fmtTime(s: string | null): string {
+  return s ? new Date(s).toLocaleString() : "";
+}
+
+/** Tailwind colour class for a shift variance string (green at zero, else red). */
+function varianceColor(v: string | null): string {
+  if (v == null) return "text-gray-900";
+  return parseFloat(v) === 0 ? "text-green-700" : "text-red-600";
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +206,17 @@ function POSContent() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
 
+  // Shift
+  const [shift, setShift] = useState<ShiftResponse | null>(null);
+  const [shiftLoading, setShiftLoading] = useState(true);
+  const [shiftError, setShiftError] = useState("");
+  const [shiftBusy, setShiftBusy] = useState(false);
+  const [startingCash, setStartingCash] = useState("");
+  const [showCloseForm, setShowCloseForm] = useState(false);
+  const [countedCash, setCountedCash] = useState("");
+  const [closeNotes, setCloseNotes] = useState("");
+  const [closedSummary, setClosedSummary] = useState<ShiftResponse | null>(null);
+
   // ------ Fetch products ------
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -217,6 +258,39 @@ function POSContent() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // ------ Current shift (mount + after each New Sale via refreshKey) ------
+
+  const fetchCurrentShift = useCallback(async () => {
+    const result = await apiFetch<CurrentShiftResponse>(
+      "/api/v1/tenants/me/pos/shifts/current",
+    );
+    if (result.ok) {
+      setShift(result.data.shift);
+      setShiftError("");
+    } else {
+      setShiftError(result.detail);
+    }
+    setShiftLoading(false);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await apiFetch<CurrentShiftResponse>(
+        "/api/v1/tenants/me/pos/shifts/current",
+      );
+      if (cancelled) return;
+      if (result.ok) {
+        setShift(result.data.shift);
+        setShiftError("");
+      } else {
+        setShiftError(result.detail);
+      }
+      setShiftLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
   // ------ Filtered products ------
 
@@ -360,14 +434,66 @@ function POSContent() {
       setLastOrder(result.data);
       setCart([]);
       setCustomerName("");
+    } else if (
+      result.status === 409 &&
+      result.detail.includes("Open a POS shift before creating a sale")
+    ) {
+      // Shift was closed elsewhere — backend gate is the source of truth.
+      setError(t("openShiftBeforeSale"));
+      await fetchCurrentShift();
+    } else if (result.status === 409) {
+      setError(t("insufficientStock"));
     } else {
-      if (result.status === 409) {
-        setError(t("insufficientStock"));
-      } else {
-        setError(result.detail || t("saleFailed"));
-      }
+      setError(result.detail || t("saleFailed"));
     }
     setSubmitting(false);
+  }
+
+  // ------ Shift open / close ------
+
+  async function handleOpenShift(e: React.FormEvent) {
+    e.preventDefault();
+    setShiftBusy(true);
+    setShiftError("");
+    const result = await apiFetch<ShiftResponse>(
+      "/api/v1/tenants/me/pos/shifts/open",
+      { method: "POST", body: JSON.stringify({ starting_cash: startingCash }) },
+    );
+    if (result.ok) {
+      setShift(result.data);
+      setStartingCash("");
+    } else {
+      setShiftError(result.detail || t("openShiftFailed"));
+      if (result.status === 409) await fetchCurrentShift();
+    }
+    setShiftBusy(false);
+  }
+
+  async function handleCloseShift(e: React.FormEvent) {
+    e.preventDefault();
+    setShiftBusy(true);
+    setShiftError("");
+    const result = await apiFetch<ShiftResponse>(
+      "/api/v1/tenants/me/pos/shifts/close",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          counted_cash: countedCash,
+          notes: closeNotes || undefined,
+        }),
+      },
+    );
+    if (result.ok) {
+      setClosedSummary(result.data);
+      setShift(null);
+      setShowCloseForm(false);
+      setCountedCash("");
+      setCloseNotes("");
+    } else {
+      setShiftError(result.detail || t("closeShiftFailed"));
+      if (result.status === 409) await fetchCurrentShift();
+    }
+    setShiftBusy(false);
   }
 
   // ------ History ------
@@ -628,6 +754,177 @@ function POSContent() {
         </button>
       </div>
 
+      {/* ---- Shift banner (main layout only) ---- */}
+      {shiftLoading ? (
+        <p className="mb-4 text-sm text-gray-400">{t("shiftLoading")}</p>
+      ) : closedSummary ? (
+        <div className="mb-4 rounded-lg border bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-900">
+            {t("shiftClosed")}
+          </h2>
+          <dl className="mt-2 grid max-w-sm grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <dt className="text-gray-500">{t("startingCash")}</dt>
+            <dd className="text-right text-gray-900">
+              {closedSummary.starting_cash}
+            </dd>
+            <dt className="text-gray-500">{t("cashSales")}</dt>
+            <dd className="text-right text-gray-900">
+              {closedSummary.cash_sales}
+            </dd>
+            <dt className="text-gray-500">{t("expectedCash")}</dt>
+            <dd className="text-right text-gray-900">
+              {closedSummary.expected_cash}
+            </dd>
+            <dt className="text-gray-500">{t("countedCash")}</dt>
+            <dd className="text-right text-gray-900">
+              {closedSummary.counted_cash}
+            </dd>
+            <dt className="text-gray-500">{t("variance")}</dt>
+            <dd
+              className={`text-right font-medium ${varianceColor(closedSummary.variance)}`}
+            >
+              {closedSummary.variance}
+            </dd>
+            <dt className="text-gray-500">{t("shiftOpened")}</dt>
+            <dd className="text-right text-gray-700">
+              {fmtTime(closedSummary.opened_at)}
+            </dd>
+            <dt className="text-gray-500">{t("closedLabel")}</dt>
+            <dd className="text-right text-gray-700">
+              {fmtTime(closedSummary.closed_at)}
+            </dd>
+          </dl>
+          <button
+            onClick={() => setClosedSummary(null)}
+            className="mt-3 rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {t("done")}
+          </button>
+        </div>
+      ) : shift ? (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-700">
+              <span>
+                {t("shiftOpened")}:{" "}
+                <span className="font-medium text-gray-900">
+                  {fmtTime(shift.opened_at)}
+                </span>
+              </span>
+              <span>
+                {t("startingCash")}:{" "}
+                <span className="font-medium text-gray-900">
+                  {shift.starting_cash}
+                </span>
+              </span>
+              <span>
+                {t("cashSales")}:{" "}
+                <span className="font-medium text-gray-900">
+                  {shift.cash_sales}
+                </span>
+              </span>
+              <span>
+                {t("expectedCash")}:{" "}
+                <span className="font-medium text-gray-900">
+                  {shift.expected_cash}
+                </span>
+              </span>
+            </div>
+            {!showCloseForm && (
+              <button
+                onClick={() => setShowCloseForm(true)}
+                className="shrink-0 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {t("closeShift")}
+              </button>
+            )}
+          </div>
+          {showCloseForm && (
+            <form
+              onSubmit={handleCloseShift}
+              className="mt-3 flex flex-wrap items-end gap-3 border-t border-green-200 pt-3"
+            >
+              <div>
+                <label className="mb-1 block text-xs text-gray-600">
+                  {t("countedCash")}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  required
+                  value={countedCash}
+                  onChange={(e) => setCountedCash(e.target.value)}
+                  className="w-32 rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div className="min-w-[8rem] flex-1">
+                <label className="mb-1 block text-xs text-gray-600">
+                  {t("closeNotesLabel")}
+                </label>
+                <input
+                  type="text"
+                  value={closeNotes}
+                  onChange={(e) => setCloseNotes(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={shiftBusy || !countedCash}
+                className="rounded bg-red-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {shiftBusy ? t("closing") : t("confirmClose")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCloseForm(false)}
+                className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                {t("cancelClose")}
+              </button>
+            </form>
+          )}
+        </div>
+      ) : (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <form
+            onSubmit={handleOpenShift}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <p className="text-sm font-medium text-amber-800">
+              {t("noOpenShift")}
+            </p>
+            <div>
+              <label className="mb-1 block text-xs text-gray-600">
+                {t("startingCash")}
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.001"
+                required
+                value={startingCash}
+                onChange={(e) => setStartingCash(e.target.value)}
+                className="w-32 rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={shiftBusy || !startingCash}
+              className="rounded bg-green-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {shiftBusy ? t("opening") : t("openShift")}
+            </button>
+          </form>
+        </div>
+      )}
+      {shiftError && (
+        <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          {shiftError}
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
           {error}
@@ -794,11 +1091,16 @@ function POSContent() {
                   </div>
                   <button
                     type="submit"
-                    disabled={submitting || cart.length === 0}
+                    disabled={submitting || cart.length === 0 || !shift}
                     className="w-full rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
                   >
                     {submitting ? t("completing") : t("completeSale")}
                   </button>
+                  {!shift && (
+                    <p className="text-center text-xs text-amber-700">
+                      {t("openShiftBeforeSale")}
+                    </p>
+                  )}
                 </form>
               </div>
             </>
