@@ -19,7 +19,7 @@ from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.order import OrderCreateResponse, OrderListItem
 from app.schemas.payment import DEFAULT_POS_PAYMENT_METHODS, PosPaymentMethodsResponse
-from app.schemas.pos import PosOrderCreateRequest
+from app.schemas.pos import PosOrderCancelRequest, PosOrderCreateRequest
 from app.schemas.pos_shift import (
     PosCurrentShiftResponse,
     PosShiftCloseRequest,
@@ -295,6 +295,7 @@ async def create_pos_order(
 @router.patch("/orders/{order_id}/cancel", response_model=OrderCreateResponse)
 async def cancel_pos_order(
     order_id: uuid.UUID,
+    body: PosOrderCancelRequest | None = None,
     user: User = Depends(get_current_user),
     db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
 ) -> OrderCreateResponse:
@@ -326,7 +327,9 @@ async def cancel_pos_order(
             detail=f"Cannot cancel order in status '{order.status}'",
         )
 
+    reason = body.reason if body is not None else None
     order.status = "cancelled"
+    order.cancel_reason = reason
     order.updated_at = datetime.now(UTC)
     await db.flush()
 
@@ -343,6 +346,7 @@ async def cancel_pos_order(
             action="status_transition",
             from_status="fulfilled",
             to_status="cancelled",
+            metadata_={"reason": reason} if reason else None,
         )
     )
 

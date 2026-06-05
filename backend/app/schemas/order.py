@@ -43,6 +43,7 @@ class OrderListItem(BaseModel):
     source: str
     created_at: datetime
     updated_at: datetime | None
+    cancel_reason: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -79,6 +80,7 @@ class OrderCreateResponse(BaseModel):
     status: str
     source: str
     payment_method: str | None = None
+    cancel_reason: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

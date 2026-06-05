@@ -15,3 +15,15 @@ class PosOrderCreateRequest(BaseModel):
     @classmethod
     def _normalize_payment_method(cls, v: str | None) -> str | None:
         return normalize_optional_payment_method(v)
+
+
+class PosOrderCancelRequest(BaseModel):
+    reason: str | None = Field(None, max_length=2000)
+
+    @field_validator("reason")
+    @classmethod
+    def _normalize_reason(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped or None

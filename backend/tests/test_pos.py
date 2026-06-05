@@ -7,6 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.audit_event import AuditEvent
 from app.models.customer import Customer
 from app.models.order import Order
 from app.models.stock_movement import StockMovement
@@ -534,6 +535,111 @@ async def test_pos_payment_methods_returns_configured(client: AsyncClient):
     r = await client.get("/api/v1/tenants/me/pos/payment-methods", headers=cashier_headers)
     assert r.status_code == 200
     assert r.json()["payment_methods"] == ["cash", "knet"]
+
+
+# ---------------------------------------------------------------------------
+# M12.4 — POS cancel reason
+# ---------------------------------------------------------------------------
+
+
+async def _make_pos_order(client: AsyncClient, headers: dict, product_id: str) -> str:
+    r = await client.post(
+        "/api/v1/tenants/me/pos/orders",
+        json={"items": [{"catalog_item_id": product_id, "qty": 1}]},
+        headers=headers,
+    )
+    assert r.status_code == 201
+    return r.json()["id"]
+
+
+async def test_pos_cancel_with_reason_stores_and_returns(client: AsyncClient, db: AsyncSession):
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+    order_id = await _make_pos_order(client, owner_headers, product_id)
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        json={"reason": "  customer changed mind  "},
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "cancelled"
+    assert data["cancel_reason"] == "customer changed mind"
+
+    order = await db.get(Order, uuid.UUID(order_id))
+    assert order is not None
+    assert order.cancel_reason == "customer changed mind"
+
+    result = await db.execute(
+        select(AuditEvent).where(
+            AuditEvent.entity_id == uuid.UUID(order_id),
+            AuditEvent.action == "status_transition",
+        )
+    )
+    event = result.scalar_one()
+    assert event.metadata_ == {"reason": "customer changed mind"}
+
+
+async def test_pos_cancel_reason_in_detail_and_history(client: AsyncClient):
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+    order_id = await _make_pos_order(client, owner_headers, product_id)
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        json={"reason": "damaged item"},
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+
+    r = await client.get(f"/api/v1/tenants/me/pos/orders/{order_id}", headers=owner_headers)
+    assert r.status_code == 200
+    assert r.json()["cancel_reason"] == "damaged item"
+
+    r = await client.get("/api/v1/tenants/me/pos/orders", headers=owner_headers)
+    assert r.status_code == 200
+    item = next(o for o in r.json()["items"] if o["id"] == order_id)
+    assert item["cancel_reason"] == "damaged item"
+
+
+async def test_pos_cancel_without_body_reason_null(client: AsyncClient, db: AsyncSession):
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+    order_id = await _make_pos_order(client, owner_headers, product_id)
+
+    # No body — back-compat with the pre-M12.4 cancel call.
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel", headers=owner_headers
+    )
+    assert r.status_code == 200
+    assert r.json()["cancel_reason"] is None
+
+    order = await db.get(Order, uuid.UUID(order_id))
+    assert order is not None
+    assert order.cancel_reason is None
+
+
+async def test_pos_cancel_empty_reason_normalizes_to_null(client: AsyncClient):
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+    order_id = await _make_pos_order(client, owner_headers, product_id)
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        json={"reason": "   "},
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["cancel_reason"] is None
+
+
+async def test_pos_cancel_reason_too_long_returns_422(client: AsyncClient):
+    owner_headers, product_id, _ = await _setup_with_slug(client)
+    order_id = await _make_pos_order(client, owner_headers, product_id)
+
+    r = await client.patch(
+        f"/api/v1/tenants/me/pos/orders/{order_id}/cancel",
+        json={"reason": "x" * 2001},
+        headers=owner_headers,
+    )
+    assert r.status_code == 422
 
 
 async def test_pos_payment_methods_fallback_when_no_config(client: AsyncClient):
