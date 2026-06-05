@@ -500,6 +500,80 @@ async def test_order_detail_includes_items_and_payment_fields(client: AsyncClien
     assert "subtotal" in item
 
 
+async def test_order_shipping_address_stored_and_returned(client: AsyncClient):
+    # shipping_address + delivery notes (via `notes`) are stored and returned in detail.
+    headers, slug, product_id, _visit, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Delivery",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+            "shipping_address": "  Salmiya, Block 10, St 5, House 12  ",
+            "notes": "Leave at the door",
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/tenants/me/orders/{order_id}", headers=headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["shipping_address"] == "Salmiya, Block 10, St 5, House 12"
+    assert data["notes"] == "Leave at the door"
+
+
+async def test_order_shipping_address_blank_normalizes_to_null(client: AsyncClient):
+    headers, slug, product_id, _visit, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Blank Addr",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+            "shipping_address": "   ",
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/tenants/me/orders/{order_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["shipping_address"] is None
+
+
+async def test_order_shipping_address_too_long_returns_422(client: AsyncClient):
+    _headers, slug, product_id, _visit, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "Too Long",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+            "shipping_address": "x" * 2001,
+        },
+    )
+    assert r.status_code == 422
+
+
+async def test_order_without_shipping_address_is_null(client: AsyncClient):
+    headers, slug, product_id, _visit, _ = await _setup_tenant_product_visit(client)
+
+    r = await client.post(
+        f"/api/v1/storefront/{slug}/orders",
+        json={
+            "customer_name": "No Addr",
+            "items": [{"catalog_item_id": product_id, "qty": 1}],
+        },
+    )
+    assert r.status_code == 201
+    order_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/tenants/me/orders/{order_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["shipping_address"] is None
+
+
 async def test_order_detail_cross_tenant_404(client: AsyncClient):
     # Tenant B cannot fetch Tenant A's order.
     _headers_a, slug_a, product_a, _, _ = await _setup_tenant_product_visit(client)

@@ -23,6 +23,7 @@ class OrderCreateRequest(BaseModel):
     items: list[OrderItemRequest] = Field(..., min_length=1)
     payment_notes: str | None = Field(None, max_length=2000)
     notes: str | None = Field(None, max_length=2000)
+    shipping_address: str | None = Field(None, max_length=2000)
     visit_id: uuid.UUID | None = None
     payment_method: str | None = None
 
@@ -30,6 +31,14 @@ class OrderCreateRequest(BaseModel):
     @classmethod
     def _normalize_payment_method(cls, v: str | None) -> str | None:
         return normalize_optional_payment_method(v)
+
+    @field_validator("shipping_address")
+    @classmethod
+    def _normalize_shipping_address(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped or None
 
 
 class OrderListItem(BaseModel):
@@ -63,6 +72,7 @@ class OrderDetailResponse(BaseModel):
     payment_method: str | None
     payment_notes: str | None
     notes: str | None
+    shipping_address: str | None = None
     created_at: datetime
     updated_at: datetime | None
 

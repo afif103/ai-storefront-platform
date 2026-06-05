@@ -373,6 +373,7 @@ async def submit_order(
         status="pending",
         payment_notes=body.payment_notes,
         notes=body.notes,
+        shipping_address=body.shipping_address,
         visit_id=body.visit_id,
         payment_method=body.payment_method,
     )
