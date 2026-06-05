@@ -520,7 +520,7 @@ Key design decisions:
 
 | # | Task | Primary Implementor | Status | DoD |
 |---|------|-------|--------|-----|
-| 12.3a | POS shift open/close with cash summary | Claude | Not started | Cashier opens shift (starting cash), closes with reconciliation summary. |
+| 12.3a | POS shift open/close with cash summary | Claude | **Shipped** | Backend `cb6a3c0` + frontend `0f3c057`. `pos_shifts` table (tenant-scoped, RLS-enforced) with a one-open-shift-per-tenant partial-unique index; `orders.shift_id` FK + index. Cashier-gated `GET /pos/shifts/current`, `POST /pos/shifts/open` (starting cash), and `POST /pos/shifts/close` (counted cash + optional notes → reconciliation summary). **Hard backend gate**: a POS sale requires an open shift, otherwise `409`; the order is associated to the open shift via `shift_id`. Cash summary counts only this-shift POS orders with `payment_method='cash'` and `status!='cancelled'`; `expected_cash = starting_cash + cash_sales`, `variance = counted_cash - expected_cash`, with cash sales snapshotted into `closing_cash_sales` at close. Backend tests cover open/close/current, the gate, cash-only and cancelled exclusion, one-open-per-tenant, and cross-tenant isolation. Frontend adds the POS shift banner (loading / open with live cash summary / closed summary / no open shift), inline open and close forms, the close summary, and a checkout gate that disables Complete Sale until a shift is open; 21 POS i18n keys added (Arabic currently uses English fallback — Arabic translation an optional follow-up). |
 
 ### M12.4 — POS Void/Cancel
 
@@ -637,6 +637,6 @@ The following V1 items are not started or partially complete. They are NOT succe
 | M10A — Foundations: Auth & Onboarding | 3 packets (M10A.1–A.3) | Core auth/onboarding shipped; role matrix + test fixture follow-ups remain |
 | M10B — Foundations: POS Domain | 7 shipped + POS Sales Domain deferred | M10B.7 POS order cancel shipped |
 | M11 — Selling & Payments MVP | 8 packets (M11.1–M11.8) | Complete — M11.1–M11.8 shipped (M11.6a payment status deferred) |
-| M12 — Operations & Variants | 7 packets (M12.1–M12.7) | In progress — M12.1 product variants backend shipped (schema/RLS/CRUD, cross-table SKU/barcode uniqueness, order + POS variant price/stock, variant-aware cancel/restore); M12.2 variant UI + M12.2.1 POS visibility fix shipped; M12.3–M12.7 not started |
+| M12 — Operations & Variants | 7 packets (M12.1–M12.7) | In progress — M12.1 product variants backend shipped (schema/RLS/CRUD, cross-table SKU/barcode uniqueness, order + POS variant price/stock, variant-aware cancel/restore); M12.2 variant UI + M12.2.1 POS visibility fix shipped; M12.3 POS shift management shipped (backend `cb6a3c0` + frontend `0f3c057`: `pos_shifts` table/RLS + one-open-shift-per-tenant index, `orders.shift_id`, cashier-gated current/open/close endpoints, hard open-shift gate on POS sales, cash-only reconciliation summary, and the POS shift banner/open-close forms/checkout gate); M12.4–M12.7 not started |
 | M13 — Omnichannel Reporting & Polish | 4 packets (M13.1–M13.4) | Not started |
 | **V2 Total** | Packet count evolves as work ships and scope adjusts | |

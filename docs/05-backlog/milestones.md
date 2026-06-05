@@ -362,7 +362,7 @@ Note: M10A and M10B start with planning-only packets (M10A.1, M10B.1) before any
 | Order fulfillment workflow: pack → ship → deliver status chain |
 | Customer order history page |
 
-**Status**: In progress. M12.1 product variants backend shipped — `product_variants` table + RLS + model, variant CRUD API, cross-table SKU/barcode uniqueness, `OrderItemRequest.variant_id` validation and snapshot, variant `price_amount` override (else inherit product price), variant stock decrement on storefront + POS, POS `StockMovement.variant_id`, and variant-aware cancel/restore; backend tests across all of it. M12.2 variant UI shipped (dashboard variant management, POS picker, public storefront selector, Arabic i18n); M12.2.1 POS variant visibility fix shipped. M12.3–M12.7 not started.
+**Status**: In progress. M12.1 product variants backend shipped — `product_variants` table + RLS + model, variant CRUD API, cross-table SKU/barcode uniqueness, `OrderItemRequest.variant_id` validation and snapshot, variant `price_amount` override (else inherit product price), variant stock decrement on storefront + POS, POS `StockMovement.variant_id`, and variant-aware cancel/restore; backend tests across all of it. M12.2 variant UI shipped (dashboard variant management, POS picker, public storefront selector, Arabic i18n); M12.2.1 POS variant visibility fix shipped. M12.3 POS shift management shipped (backend `cb6a3c0` + frontend `0f3c057`): `pos_shifts` table + RLS + one-open-shift-per-tenant partial-unique index, `orders.shift_id` FK/index, cashier-gated `GET /pos/shifts/current` / `POST /pos/shifts/open` / `POST /pos/shifts/close`, a hard backend gate requiring an open shift before a POS sale (else `409`) with the order associated via `shift_id`, a cash summary over this-shift `payment_method='cash'` and `status!='cancelled'` orders snapshotted into `closing_cash_sales` at close, and the POS shift banner/open-close forms/close summary/checkout gate (21 i18n keys; Arabic uses English fallback). M12.4–M12.7 not started.
 
 ---
 
@@ -421,7 +421,7 @@ The following V1 items are not started or partially complete. They are NOT succe
 | M10A — Foundations: Auth & Onboarding | Merchant-Ready Core | M10A.1 Planning next |
 | M10B — Foundations: POS Domain | POS / Omnichannel | M10B.7 POS order cancel shipped |
 | M11 — Selling & Payments MVP | Both tracks | Complete — M11.8 customer linking shipped; M11.7 customer records foundation shipped; M11.6b receipt generation shipped; M11.5 payment method config shipped; M11.4 SKU/barcode shipped; M11.1–M11.3 shipped via M10B; M11.6a deferred |
-| M12 — Operations & Variants | Both tracks | In progress — M12.1 product variants backend shipped (schema/CRUD/order + inventory wiring, backend only); M12.2 variant UI (dashboard/POS/storefront + Arabic i18n) + M12.2.1 POS visibility fix shipped; M12.3–M12.7 not started |
+| M12 — Operations & Variants | Both tracks | In progress — M12.1 product variants backend shipped (schema/CRUD/order + inventory wiring, backend only); M12.2 variant UI (dashboard/POS/storefront + Arabic i18n) + M12.2.1 POS visibility fix shipped; M12.3 POS shift management shipped (backend + frontend); M12.4–M12.7 not started |
 | M13 — Omnichannel Reporting & Polish | Both tracks (convergence) | Not started |
 
 M10A and M10B can run in parallel. Both start with planning-only packets before implementation.
