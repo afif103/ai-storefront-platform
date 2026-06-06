@@ -31,6 +31,12 @@ from app.schemas.order import OrderCreateRequest, OrderCreateResponse
 from app.schemas.pledge import PledgeCreateRequest, PledgeCreateResponse
 from app.schemas.product import PublicProductResponse, PublicVariantResponse
 from app.schemas.public_storefront_config import PublicStorefrontConfigResponse
+from app.schemas.shipping import (
+    PublicShippingMethod,
+    ShippingConfig,
+    ShippingMethodError,
+    resolve_shipping_method,
+)
 from app.schemas.storefront_ai_chat import (
     StorefrontAIChatRequest,
     StorefrontAIChatResponse,
@@ -233,6 +239,18 @@ async def list_public_products(
     )
 
 
+def _public_shipping_methods(raw: dict | None) -> list[PublicShippingMethod] | None:
+    """Active-only customer-facing shipping methods from stored config; None if none."""
+    if not raw:
+        return None
+    config = ShippingConfig.model_validate(raw)
+    methods: list[PublicShippingMethod] = []
+    for method in config.methods:
+        if method.active:
+            methods.append(PublicShippingMethod(id=method.id, name=method.name, fee=method.fee))
+    return methods or None
+
+
 @router.get("/{slug}/config", response_model=PublicStorefrontConfigResponse)
 async def get_public_storefront_config(
     slug: str,
@@ -262,6 +280,7 @@ async def get_public_storefront_config(
         secondary_color=config.secondary_color,
         logo_url=logo_url,
         payment_methods=(config.payment_methods or {}).get("online") or None,
+        shipping_methods=_public_shipping_methods(config.shipping),
     )
 
 
@@ -361,6 +380,26 @@ async def submit_order(
     # Validate visit_id if provided
     await _validate_visit(db, tenant.id, body.visit_id)
 
+    # Resolve shipping fee server-side from tenant config (never trust a client fee).
+    shipping_fee = None
+    shipping_method = None
+    if body.shipping_method_id:
+        config_result = await db.execute(
+            select(StorefrontConfig).where(StorefrontConfig.tenant_id == tenant.id)
+        )
+        config = config_result.scalar_one_or_none()
+        shipping_config = (
+            ShippingConfig.model_validate(config.shipping)
+            if config is not None and config.shipping
+            else None
+        )
+        try:
+            shipping_method, shipping_fee = resolve_shipping_method(
+                shipping_config, body.shipping_method_id
+            )
+        except ShippingMethodError as exc:
+            raise HTTPException(status_code=422, detail=exc.detail) from exc
+
     order = await create_order(
         db,
         tenant_id=tenant.id,
@@ -374,6 +413,8 @@ async def submit_order(
         payment_notes=body.payment_notes,
         notes=body.notes,
         shipping_address=body.shipping_address,
+        shipping_fee=shipping_fee,
+        shipping_method=shipping_method,
         visit_id=body.visit_id,
         payment_method=body.payment_method,
     )

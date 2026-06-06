@@ -45,7 +45,7 @@ async def upsert_storefront_config(
     )
     config = result.scalar_one_or_none()
 
-    updates = body.model_dump(exclude_unset=True)
+    updates = body.model_dump(exclude_unset=True, mode="json")
 
     if config is None:
         config = StorefrontConfig(tenant_id=tenant_id, **updates)

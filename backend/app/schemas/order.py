@@ -26,6 +26,7 @@ class OrderCreateRequest(BaseModel):
     shipping_address: str | None = Field(None, max_length=2000)
     visit_id: uuid.UUID | None = None
     payment_method: str | None = None
+    shipping_method_id: str | None = None
 
     @field_validator("payment_method")
     @classmethod
@@ -73,6 +74,8 @@ class OrderDetailResponse(BaseModel):
     payment_notes: str | None
     notes: str | None
     shipping_address: str | None = None
+    shipping_fee: Decimal | None = None
+    shipping_method: str | None = None
     created_at: datetime
     updated_at: datetime | None
 
@@ -91,6 +94,8 @@ class OrderCreateResponse(BaseModel):
     source: str
     payment_method: str | None = None
     cancel_reason: str | None = None
+    shipping_fee: Decimal | None = None
+    shipping_method: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

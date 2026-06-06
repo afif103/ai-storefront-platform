@@ -59,6 +59,8 @@ class Order(TenantScopedBase):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     shipping_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    shipping_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
+    shipping_method: Mapped[str | None] = mapped_column(Text, nullable=True)
     visit_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("visits.id", ondelete="SET NULL"), nullable=True
     )

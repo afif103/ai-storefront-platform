@@ -32,6 +32,8 @@ async def create_order(
     payment_notes: str | None = None,
     notes: str | None = None,
     shipping_address: str | None = None,
+    shipping_fee: Decimal | None = None,
+    shipping_method: str | None = None,
     visit_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
     payment_method: str | None = None,
@@ -122,6 +124,10 @@ async def create_order(
         )
         total += subtotal
 
+    # Server-authoritative shipping fee (never trust a client-sent fee).
+    if shipping_fee is not None:
+        total += shipping_fee
+
     # Storefront: atomic raw-SQL decrement (variant-aware).
     if source != "pos":
         for item in items:
@@ -191,6 +197,8 @@ async def create_order(
         payment_method=payment_method,
         notes=notes,
         shipping_address=shipping_address,
+        shipping_fee=shipping_fee,
+        shipping_method=shipping_method,
         status=status,
         source=source,
         visit_id=visit_id,
