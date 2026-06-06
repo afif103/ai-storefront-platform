@@ -96,3 +96,20 @@ Reusable Claude Code slash commands in `.claude/commands/`:
 | `/plan-packet` | Structured packet plan — investigate only, no coding |
 | `/review-ready` | Pre-commit checks, diff summary, proposed commit message |
 | `/final-verify` | Post-implementation validation across backend, frontend, docs |
+
+### Roles (Non-Negotiable)
+- **ChatGPT** = architect / planner / reviewer / approval gate.
+- **Claude Code** = implementer only. Claude MUST NOT decide scope, commit, or push without ChatGPT approval.
+
+### Required Workflow (Non-Negotiable)
+
+1. **Session start — run `/resync-project` first (read-only).** Confirm `git status`, the latest commit, the current milestone/packet, the current Alembic head (if relevant), known risks/failures, and the next likely packet. Do NOT modify files and do NOT write code during resync.
+2. **Before any new packet — run `/plan-packet`.** Investigate the relevant files, then produce a **plan only**. Do NOT modify files until ChatGPT approves the plan.
+3. **During implementation.** Work in small patches. Show suspicious previews/diffs before continuing. Avoid unrelated changes and keep packet scope tight. If a preview/render looks corrupted, duplicated, malformed, or risky, **stop and ask** (the on-disk file is authoritative — verify it).
+4. **Before commit approval — run `/review-ready`** (or provide an equivalent review package): exact changed files, `git status --short`, `git diff --stat`, the important diffs, and lint/test/build results. **Stop before committing.**
+5. **Final verification — run `/final-verify`.** Confirm `git status --short`, the changed files, lint/test/build results, known failures, the proposed commit message, and the exact files to stage. Do NOT commit or push until ChatGPT approves.
+6. **Commit / push gates.**
+   - ChatGPT approval is **required before every commit** and, separately, **before every push**.
+   - Stage only the explicitly approved files — never `git add -A` or `git add .`.
+   - Commit messages: clean, scope-specific, conventional-commit prefix, and **trailer-free**. Never include `Co-Authored-By`, `Claude`, `Anthropic`, or `Claude Code` attribution.
+   - Do NOT mix unrelated docs/code/tests in one commit — phase packets and commit them separately (typically backend → frontend → docs).
