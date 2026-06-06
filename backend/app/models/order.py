@@ -34,6 +34,11 @@ class Order(TenantScopedBase):
             "('cash', 'knet', 'bank_transfer', 'cod', 'manual')",
             name="ck_orders_payment_method",
         ),
+        CheckConstraint(
+            "fulfillment_status IS NULL OR fulfillment_status IN "
+            "('packed', 'shipped', 'delivered')",
+            name="ck_orders_fulfillment_status",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
@@ -61,6 +66,7 @@ class Order(TenantScopedBase):
     shipping_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     shipping_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
     shipping_method: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fulfillment_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     visit_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("visits.id", ondelete="SET NULL"), nullable=True
     )

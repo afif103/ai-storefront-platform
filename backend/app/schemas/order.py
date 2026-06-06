@@ -54,6 +54,7 @@ class OrderListItem(BaseModel):
     created_at: datetime
     updated_at: datetime | None
     cancel_reason: str | None = None
+    fulfillment_status: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -76,6 +77,7 @@ class OrderDetailResponse(BaseModel):
     shipping_address: str | None = None
     shipping_fee: Decimal | None = None
     shipping_method: str | None = None
+    fulfillment_status: str | None = None
     created_at: datetime
     updated_at: datetime | None
 
