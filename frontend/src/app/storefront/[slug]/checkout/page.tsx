@@ -53,6 +53,8 @@ export default function CheckoutPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
   const [onlineMethods, setOnlineMethods] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -116,6 +118,8 @@ export default function CheckoutPage() {
             qty: i.qty,
           })),
           payment_notes: paymentNotes || undefined,
+          shipping_address: deliveryAddress.trim() || undefined,
+          notes: deliveryNotes.trim() || undefined,
           payment_method: paymentMethod || undefined,
           visit_id: visitId || undefined,
         }),
@@ -387,6 +391,26 @@ export default function CheckoutPage() {
               maxLength={255}
               value={customerEmail}
               onChange={(e) => setCustomerEmail(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <div className="mb-3">
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("deliveryAddress")}</label>
+            <textarea
+              maxLength={2000}
+              value={deliveryAddress}
+              onChange={(e) => setDeliveryAddress(e.target.value)}
+              rows={2}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <div className="mb-3">
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("deliveryNotes")}</label>
+            <textarea
+              maxLength={2000}
+              value={deliveryNotes}
+              onChange={(e) => setDeliveryNotes(e.target.value)}
+              rows={2}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>

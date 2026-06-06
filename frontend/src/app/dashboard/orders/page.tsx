@@ -40,6 +40,7 @@ interface OrderDetail {
   payment_method: string | null;
   payment_notes: string | null;
   notes: string | null;
+  shipping_address: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -169,6 +170,11 @@ function OrdersContent() {
           {selectedOrder.customer_email && (
             <p className="mt-0.5 text-center text-xs text-gray-500">
               {t("email")}: {selectedOrder.customer_email}
+            </p>
+          )}
+          {selectedOrder.shipping_address && (
+            <p className="mt-0.5 text-center text-xs text-gray-500">
+              {t("shippingAddress")}: {selectedOrder.shipping_address}
             </p>
           )}
           <div className="mt-2 flex justify-center gap-4 text-xs text-gray-500">

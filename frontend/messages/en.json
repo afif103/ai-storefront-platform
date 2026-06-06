@@ -21,6 +21,8 @@
     "send": "Send"
   },
   "checkout": {
+    "deliveryAddress": "Delivery address (optional)",
+    "deliveryNotes": "Delivery notes (optional)",
     "variant": "Variant",
     "orderPlaced": "Order Placed!",
     "orderNumber": "Order number:",
@@ -253,6 +255,7 @@
     "checking": "Checking..."
   },
   "dashboardOrders": {
+    "shippingAddress": "Shipping address",
     "title": "Orders",
     "subtitle": "View and manage customer orders",
     "loading": "Loading...",
