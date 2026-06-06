@@ -27,11 +27,20 @@ interface OrderResponse {
   currency: string;
   status: string;
   payment_method: string | null;
+  shipping_fee: string | null;
+  shipping_method: string | null;
   created_at: string;
+}
+
+interface PublicShippingMethod {
+  id: string;
+  name: string;
+  fee: string;
 }
 
 interface PublicConfig {
   payment_methods: string[] | null;
+  shipping_methods: PublicShippingMethod[] | null;
 }
 
 export default function CheckoutPage() {
@@ -57,6 +66,8 @@ export default function CheckoutPage() {
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [onlineMethods, setOnlineMethods] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [shippingMethods, setShippingMethods] = useState<PublicShippingMethod[]>([]);
+  const [shippingMethodId, setShippingMethodId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<OrderResponse | null>(null);
@@ -65,6 +76,14 @@ export default function CheckoutPage() {
     .reduce((sum, i) => sum + parseFloat(i.priceAmount) * i.qty, 0)
     .toFixed(3);
   const cartCurrency = cart.items[0]?.currency ?? "KWD";
+
+  const selectedShippingMethod = shippingMethods.find(
+    (m) => m.id === shippingMethodId
+  );
+  const selectedShippingFee = selectedShippingMethod?.fee ?? "0";
+  const previewGrandTotal = (
+    Number(cartTotal) + Number(selectedShippingFee)
+  ).toFixed(3);
 
   // Analytics: begin_checkout on mount (guarded to prevent StrictMode double-fire)
   useEffect(() => {
@@ -86,15 +105,17 @@ export default function CheckoutPage() {
       const result = await apiFetch<PublicConfig>(
         `/api/v1/storefront/${slug}/config`
       );
-      if (cancelled) return;
+      if (cancelled || !result.ok) return;
       if (
-        result.ok &&
         result.data.payment_methods &&
         result.data.payment_methods.length > 0
       ) {
         setOnlineMethods(result.data.payment_methods);
         setPaymentMethod(result.data.payment_methods[0]);
       }
+      const methods = result.data.shipping_methods ?? [];
+      setShippingMethods(methods);
+      setShippingMethodId(methods.length > 0 ? methods[0].id : "");
     })();
     return () => { cancelled = true; };
   }, [slug]);
@@ -121,6 +142,7 @@ export default function CheckoutPage() {
           shipping_address: deliveryAddress.trim() || undefined,
           notes: deliveryNotes.trim() || undefined,
           payment_method: paymentMethod || undefined,
+          shipping_method_id: shippingMethodId || undefined,
           visit_id: visitId || undefined,
         }),
       }
@@ -193,6 +215,14 @@ export default function CheckoutPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+
+            {success.shipping_fee && (
+              <div className="mt-1 text-right text-sm text-gray-700">
+                {t("deliveryFee")}
+                {success.shipping_method ? ` (${success.shipping_method})` : ""}:{" "}
+                {success.shipping_fee} {success.currency}
+              </div>
             )}
 
             <div className="mt-3 border-t pt-2 text-right text-sm font-semibold text-gray-900">
@@ -442,6 +472,42 @@ export default function CheckoutPage() {
                 ))}
               </select>
             </div>
+          )}
+
+          {shippingMethods.length > 0 && (
+            <>
+              <div className="mb-4">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  {t("deliveryMethod")}
+                </label>
+                <select
+                  value={shippingMethodId}
+                  onChange={(e) => setShippingMethodId(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  {shippingMethods.map((method) => (
+                    <option key={method.id} value={method.id}>
+                      {method.name} ({method.fee} {cartCurrency})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-4 space-y-1 border-t pt-3 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>{t("deliveryFee")}</span>
+                  <span>
+                    {selectedShippingFee} {cartCurrency}
+                  </span>
+                </div>
+                <div className="flex justify-between font-semibold text-gray-900">
+                  <span>{t("grandTotal")}</span>
+                  <span>
+                    {previewGrandTotal} {cartCurrency}
+                  </span>
+                </div>
+              </div>
+            </>
           )}
 
           <button

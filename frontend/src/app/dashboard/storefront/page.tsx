@@ -16,6 +16,13 @@ const PAYMENT_METHOD_CATALOG = [
   "manual",
 ] as const;
 
+interface ShippingMethodRow {
+  id: string;
+  name: string;
+  fee: string;
+  active: boolean;
+}
+
 interface StorefrontConfig {
   id: string;
   logo_s3_key: string | null;
@@ -24,6 +31,7 @@ interface StorefrontConfig {
   hero_text: string | null;
   custom_css: Record<string, unknown> | null;
   payment_methods: { pos: string[]; online: string[] } | null;
+  shipping: { methods: ShippingMethodRow[] } | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -64,6 +72,9 @@ function StorefrontSettingsContent() {
   const [posMethods, setPosMethods] = useState<string[]>([]);
   const [onlineMethods, setOnlineMethods] = useState<string[]>([]);
 
+  // Shipping/delivery methods
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethodRow[]>([]);
+
   // Logo upload state
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
@@ -88,6 +99,7 @@ function StorefrontSettingsContent() {
         setSecondaryColor(c.secondary_color ?? "");
         setPosMethods(c.payment_methods?.pos ?? []);
         setOnlineMethods(c.payment_methods?.online ?? []);
+        setShippingMethods(c.shipping?.methods ?? []);
 
         // Load existing logo via public config endpoint (returns presigned URL)
         if (c.logo_s3_key && tenantResult.ok) {
@@ -177,11 +189,26 @@ function StorefrontSettingsContent() {
     setSuccess("");
     setSubmitting(true);
 
+    // Client guard: every delivery method must have a non-blank name.
+    if (shippingMethods.some((m) => !m.name.trim())) {
+      setError(t("shippingNameRequired"));
+      setSubmitting(false);
+      return;
+    }
+
     const body: Record<string, unknown> = {};
     body.hero_text = heroText || null;
     body.primary_color = primaryColor || null;
     body.secondary_color = secondaryColor || null;
     body.payment_methods = { pos: posMethods, online: onlineMethods };
+    body.shipping = {
+      methods: shippingMethods.map((m) => ({
+        id: m.id,
+        name: m.name.trim(),
+        fee: m.fee || "0",
+        active: m.active,
+      })),
+    };
 
     const result = await apiFetch<StorefrontConfig>(
       "/api/v1/tenants/me/storefront",
@@ -190,9 +217,14 @@ function StorefrontSettingsContent() {
 
     if (result.ok) {
       setConfig(result.data);
+      setShippingMethods(result.data.shipping?.methods ?? []);
       setSuccess(t("settingsSaved"));
     } else {
-      setError(result.detail);
+      setError(
+        typeof result.detail === "string"
+          ? result.detail
+          : JSON.stringify(result.detail)
+      );
     }
     setSubmitting(false);
   }
@@ -418,6 +450,102 @@ function StorefrontSettingsContent() {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Delivery Methods */}
+          <div className="border-t pt-4">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              {t("sectionShipping")}
+            </p>
+
+            {shippingMethods.length === 0 ? (
+              <p className="mb-3 text-sm text-gray-400">
+                {t("noShippingMethods")}
+              </p>
+            ) : (
+              <div className="mb-3 space-y-2">
+                {shippingMethods.map((method) => (
+                  <div
+                    key={method.id}
+                    className="flex flex-wrap items-center gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={method.name}
+                      onChange={(e) =>
+                        setShippingMethods((prev) =>
+                          prev.map((m) =>
+                            m.id === method.id
+                              ? { ...m, name: e.target.value }
+                              : m
+                          )
+                        )
+                      }
+                      placeholder={t("shippingMethodName")}
+                      className="min-w-0 flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={method.fee}
+                      onChange={(e) =>
+                        setShippingMethods((prev) =>
+                          prev.map((m) =>
+                            m.id === method.id
+                              ? { ...m, fee: e.target.value }
+                              : m
+                          )
+                        )
+                      }
+                      placeholder={t("shippingMethodFee")}
+                      className="w-28 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                    <label className="flex items-center gap-1.5 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={method.active}
+                        onChange={(e) =>
+                          setShippingMethods((prev) =>
+                            prev.map((m) =>
+                              m.id === method.id
+                                ? { ...m, active: e.target.checked }
+                                : m
+                            )
+                          )
+                        }
+                        className="rounded border-gray-300"
+                      />
+                      {t("shippingMethodActive")}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShippingMethods((prev) =>
+                          prev.filter((m) => m.id !== method.id)
+                        )
+                      }
+                      className="rounded px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      {t("removeShippingMethod")}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                setShippingMethods((prev) => [
+                  ...prev,
+                  { id: crypto.randomUUID(), name: "", fee: "", active: true },
+                ])
+              }
+              className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              {t("addShippingMethod")}
+            </button>
           </div>
 
           <div className="flex justify-end pt-2">

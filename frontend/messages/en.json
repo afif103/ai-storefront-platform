@@ -21,6 +21,9 @@
     "send": "Send"
   },
   "checkout": {
+    "deliveryMethod": "Delivery method",
+    "deliveryFee": "Delivery",
+    "grandTotal": "Order total",
     "deliveryAddress": "Delivery address (optional)",
     "deliveryNotes": "Delivery notes (optional)",
     "variant": "Variant",
@@ -255,6 +258,8 @@
     "checking": "Checking..."
   },
   "dashboardOrders": {
+    "shippingMethod": "Shipping method",
+    "shippingFee": "Shipping fee",
     "shippingAddress": "Shipping address",
     "title": "Orders",
     "subtitle": "View and manage customer orders",
@@ -477,6 +482,14 @@
     "formBarcode": "Barcode (optional)"
   },
   "dashboardStorefront": {
+    "sectionShipping": "Delivery Methods",
+    "shippingMethodName": "Name",
+    "shippingMethodFee": "Fee (KWD)",
+    "shippingMethodActive": "Active",
+    "addShippingMethod": "Add delivery method",
+    "removeShippingMethod": "Remove",
+    "noShippingMethods": "No delivery methods yet.",
+    "shippingNameRequired": "Method name is required.",
     "title": "Storefront Settings",
     "subtitle": "Customize branding, colors, and storefront details",
     "loading": "Loading...",

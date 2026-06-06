@@ -21,6 +21,9 @@
     "send": "\u0625\u0631\u0633\u0627\u0644"
   },
   "checkout": {
+    "deliveryMethod": "Delivery method",
+    "deliveryFee": "Delivery",
+    "grandTotal": "Order total",
     "deliveryAddress": "Delivery address (optional)",
     "deliveryNotes": "Delivery notes (optional)",
     "variant": "\u0627\u0644\u0645\u062a\u063a\u064a\u0631",
@@ -255,6 +258,8 @@
     "checking": "\u062c\u0627\u0631\u064d \u0627\u0644\u0641\u062d\u0635..."
   },
   "dashboardOrders": {
+    "shippingMethod": "Shipping method",
+    "shippingFee": "Shipping fee",
     "shippingAddress": "Shipping address",
     "title": "\u0627\u0644\u0637\u0644\u0628\u0627\u062a",
     "subtitle": "\u0639\u0631\u0636 \u0648\u0625\u062f\u0627\u0631\u0629 \u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0639\u0645\u0644\u0627\u0621",
@@ -477,6 +482,14 @@
     "formBarcode": "\u0627\u0644\u0628\u0627\u0631\u0643\u0648\u062f (\u0627\u062e\u062a\u064a\u0627\u0631\u064a)"
   },
   "dashboardStorefront": {
+    "sectionShipping": "Delivery Methods",
+    "shippingMethodName": "Name",
+    "shippingMethodFee": "Fee (KWD)",
+    "shippingMethodActive": "Active",
+    "addShippingMethod": "Add delivery method",
+    "removeShippingMethod": "Remove",
+    "noShippingMethods": "No delivery methods yet.",
+    "shippingNameRequired": "Method name is required.",
     "title": "\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u0645\u062a\u062c\u0631",
     "subtitle": "\u062a\u062e\u0635\u064a\u0635 \u0627\u0644\u0639\u0644\u0627\u0645\u0629 \u0627\u0644\u062a\u062c\u0627\u0631\u064a\u0629 \u0648\u0627\u0644\u0623\u0644\u0648\u0627\u0646 \u0648\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0645\u062a\u062c\u0631",
     "loading": "\u062c\u0627\u0631\u064d \u0627\u0644\u062a\u062d\u0645\u064a\u0644...",

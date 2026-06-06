@@ -41,6 +41,8 @@ interface OrderDetail {
   payment_notes: string | null;
   notes: string | null;
   shipping_address: string | null;
+  shipping_fee: string | null;
+  shipping_method: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -218,6 +220,18 @@ function OrdersContent() {
           <div className="mt-3 border-t pt-2 text-right text-sm font-semibold text-gray-900">
             {t("total")}: {selectedOrder.total_amount} {selectedOrder.currency}
           </div>
+
+          {selectedOrder.shipping_method && (
+            <div className="mt-1 text-right text-sm text-gray-700">
+              {t("shippingMethod")}: {selectedOrder.shipping_method}
+            </div>
+          )}
+          {selectedOrder.shipping_fee && (
+            <div className="mt-1 text-right text-sm text-gray-700">
+              {t("shippingFee")}: {selectedOrder.shipping_fee}{" "}
+              {selectedOrder.currency}
+            </div>
+          )}
 
           {selectedOrder.payment_method && (
             <div className="mt-1 text-right text-sm text-gray-700">
