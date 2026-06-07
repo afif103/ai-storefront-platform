@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
@@ -77,3 +78,35 @@ class AnalyticsSummaryResponse(BaseModel):
     event_counts: dict[str, int]
     funnel: list[FunnelStep]
     daily_series: list[DailyPoint] | None = None
+
+
+# ---------------------------------------------------------------------------
+# Sales reporting (authenticated endpoint) — M13.1 unified online + POS sales
+# ---------------------------------------------------------------------------
+
+
+class ChannelSales(BaseModel):
+    source: str
+    order_count: int
+    gross_sales: Decimal
+
+
+class PaymentMethodSales(BaseModel):
+    payment_method: str | None
+    order_count: int
+    gross_sales: Decimal
+
+
+class SalesSummaryResponse(BaseModel):
+    currency: str
+    total_sales: Decimal
+    total_orders: int
+    average_order_value: Decimal
+    storefront_sales: Decimal
+    storefront_orders: int
+    pos_sales: Decimal
+    pos_orders: int
+    cancelled_orders: int
+    cancelled_amount: Decimal
+    by_channel: list[ChannelSales]
+    by_payment_method: list[PaymentMethodSales]
