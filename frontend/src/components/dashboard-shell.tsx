@@ -28,7 +28,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     sectionKey: "sectionAnalytics",
-    items: [{ labelKey: "navAnalytics", href: "/dashboard/analytics" }],
+    items: [
+      { labelKey: "navAnalytics", href: "/dashboard/analytics" },
+      { labelKey: "navReports", href: "/dashboard/reports" },
+    ],
   },
   {
     sectionKey: "sectionAI",
