@@ -258,6 +258,13 @@
     "checking": "Checking..."
   },
   "dashboardOrders": {
+    "fulfillment": "Fulfillment",
+    "fulfillmentUnfulfilled": "Unfulfilled",
+    "fulfillmentPacked": "Packed",
+    "fulfillmentShipped": "Shipped",
+    "fulfillmentDelivered": "Delivered",
+    "markFulfillment": "Mark as {status}",
+    "fulfillmentUpdating": "Updating...",
     "shippingMethod": "Shipping method",
     "shippingFee": "Shipping fee",
     "shippingAddress": "Shipping address",

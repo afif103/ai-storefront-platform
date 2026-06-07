@@ -14,6 +14,8 @@ interface Order {
   total_amount: string;
   currency: string;
   status: string;
+  source: string;
+  fulfillment_status: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -43,6 +45,7 @@ interface OrderDetail {
   shipping_address: string | null;
   shipping_fee: string | null;
   shipping_method: string | null;
+  fulfillment_status: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -61,6 +64,35 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
+const FULFILLMENT_COLORS: Record<string, string> = {
+  unfulfilled: "bg-gray-100 text-gray-600",
+  packed: "bg-amber-100 text-amber-800",
+  shipped: "bg-blue-100 text-blue-800",
+  delivered: "bg-green-100 text-green-800",
+};
+
+const FULFILLMENT_NEXT: Record<string, string> = {
+  unfulfilled: "packed",
+  packed: "shipped",
+  shipped: "delivered",
+};
+
+function fulfillmentNext(current: string | null): string | undefined {
+  return FULFILLMENT_NEXT[current ?? "unfulfilled"];
+}
+
+function canFulfill(order: {
+  source: string;
+  status: string;
+  fulfillment_status: string | null;
+}): boolean {
+  return (
+    order.source === "storefront" &&
+    (order.status === "pending" || order.status === "confirmed") &&
+    fulfillmentNext(order.fulfillment_status) !== undefined
+  );
+}
+
 function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState("");
@@ -75,10 +107,17 @@ function OrdersContent() {
     cod: tPayment("cod"),
     manual: tPayment("manual"),
   };
+  const fulfillmentLabels: Record<string, string> = {
+    unfulfilled: t("fulfillmentUnfulfilled"),
+    packed: t("fulfillmentPacked"),
+    shipped: t("fulfillmentShipped"),
+    delivered: t("fulfillmentDelivered"),
+  };
 
   const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const [fulfilling, setFulfilling] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,13 +178,58 @@ function OrdersContent() {
     setDetailLoading(false);
   }
 
+  async function handleFulfillment(nextStatus: string) {
+    if (!selectedOrder) return;
+    const orderId = selectedOrder.id;
+    setFulfilling(true);
+    setDetailError("");
+    const result = await apiFetch<{
+      fulfillment_status: string | null;
+      updated_at: string | null;
+    }>(`/api/v1/tenants/me/orders/${orderId}/fulfillment`, {
+      method: "PATCH",
+      body: JSON.stringify({ fulfillment_status: nextStatus }),
+    });
+    setFulfilling(false);
+    if (result.ok) {
+      setSelectedOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              fulfillment_status: result.data.fulfillment_status,
+              updated_at: result.data.updated_at,
+            }
+          : prev
+      );
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, fulfillment_status: result.data.fulfillment_status }
+            : o
+        )
+      );
+      setDetailError("");
+    } else {
+      setDetailError(
+        typeof result.detail === "string" ? result.detail : JSON.stringify(result.detail)
+      );
+    }
+  }
+
   if (selectedOrder) {
+    const fulfillmentValue = selectedOrder.fulfillment_status ?? "unfulfilled";
+    const nextFulfillment = fulfillmentNext(selectedOrder.fulfillment_status);
+    const showFulfillment = selectedOrder.source === "storefront";
+    const showFulfillmentAction = canFulfill(selectedOrder);
     return (
       <main className="mx-auto max-w-2xl px-6 py-8">
         <div className="mb-4 flex items-center gap-3 print:hidden">
           <button
             type="button"
-            onClick={() => setSelectedOrder(null)}
+            onClick={() => {
+              setSelectedOrder(null);
+              setDetailError("");
+            }}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
           >
             {t("back")}
@@ -187,6 +271,11 @@ function OrdersContent() {
               {t("source")}: {selectedOrder.source}
             </span>
           </div>
+          {showFulfillment && (
+            <p className="mt-1 text-center text-xs text-gray-500">
+              {t("fulfillment")}: {fulfillmentLabels[fulfillmentValue]}
+            </p>
+          )}
 
           {selectedOrder.items.length > 0 && (
             <table className="mt-4 w-full text-sm">
@@ -252,6 +341,29 @@ function OrdersContent() {
           )}
         </div>
 
+        {detailError && (
+          <div className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 print:hidden">
+            {detailError}
+          </div>
+        )}
+
+        {showFulfillmentAction && nextFulfillment && (
+          <div className="mt-4 print:hidden">
+            <button
+              type="button"
+              onClick={() => handleFulfillment(nextFulfillment)}
+              disabled={fulfilling}
+              className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {fulfilling
+                ? t("fulfillmentUpdating")
+                : t("markFulfillment", {
+                    status: fulfillmentLabels[nextFulfillment],
+                  })}
+            </button>
+          </div>
+        )}
+
         <div className="mt-4 flex gap-3 print:hidden">
           <button
             type="button"
@@ -262,7 +374,10 @@ function OrdersContent() {
           </button>
           <button
             type="button"
-            onClick={() => setSelectedOrder(null)}
+            onClick={() => {
+              setSelectedOrder(null);
+              setDetailError("");
+            }}
             className="flex-1 rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
           >
             {t("back")}
@@ -327,6 +442,13 @@ function OrdersContent() {
                         >
                           {order.status}
                         </span>
+                        {order.source === "storefront" && (
+                          <span
+                            className={`mt-1 block w-fit rounded-full px-2 py-0.5 text-xs font-medium ${FULFILLMENT_COLORS[order.fulfillment_status ?? "unfulfilled"]}`}
+                          >
+                            {fulfillmentLabels[order.fulfillment_status ?? "unfulfilled"]}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-500">
                         {new Date(order.created_at).toLocaleDateString()}
