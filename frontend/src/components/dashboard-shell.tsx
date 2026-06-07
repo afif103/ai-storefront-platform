@@ -50,6 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
     sectionKey: "sectionTransactions",
     items: [
       { labelKey: "navOrders", href: "/dashboard/orders" },
+      { labelKey: "navCustomers", href: "/dashboard/customers" },
       { labelKey: "navDonations", href: "/dashboard/donations" },
       { labelKey: "navPledges", href: "/dashboard/pledges" },
     ],
