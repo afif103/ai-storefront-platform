@@ -10,9 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db_with_tenant, require_role
 from app.models.customer import Customer
+from app.models.order import Order
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
+from app.schemas.order import OrderListItem
 
 router = APIRouter()
 
@@ -159,3 +161,33 @@ async def delete_customer(
 
     await db.delete(customer)
     await db.flush()
+
+
+@router.get("/{customer_id}/orders", response_model=list[OrderListItem])
+async def list_customer_orders(
+    customer_id: uuid.UUID,
+    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> list[OrderListItem]:
+    """List a customer's orders (storefront + POS), newest first. Dashboard-only."""
+    db, tenant_id = db_tenant
+    await require_role("member", db, tenant_id, user)
+
+    # Verify the customer exists in this tenant (404 otherwise — no cross-tenant probing).
+    result = await db.execute(
+        select(Customer).where(Customer.id == customer_id, Customer.tenant_id == tenant_id)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    stmt = (
+        select(Order)
+        .where(Order.tenant_id == tenant_id, Order.customer_id == customer_id)
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    orders = (await db.execute(stmt)).scalars().all()
+    return [OrderListItem.model_validate(o) for o in orders]
