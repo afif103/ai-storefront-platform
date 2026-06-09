@@ -16,8 +16,11 @@ from app.schemas.analytics import (
     AnalyticsSummaryResponse,
     ChannelSales,
     DailyPoint,
+    DailyRevenuePoint,
     FunnelStep,
     PaymentMethodSales,
+    ProductRevenue,
+    RevenueAnalyticsResponse,
     SalesSummaryResponse,
 )
 
@@ -301,4 +304,129 @@ async def get_sales_summary(
         cancelled_amount=cancelled_amount,
         by_channel=by_channel,
         by_payment_method=by_payment_method,
+    )
+
+
+@router.get("/analytics/revenue", response_model=RevenueAnalyticsResponse)
+async def get_revenue_analytics(
+    from_date: date = Query(..., alias="from"),
+    to_date: date = Query(..., alias="to"),
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> RevenueAnalyticsResponse:
+    """Revenue analytics by day (channel-split) and top products (read-only).
+
+    Daily figures use order.total_amount (includes shipping); top-product figures
+    use line-item subtotals from the orders.items JSONB (exclude shipping). Both
+    cover non-cancelled orders only. Member role or higher.
+    """
+    db, tenant_id = db_tenant
+    await require_role("member", db, tenant_id, user)
+
+    # Validate range (same rules as /analytics/summary and /analytics/sales)
+    if to_date <= from_date:
+        raise HTTPException(status_code=422, detail="'to' must be after 'from'")
+    if (to_date - from_date).days > _MAX_RANGE_DAYS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Date range must not exceed {_MAX_RANGE_DAYS} days",
+        )
+
+    # to_date is exclusive upper bound (full day inclusion)
+    to_exclusive = to_date + timedelta(days=1)
+    params = {"tenant_id": str(tenant_id), "from_dt": from_date, "to_dt": to_exclusive}
+
+    # --- Daily revenue (non-cancelled), with per-channel split ---
+    daily_result = await db.execute(
+        text(
+            """
+            SELECT
+                date_trunc('day', created_at)::date AS day,
+                COUNT(*) AS order_count,
+                COALESCE(SUM(total_amount), 0) AS gross_sales,
+                COALESCE(
+                    SUM(total_amount) FILTER (WHERE source = 'storefront'), 0
+                ) AS storefront_sales,
+                COALESCE(
+                    SUM(total_amount) FILTER (WHERE source = 'pos'), 0
+                ) AS pos_sales
+            FROM orders
+            WHERE tenant_id = :tenant_id
+              AND status <> 'cancelled'
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            GROUP BY day
+            ORDER BY day
+            """
+        ),
+        params,
+    )
+    by_day = [
+        DailyRevenuePoint(
+            date=str(r.day),
+            order_count=r.order_count,
+            gross_sales=_money(r.gross_sales),
+            storefront_sales=_money(r.storefront_sales),
+            pos_sales=_money(r.pos_sales),
+        )
+        for r in daily_result.all()
+    ]
+
+    # --- Top products (non-cancelled), aggregated over the items JSONB ---
+    # Variants roll up to their parent product via catalog_item_id. Grouping on
+    # the stable id (not the snapshot name) is robust to mid-window renames;
+    # MAX(name) supplies a representative display label. Subtotals exclude
+    # shipping by construction (shipping is not part of any line item).
+    top_result = await db.execute(
+        text(
+            """
+            SELECT
+                elem->>'catalog_item_id' AS product_id,
+                MAX(elem->>'name') AS name,
+                SUM((elem->>'qty')::int) AS qty_sold,
+                SUM((elem->>'subtotal')::numeric) AS gross_sales
+            FROM orders,
+                 LATERAL jsonb_array_elements(items) AS elem
+            WHERE tenant_id = :tenant_id
+              AND status <> 'cancelled'
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            GROUP BY elem->>'catalog_item_id'
+            ORDER BY gross_sales DESC
+            LIMIT 10
+            """
+        ),
+        params,
+    )
+    top_products = [
+        ProductRevenue(
+            product_id=r.product_id,
+            name=r.name,
+            qty_sold=r.qty_sold,
+            gross_sales=_money(r.gross_sales),
+        )
+        for r in top_result.all()
+    ]
+
+    # --- Currency (single-currency-per-tenant; default KWD when no rows) ---
+    currency_result = await db.execute(
+        text(
+            """
+            SELECT currency
+            FROM orders
+            WHERE tenant_id = :tenant_id
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ),
+        params,
+    )
+    currency = currency_result.scalar_one_or_none() or "KWD"
+
+    return RevenueAnalyticsResponse(
+        currency=currency,
+        by_day=by_day,
+        top_products=top_products,
     )

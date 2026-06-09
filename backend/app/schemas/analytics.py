@@ -110,3 +110,29 @@ class SalesSummaryResponse(BaseModel):
     cancelled_amount: Decimal
     by_channel: list[ChannelSales]
     by_payment_method: list[PaymentMethodSales]
+
+
+# ---------------------------------------------------------------------------
+# Revenue analytics (authenticated endpoint) — M13.2 channel/product/time
+# ---------------------------------------------------------------------------
+
+
+class DailyRevenuePoint(BaseModel):
+    date: str
+    order_count: int
+    gross_sales: Decimal  # SUM(order.total_amount) — includes shipping
+    storefront_sales: Decimal
+    pos_sales: Decimal
+
+
+class ProductRevenue(BaseModel):
+    product_id: str
+    name: str
+    qty_sold: int
+    gross_sales: Decimal  # SUM(line-item subtotal) — excludes shipping
+
+
+class RevenueAnalyticsResponse(BaseModel):
+    currency: str
+    by_day: list[DailyRevenuePoint]
+    top_products: list[ProductRevenue]
