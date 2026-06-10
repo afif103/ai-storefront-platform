@@ -38,6 +38,31 @@ interface SalesSummary {
 }
 
 // ---------------------------------------------------------------------------
+// Types matching RevenueAnalyticsResponse (M13.2)
+// ---------------------------------------------------------------------------
+
+interface DailyRevenuePoint {
+  date: string;
+  order_count: number;
+  gross_sales: string;
+  storefront_sales: string;
+  pos_sales: string;
+}
+
+interface ProductRevenue {
+  product_id: string;
+  name: string;
+  qty_sold: number;
+  gross_sales: string;
+}
+
+interface RevenueAnalytics {
+  currency: string;
+  by_day: DailyRevenuePoint[];
+  top_products: ProductRevenue[];
+}
+
+// ---------------------------------------------------------------------------
 // Date helpers
 // ---------------------------------------------------------------------------
 
@@ -72,6 +97,8 @@ function SalesReportContent() {
   const [data, setData] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [revenueData, setRevenueData] = useState<RevenueAnalytics | null>(null);
+  const [revenueError, setRevenueError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +124,33 @@ function SalesReportContent() {
     };
   }, [preset]);
 
+  // Independent revenue-analytics fetch (M13.2): shares only the `preset`, so a
+  // failure here never blocks the M13.1 sales report rendered above. revenueData
+  // is cleared at fetch start and on error so no stale rows show across ranges.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setRevenueError("");
+      setRevenueData(null);
+      const { from, to } = dateRange(preset);
+      const result = await apiFetch<RevenueAnalytics>(
+        `/api/v1/tenants/me/analytics/revenue?from=${from}&to=${to}`,
+      );
+      if (cancelled) return;
+      if (result.ok) {
+        setRevenueData(result.data);
+      } else {
+        setRevenueData(null);
+        setRevenueError(
+          typeof result.detail === "string" ? result.detail : JSON.stringify(result.detail),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [preset]);
+
   function channelLabel(source: string): string {
     if (source === "storefront") return t("channelStorefront");
     if (source === "pos") return t("channelPos");
@@ -104,6 +158,11 @@ function SalesReportContent() {
   }
 
   const isEmpty = data && data.total_orders === 0 && data.cancelled_orders === 0;
+
+  const showRevenue =
+    revenueData !== null &&
+    !revenueError &&
+    (revenueData.by_day.length > 0 || revenueData.top_products.length > 0);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -240,6 +299,86 @@ function SalesReportContent() {
               </section>
             </>
           )}
+        </>
+      )}
+
+      {revenueError && (
+        <div className="mt-8 rounded-lg border border-red-300 bg-red-50 p-6 text-sm text-red-700">
+          {t("revenueError")}: {revenueError}
+        </div>
+      )}
+
+      {showRevenue && revenueData && (
+        <>
+          {/* Revenue Over Time */}
+          <section className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              {t("revenueOverTime")}
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2">{t("thDate")}</th>
+                    <th className="px-3 py-2 text-right">{t("thOrders")}</th>
+                    <th className="px-3 py-2 text-right">{t("thStorefront")}</th>
+                    <th className="px-3 py-2 text-right">{t("thPos")}</th>
+                    <th className="px-3 py-2 text-right">{t("thTotal")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {revenueData.by_day.map((d) => (
+                    <tr key={d.date}>
+                      <td className="px-3 py-2 text-gray-900">{d.date}</td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-900">
+                        {d.order_count}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-700">
+                        {d.storefront_sales} {revenueData.currency}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-700">
+                        {d.pos_sales} {revenueData.currency}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-900">
+                        {d.gross_sales} {revenueData.currency}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Top Products */}
+          <section className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              {t("topProducts")}
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2">{t("thProduct")}</th>
+                    <th className="px-3 py-2 text-right">{t("thQtySold")}</th>
+                    <th className="px-3 py-2 text-right">{t("thRevenue")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {revenueData.top_products.map((p) => (
+                    <tr key={p.product_id}>
+                      <td className="px-3 py-2 text-gray-900">{p.name}</td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-900">
+                        {p.qty_sold}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-700">
+                        {p.gross_sales} {revenueData.currency}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </>
       )}
     </main>
