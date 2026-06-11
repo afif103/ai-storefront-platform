@@ -150,3 +150,27 @@ class PosTodayResponse(BaseModel):
     pos_order_count: int
     by_payment_method: list[PaymentMethodSales]
     top_products: list[ProductRevenue]
+
+
+# ---------------------------------------------------------------------------
+# Repeat customers (authenticated endpoint) — M13.4 repeat-purchase tracking
+# ---------------------------------------------------------------------------
+
+
+class RepeatCustomerRow(BaseModel):
+    customer_id: str
+    name: str
+    orders_in_window: int
+    lifetime_orders: int  # non-cancelled, capped at created_at < to (exclusive)
+    window_spent: Decimal
+    first_order_date: str  # first-ever non-cancelled order date
+
+
+class RepeatCustomersResponse(BaseModel):
+    currency: str
+    identified_customers: int  # customer_id IS NOT NULL, active in window
+    new_customers: int  # first-ever order falls inside the window (B1)
+    returning_customers: int  # first-ever order predates the window (B1)
+    repeat_rate: float  # returning / identified, 4dp; 0.0 when none
+    anonymous_orders: int  # in-window non-cancelled orders with customer_id IS NULL
+    top_returning: list[RepeatCustomerRow]

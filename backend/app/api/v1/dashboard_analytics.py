@@ -21,6 +21,8 @@ from app.schemas.analytics import (
     PaymentMethodSales,
     PosTodayResponse,
     ProductRevenue,
+    RepeatCustomerRow,
+    RepeatCustomersResponse,
     RevenueAnalyticsResponse,
     SalesSummaryResponse,
 )
@@ -565,4 +567,166 @@ async def get_pos_today(
         pos_order_count=pos_order_count,
         by_payment_method=by_payment_method,
         top_products=top_products,
+    )
+
+
+@router.get("/analytics/repeat-customers", response_model=RepeatCustomersResponse)
+async def get_repeat_customers(
+    from_date: date = Query(..., alias="from"),
+    to_date: date = Query(..., alias="to"),
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> RepeatCustomersResponse:
+    """Repeat-purchase metrics for identified customers (read-only).
+
+    Identity is orders.customer_id; orders with customer_id IS NULL are counted
+    only as anonymous_orders. B1 semantics: among customers active in the
+    window, 'new' means their first-ever non-cancelled order falls inside the
+    window and 'returning' means it predates the window — a customer whose only
+    orders are 2+ inside the window is still new. Lifetime figures are capped at
+    the exclusive window end. Non-cancelled orders only. Member role or higher.
+    """
+    db, tenant_id = db_tenant
+    await require_role("member", db, tenant_id, user)
+
+    # Validate range (same rules as the other /analytics endpoints)
+    if to_date <= from_date:
+        raise HTTPException(status_code=422, detail="'to' must be after 'from'")
+    if (to_date - from_date).days > _MAX_RANGE_DAYS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Date range must not exceed {_MAX_RANGE_DAYS} days",
+        )
+
+    # to_date is exclusive upper bound (full day inclusion)
+    to_exclusive = to_date + timedelta(days=1)
+    params = {"tenant_id": str(tenant_id), "from_dt": from_date, "to_dt": to_exclusive}
+
+    # --- New/returning counts (B1) over identified, window-active customers ---
+    # Per-customer aggregate of non-cancelled orders capped at the exclusive
+    # window end; HAVING keeps only customers with at least one in-window order.
+    counts_result = await db.execute(
+        text(
+            """
+            SELECT COUNT(*) AS identified_customers,
+                   COUNT(*) FILTER (WHERE first_order_at >= :from_dt) AS new_customers
+            FROM (
+                SELECT customer_id, MIN(created_at) AS first_order_at
+                FROM orders
+                WHERE tenant_id = :tenant_id
+                  AND status <> 'cancelled'
+                  AND customer_id IS NOT NULL
+                  AND created_at < :to_dt
+                GROUP BY customer_id
+                HAVING COUNT(*) FILTER (WHERE created_at >= :from_dt) > 0
+            ) t
+            """
+        ),
+        params,
+    )
+    crow = counts_result.one()
+    identified_customers = crow.identified_customers
+    new_customers = crow.new_customers
+    returning_customers = identified_customers - new_customers
+    if identified_customers > 0:
+        repeat_rate = round(returning_customers / identified_customers, 4)
+    else:
+        repeat_rate = 0.0
+
+    # --- Top 5 returning customers by in-window activity ---
+    # Display name falls back name -> email -> phone -> constant so the NOT NULL
+    # response field never breaks on blank/NULL customer names.
+    top_result = await db.execute(
+        text(
+            """
+            SELECT t.customer_id,
+                   COALESCE(
+                       NULLIF(c.name, ''),
+                       NULLIF(c.email, ''),
+                       NULLIF(c.phone, ''),
+                       'Unnamed customer'
+                   ) AS name,
+                   t.orders_in_window,
+                   t.lifetime_orders,
+                   t.window_spent,
+                   t.first_order_at
+            FROM (
+                SELECT customer_id,
+                       MIN(created_at) AS first_order_at,
+                       COUNT(*) AS lifetime_orders,
+                       COUNT(*) FILTER (WHERE created_at >= :from_dt) AS orders_in_window,
+                       COALESCE(
+                           SUM(total_amount) FILTER (WHERE created_at >= :from_dt), 0
+                       ) AS window_spent
+                FROM orders
+                WHERE tenant_id = :tenant_id
+                  AND status <> 'cancelled'
+                  AND customer_id IS NOT NULL
+                  AND created_at < :to_dt
+                GROUP BY customer_id
+                HAVING COUNT(*) FILTER (WHERE created_at >= :from_dt) > 0
+            ) t
+            JOIN customers c ON c.id = t.customer_id AND c.tenant_id = :tenant_id
+            WHERE t.first_order_at < :from_dt
+            ORDER BY t.orders_in_window DESC, t.window_spent DESC, t.first_order_at ASC
+            LIMIT 5
+            """
+        ),
+        params,
+    )
+    top_returning = [
+        RepeatCustomerRow(
+            customer_id=str(r.customer_id),
+            name=r.name,
+            orders_in_window=r.orders_in_window,
+            lifetime_orders=r.lifetime_orders,
+            window_spent=_money(r.window_spent),
+            first_order_date=str(r.first_order_at.date()),
+        )
+        for r in top_result.all()
+    ]
+
+    # --- Anonymous orders (customer_id IS NULL; mostly contactless POS) ---
+    anon_result = await db.execute(
+        text(
+            """
+            SELECT COUNT(*) AS anonymous_orders
+            FROM orders
+            WHERE tenant_id = :tenant_id
+              AND status <> 'cancelled'
+              AND customer_id IS NULL
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            """
+        ),
+        params,
+    )
+    anonymous_orders = anon_result.scalar_one()
+
+    # --- Currency (single-currency-per-tenant; default KWD when no rows) ---
+    currency_result = await db.execute(
+        text(
+            """
+            SELECT currency
+            FROM orders
+            WHERE tenant_id = :tenant_id
+              AND status <> 'cancelled'
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ),
+        params,
+    )
+    currency = currency_result.scalar_one_or_none() or "KWD"
+
+    return RepeatCustomersResponse(
+        currency=currency,
+        identified_customers=identified_customers,
+        new_customers=new_customers,
+        returning_customers=returning_customers,
+        repeat_rate=repeat_rate,
+        anonymous_orders=anonymous_orders,
+        top_returning=top_returning,
     )
