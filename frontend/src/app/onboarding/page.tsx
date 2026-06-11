@@ -311,7 +311,9 @@ export default function OnboardingPage() {
                 onChange={(e) => handleSlugChange(e.target.value)}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
-              <p className="mt-1 text-xs text-gray-500">{t("slugHint")}</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {t("slugHint", { slug: slug || "your-store" })}
+              </p>
               {fieldErrors.slug && (
                 <p className="mt-1 text-sm text-red-600">
                   {fieldErrors.slug}
