@@ -63,6 +63,19 @@ interface RevenueAnalytics {
 }
 
 // ---------------------------------------------------------------------------
+// Types matching PosTodayResponse (M13.3)
+// ---------------------------------------------------------------------------
+
+interface PosTodaySnapshot {
+  currency: string;
+  date: string;
+  pos_sales: string;
+  pos_order_count: number;
+  by_payment_method: PaymentMethodSales[];
+  top_products: ProductRevenue[];
+}
+
+// ---------------------------------------------------------------------------
 // Date helpers
 // ---------------------------------------------------------------------------
 
@@ -79,6 +92,16 @@ function dateRange(preset: RangePreset): { from: string; to: string } {
     from: from.toISOString().split("T")[0],
     to: today.toISOString().split("T")[0],
   };
+}
+
+// Local calendar date (YYYY-MM-DD) for the POS Today snapshot — deliberately
+// NOT toISOString(), which would yield the UTC date, not the user's local day.
+function localTodayString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 const RANGE_LABEL_KEYS: Record<RangePreset, string> = {
@@ -99,6 +122,8 @@ function SalesReportContent() {
   const [error, setError] = useState("");
   const [revenueData, setRevenueData] = useState<RevenueAnalytics | null>(null);
   const [revenueError, setRevenueError] = useState("");
+  const [posToday, setPosToday] = useState<PosTodaySnapshot | null>(null);
+  const [posTodayError, setPosTodayError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +175,33 @@ function SalesReportContent() {
       cancelled = true;
     };
   }, [preset]);
+
+  // Independent POS Today snapshot fetch (M13.3): runs once on mount — today is
+  // preset-independent. posToday is cleared at fetch start and on error so no
+  // stale rows can show, and posTodayError never blocks the M13.1 sales report
+  // or the M13.2 revenue tables above.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setPosTodayError("");
+      setPosToday(null);
+      const result = await apiFetch<PosTodaySnapshot>(
+        `/api/v1/tenants/me/analytics/pos-today?date=${localTodayString()}`,
+      );
+      if (cancelled) return;
+      if (result.ok) {
+        setPosToday(result.data);
+      } else {
+        setPosToday(null);
+        setPosTodayError(
+          typeof result.detail === "string" ? result.detail : JSON.stringify(result.detail),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function channelLabel(source: string): string {
     if (source === "storefront") return t("channelStorefront");
@@ -380,6 +432,97 @@ function SalesReportContent() {
             </div>
           </section>
         </>
+      )}
+
+      {posTodayError && (
+        <div className="mt-8 rounded-lg border border-red-300 bg-red-50 p-6 text-sm text-red-700">
+          {t("posTodayError")}: {posTodayError}
+        </div>
+      )}
+
+      {posToday && !posTodayError && (
+        <section className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+              {t("posTodayHeading")}
+            </h2>
+            <span className="text-xs text-gray-400">{posToday.date}</span>
+          </div>
+          {posToday.pos_order_count === 0 ? (
+            <p className="text-sm text-gray-500">{t("posTodayEmpty")}</p>
+          ) : (
+            <>
+              {/* POS Today KPI cards */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <KpiCard
+                  label={t("kpiPosSalesToday")}
+                  value={`${posToday.pos_sales} ${posToday.currency}`}
+                />
+                <KpiCard label={t("kpiPosOrdersToday")} value={posToday.pos_order_count} />
+              </div>
+
+              {/* Top POS Products Today */}
+              <h3 className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("topPosProducts")}
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2">{t("thProduct")}</th>
+                      <th className="px-3 py-2 text-right">{t("thQtySold")}</th>
+                      <th className="px-3 py-2 text-right">{t("thRevenue")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {posToday.top_products.map((p) => (
+                      <tr key={p.product_id}>
+                        <td className="px-3 py-2 text-gray-900">{p.name}</td>
+                        <td className="px-3 py-2 text-right font-mono text-gray-900">
+                          {p.qty_sold}
+                        </td>
+                        <td className="px-3 py-2 text-right text-gray-700">
+                          {p.gross_sales} {posToday.currency}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* POS Payment Methods Today */}
+              <h3 className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("posPaymentMethods")}
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2">{t("thMethod")}</th>
+                      <th className="px-3 py-2 text-right">{t("thOrders")}</th>
+                      <th className="px-3 py-2 text-right">{t("thGrossSales")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {posToday.by_payment_method.map((m) => (
+                      <tr key={m.payment_method ?? "__unspecified__"}>
+                        <td className="px-3 py-2 text-gray-900">
+                          {m.payment_method ?? t("methodUnspecified")}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-gray-900">
+                          {m.order_count}
+                        </td>
+                        <td className="px-3 py-2 text-right text-gray-700">
+                          {m.gross_sales} {posToday.currency}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
       )}
     </main>
   );
