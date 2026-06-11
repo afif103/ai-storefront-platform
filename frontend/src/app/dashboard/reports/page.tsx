@@ -76,6 +76,29 @@ interface PosTodaySnapshot {
 }
 
 // ---------------------------------------------------------------------------
+// Types matching RepeatCustomersResponse (M13.4)
+// ---------------------------------------------------------------------------
+
+interface RepeatCustomerRow {
+  customer_id: string;
+  name: string;
+  orders_in_window: number;
+  lifetime_orders: number;
+  window_spent: string;
+  first_order_date: string;
+}
+
+interface RepeatCustomers {
+  currency: string;
+  identified_customers: number;
+  new_customers: number;
+  returning_customers: number;
+  repeat_rate: number;
+  anonymous_orders: number;
+  top_returning: RepeatCustomerRow[];
+}
+
+// ---------------------------------------------------------------------------
 // Date helpers
 // ---------------------------------------------------------------------------
 
@@ -124,6 +147,8 @@ function SalesReportContent() {
   const [revenueError, setRevenueError] = useState("");
   const [posToday, setPosToday] = useState<PosTodaySnapshot | null>(null);
   const [posTodayError, setPosTodayError] = useState("");
+  const [repeatData, setRepeatData] = useState<RepeatCustomers | null>(null);
+  const [repeatError, setRepeatError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -167,6 +192,33 @@ function SalesReportContent() {
       } else {
         setRevenueData(null);
         setRevenueError(
+          typeof result.detail === "string" ? result.detail : JSON.stringify(result.detail),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [preset]);
+
+  // Independent repeat-customer fetch (M13.4): shares only the `preset`, so a
+  // failure here never blocks the sales/revenue/POS Today blocks. repeatData is
+  // cleared at fetch start and on error so no stale rows show across ranges.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setRepeatError("");
+      setRepeatData(null);
+      const { from, to } = dateRange(preset);
+      const result = await apiFetch<RepeatCustomers>(
+        `/api/v1/tenants/me/analytics/repeat-customers?from=${from}&to=${to}`,
+      );
+      if (cancelled) return;
+      if (result.ok) {
+        setRepeatData(result.data);
+      } else {
+        setRepeatData(null);
+        setRepeatError(
           typeof result.detail === "string" ? result.detail : JSON.stringify(result.detail),
         );
       }
@@ -432,6 +484,80 @@ function SalesReportContent() {
             </div>
           </section>
         </>
+      )}
+
+      {repeatError && (
+        <div className="mt-8 rounded-lg border border-red-300 bg-red-50 p-6 text-sm text-red-700">
+          {t("repeatError")}: {repeatError}
+        </div>
+      )}
+
+      {repeatData && !repeatError && (
+        <section className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            {t("repeatHeading")}
+          </h2>
+          {repeatData.identified_customers === 0 ? (
+            <p className="text-sm text-gray-500">{t("repeatEmpty")}</p>
+          ) : (
+            <>
+              {/* New vs Returning KPI cards */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <KpiCard label={t("kpiNewCustomers")} value={repeatData.new_customers} />
+                <KpiCard
+                  label={t("kpiReturningCustomers")}
+                  value={repeatData.returning_customers}
+                />
+                <KpiCard
+                  label={t("kpiRepeatRate")}
+                  value={`${(repeatData.repeat_rate * 100).toFixed(1)}%`}
+                />
+                <KpiCard label={t("kpiAnonymousOrders")} value={repeatData.anonymous_orders} />
+              </div>
+
+              {/* Top Returning Customers */}
+              {repeatData.top_returning.length > 0 && (
+                <>
+                  <h3 className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    {t("topReturningCustomers")}
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                        <tr>
+                          <th className="px-3 py-2">{t("thCustomer")}</th>
+                          <th className="px-3 py-2 text-right">{t("thOrders")}</th>
+                          <th className="px-3 py-2 text-right">{t("thLifetimeOrders")}</th>
+                          <th className="px-3 py-2 text-right">{t("thSpent")}</th>
+                          <th className="px-3 py-2 text-right">{t("thFirstOrder")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {repeatData.top_returning.map((c) => (
+                          <tr key={c.customer_id}>
+                            <td className="px-3 py-2 text-gray-900">{c.name}</td>
+                            <td className="px-3 py-2 text-right font-mono text-gray-900">
+                              {c.orders_in_window}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-gray-900">
+                              {c.lifetime_orders}
+                            </td>
+                            <td className="px-3 py-2 text-right text-gray-700">
+                              {c.window_spent} {repeatData.currency}
+                            </td>
+                            <td className="px-3 py-2 text-right text-gray-700">
+                              {c.first_order_date}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </section>
       )}
 
       {posTodayError && (

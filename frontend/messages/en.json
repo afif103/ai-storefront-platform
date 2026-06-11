@@ -423,7 +423,19 @@
     "topPosProducts": "Top POS Products Today",
     "posPaymentMethods": "POS Payment Methods Today",
     "posTodayEmpty": "No POS sales today",
-    "posTodayError": "Failed to load POS today snapshot"
+    "posTodayError": "Failed to load POS today snapshot",
+    "repeatHeading": "Customers — New vs Returning",
+    "kpiNewCustomers": "New Customers",
+    "kpiReturningCustomers": "Returning Customers",
+    "kpiRepeatRate": "Repeat Rate",
+    "kpiAnonymousOrders": "Anonymous Orders",
+    "topReturningCustomers": "Top Returning Customers",
+    "thCustomer": "Customer",
+    "thLifetimeOrders": "Lifetime Orders",
+    "thSpent": "Spent",
+    "thFirstOrder": "First Order",
+    "repeatEmpty": "No identified customers in this range",
+    "repeatError": "Failed to load customer analytics"
   },
   "dashboardCategories": {
     "title": "Categories",
