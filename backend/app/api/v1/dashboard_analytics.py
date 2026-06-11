@@ -19,6 +19,7 @@ from app.schemas.analytics import (
     DailyRevenuePoint,
     FunnelStep,
     PaymentMethodSales,
+    PosTodayResponse,
     ProductRevenue,
     RevenueAnalyticsResponse,
     SalesSummaryResponse,
@@ -428,5 +429,140 @@ async def get_revenue_analytics(
     return RevenueAnalyticsResponse(
         currency=currency,
         by_day=by_day,
+        top_products=top_products,
+    )
+
+
+@router.get("/analytics/pos-today", response_model=PosTodayResponse)
+async def get_pos_today(
+    day: date = Query(..., alias="date"),
+    user: User = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+) -> PosTodayResponse:
+    """POS-only single-day snapshot (read-only): today's sales, order count,
+    payment-method breakdown, and top products.
+
+    Covers non-cancelled POS orders (source='pos') created within the local day
+    window [date, date + 1 day). The frontend sends its local 'today', so the
+    backend owns only the day window. Member role or higher.
+    """
+    db, tenant_id = db_tenant
+    await require_role("member", db, tenant_id, user)
+
+    # Single-day window: [day, day + 1). Frontend sends local today.
+    to_exclusive = day + timedelta(days=1)
+    params = {"tenant_id": str(tenant_id), "from_dt": day, "to_dt": to_exclusive}
+
+    # --- POS totals (non-cancelled) ---
+    totals_result = await db.execute(
+        text(
+            """
+            SELECT COUNT(*) AS pos_order_count,
+                   COALESCE(SUM(total_amount), 0) AS pos_sales
+            FROM orders
+            WHERE tenant_id = :tenant_id
+              AND source = 'pos'
+              AND status <> 'cancelled'
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            """
+        ),
+        params,
+    )
+    trow = totals_result.one()
+    pos_order_count = trow.pos_order_count
+    pos_sales = _money(trow.pos_sales)
+
+    # --- Payment-method breakdown (POS, non-cancelled; NULL bucket preserved) ---
+    payment_result = await db.execute(
+        text(
+            """
+            SELECT payment_method,
+                   COUNT(*) AS order_count,
+                   COALESCE(SUM(total_amount), 0) AS gross_sales
+            FROM orders
+            WHERE tenant_id = :tenant_id
+              AND source = 'pos'
+              AND status <> 'cancelled'
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            GROUP BY payment_method
+            ORDER BY payment_method NULLS LAST
+            """
+        ),
+        params,
+    )
+    by_payment_method = [
+        PaymentMethodSales(
+            payment_method=r.payment_method,
+            order_count=r.order_count,
+            gross_sales=_money(r.gross_sales),
+        )
+        for r in payment_result.all()
+    ]
+
+    # --- Top POS products (non-cancelled), aggregated over the items JSONB ---
+    # Variants roll up to their parent product via catalog_item_id; line subtotals
+    # exclude shipping by construction. Top 5 by revenue. Mirrors the M13.2
+    # `LATERAL jsonb_array_elements(items) AS elem` pattern.
+    top_result = await db.execute(
+        text(
+            """
+            SELECT
+                elem->>'catalog_item_id' AS product_id,
+                MAX(elem->>'name') AS name,
+                SUM((elem->>'qty')::int) AS qty_sold,
+                SUM((elem->>'subtotal')::numeric) AS gross_sales
+            FROM orders,
+                 LATERAL jsonb_array_elements(items) AS elem
+            WHERE tenant_id = :tenant_id
+              AND source = 'pos'
+              AND status <> 'cancelled'
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            GROUP BY elem->>'catalog_item_id'
+            ORDER BY gross_sales DESC
+            LIMIT 5
+            """
+        ),
+        params,
+    )
+    top_products = [
+        ProductRevenue(
+            product_id=r.product_id,
+            name=r.name,
+            qty_sold=r.qty_sold,
+            gross_sales=_money(r.gross_sales),
+        )
+        for r in top_result.all()
+    ]
+
+    # --- Currency (single-currency-per-tenant; default KWD when no rows) ---
+    # Filtered to non-cancelled POS so a day whose only POS order is cancelled
+    # falls back to KWD rather than reading currency off a cancelled row.
+    currency_result = await db.execute(
+        text(
+            """
+            SELECT currency
+            FROM orders
+            WHERE tenant_id = :tenant_id
+              AND source = 'pos'
+              AND status <> 'cancelled'
+              AND created_at >= :from_dt
+              AND created_at < :to_dt
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ),
+        params,
+    )
+    currency = currency_result.scalar_one_or_none() or "KWD"
+
+    return PosTodayResponse(
+        currency=currency,
+        date=str(day),
+        pos_sales=pos_sales,
+        pos_order_count=pos_order_count,
+        by_payment_method=by_payment_method,
         top_products=top_products,
     )

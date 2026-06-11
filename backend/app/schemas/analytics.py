@@ -136,3 +136,17 @@ class RevenueAnalyticsResponse(BaseModel):
     currency: str
     by_day: list[DailyRevenuePoint]
     top_products: list[ProductRevenue]
+
+
+# ---------------------------------------------------------------------------
+# POS today snapshot (authenticated endpoint) — M13.3 POS dashboard widgets
+# ---------------------------------------------------------------------------
+
+
+class PosTodayResponse(BaseModel):
+    currency: str
+    date: str  # echo of the requested local date
+    pos_sales: Decimal  # SUM(total_amount) — POS, non-cancelled, this day
+    pos_order_count: int
+    by_payment_method: list[PaymentMethodSales]
+    top_products: list[ProductRevenue]
