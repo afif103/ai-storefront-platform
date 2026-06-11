@@ -36,18 +36,30 @@ async def _real_cognito_refresh(refresh_token: str) -> dict:
     return tokens
 
 
+_MOCK_REFRESH_PREFIX = "mock-refresh-"
+
+
 def _mock_refresh(refresh_token: str) -> dict:
-    """Generate a mock refresh response for local development."""
+    """Mint a fresh mock access token for the SAME identity encoded in the cookie.
+
+    mock_login() issues refresh cookies of the form 'mock-refresh-<sub>' where
+    <sub> starts with 'mock-'. Anything else (legacy rotated values, garbage)
+    is rejected — the /auth/refresh handler converts the error into a 401 so
+    the frontend falls back to a clean re-login. The cookie is identity-bearing
+    and stable, so no rotated refresh_token is returned (the cookie stays).
+    """
     from app.core.security import create_mock_access_token
 
-    access_token = create_mock_access_token(
-        sub="mock-user-sub",
-        email="dev@example.com",
-    )
-    return {
-        "access_token": access_token,
-        "refresh_token": "mock-refresh-token-rotated",
-    }
+    if not refresh_token.startswith(_MOCK_REFRESH_PREFIX):
+        raise ValueError("Invalid mock refresh token")
+    sub = refresh_token[len(_MOCK_REFRESH_PREFIX) :]
+    if not sub.startswith("mock-"):
+        raise ValueError("Invalid mock refresh token")
+
+    # The email claim only matters when the sub is unknown (auto-provision after
+    # a DB reset); a sub-derived placeholder keeps that path collision-free.
+    access_token = create_mock_access_token(sub=sub, email=f"{sub}@mock.local")
+    return {"access_token": access_token}
 
 
 def mock_login(email: str) -> dict[str, str]:
